@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { ACTIVE_ARTIST_COOKIE } from "@/lib/active-artist";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { GENRES } from "./genres";
 
@@ -34,18 +36,56 @@ export async function completeOnboarding(
     return { error: "Please select a valid genre." };
   }
 
-  const { error: artistErr } = await supabase.from("artists").upsert(
-    { id: user.id, owner_user_id: user.id },
+  const cookieStore = await cookies();
+  let activeArtistId = cookieStore.get(ACTIVE_ARTIST_COOKIE)?.value ?? null;
+
+  if (!activeArtistId) {
+    activeArtistId = crypto.randomUUID();
+    const { error: createArtistErr } = await supabase.from("artists").insert({
+      id: activeArtistId,
+      owner_user_id: user.id,
+    });
+    if (createArtistErr) {
+      return { error: createArtistErr.message };
+    }
+    cookieStore.set(ACTIVE_ARTIST_COOKIE, activeArtistId, {
+      path: "/",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 400,
+      httpOnly: false,
+    });
+  }
+
+  const { data: owned, error: ownedErr } = await supabase
+    .from("artists")
+    .select("id")
+    .eq("id", activeArtistId)
+    .eq("owner_user_id", user.id)
+    .maybeSingle();
+
+  if (ownedErr) {
+    return { error: ownedErr.message };
+  }
+
+  if (!owned) {
+    return {
+      error:
+        "That artist profile isn’t available. Pick an artist from the nav or add one in Settings.",
+    };
+  }
+
+  const { error: artistUpsertErr } = await supabase.from("artists").upsert(
+    { id: activeArtistId, owner_user_id: user.id },
     { onConflict: "id" }
   );
 
-  if (artistErr) {
-    return { error: artistErr.message };
+  if (artistUpsertErr) {
+    return { error: artistUpsertErr.message };
   }
 
   const { error } = await supabase.from("profiles").upsert(
     {
-      id: user.id,
+      id: activeArtistId,
       owner_user_id: user.id,
       artist_name: artistName,
       genre,

@@ -69,5 +69,5 @@ export async function addArtist(
     httpOnly: false,
   });
 
-  redirect("/dashboard");
+  redirect("/onboarding");
 }

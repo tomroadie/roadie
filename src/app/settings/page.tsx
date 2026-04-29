@@ -1,11 +1,9 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { AppNav } from "@/components/app-nav";
-import { LogoutButton } from "./logout-button";
-import { WeeklyPlanSection } from "./weekly-plan-section";
-import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
+import { LogoutButton } from "@/app/dashboard/logout-button";
 
-export default async function DashboardPage() {
+export default async function SettingsPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -25,30 +23,19 @@ export default async function DashboardPage() {
     throw new Error(profileError.message);
   }
 
-  const artistName = profile?.artist_name?.trim();
-  if (!artistName) {
+  if (!profile?.artist_name?.trim()) {
     redirect("/onboarding");
   }
-
-  const { data: weeklyPlan } = await supabase
-    .from("weekly_plans")
-    .select("ideas")
-    .eq("user_id", user.id)
-    .order("week_start", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const initialIdeas = normalizeIdeasFromDb(weeklyPlan?.ideas ?? null);
 
   return (
     <div className="mx-auto flex min-h-full max-w-2xl flex-1 flex-col px-4 py-16">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Dashboard
+            Settings
           </h1>
           <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-            Welcome back, {artistName}.
+            Account and preferences — coming soon.
           </p>
         </div>
         <LogoutButton />
@@ -56,7 +43,10 @@ export default async function DashboardPage() {
 
       <AppNav />
 
-      <WeeklyPlanSection initialIdeas={initialIdeas} />
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        This section is a placeholder. More options will land here in a future
+        update.
+      </p>
     </div>
   );
 }

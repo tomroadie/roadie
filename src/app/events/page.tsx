@@ -1,11 +1,11 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { AppNav } from "@/components/app-nav";
-import { LogoutButton } from "./logout-button";
-import { WeeklyPlanSection } from "./weekly-plan-section";
-import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
+import { LogoutButton } from "@/app/dashboard/logout-button";
+import { EventsSection } from "./events-section";
+import type { EventRow } from "@/types/event";
 
-export default async function DashboardPage() {
+export default async function EventsPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -25,30 +25,31 @@ export default async function DashboardPage() {
     throw new Error(profileError.message);
   }
 
-  const artistName = profile?.artist_name?.trim();
-  if (!artistName) {
+  if (!profile?.artist_name?.trim()) {
     redirect("/onboarding");
   }
 
-  const { data: weeklyPlan } = await supabase
-    .from("weekly_plans")
-    .select("ideas")
+  const { data: eventsRows, error: eventsError } = await supabase
+    .from("events")
+    .select("id, title, event_date, event_type, notes")
     .eq("user_id", user.id)
-    .order("week_start", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order("event_date", { ascending: true });
 
-  const initialIdeas = normalizeIdeasFromDb(weeklyPlan?.ideas ?? null);
+  if (eventsError) {
+    throw new Error(eventsError.message);
+  }
+
+  const initialEvents = (eventsRows ?? []) as EventRow[];
 
   return (
     <div className="mx-auto flex min-h-full max-w-2xl flex-1 flex-col px-4 py-16">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Dashboard
+            Your dates
           </h1>
           <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-            Welcome back, {artistName}.
+            Shows, releases, rehearsals — these shape your weekly content plan
           </p>
         </div>
         <LogoutButton />
@@ -56,7 +57,7 @@ export default async function DashboardPage() {
 
       <AppNav />
 
-      <WeeklyPlanSection initialIdeas={initialIdeas} />
+      <EventsSection initialEvents={initialEvents} userId={user.id} />
     </div>
   );
 }

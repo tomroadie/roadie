@@ -11,45 +11,6 @@ function verifyWebhookSecret(headerValue: string | null, secret: string): boolea
   return timingSafeEqual(a, b);
 }
 
-type RecentPost = {
-  type: string;
-  date: string;
-  views: number;
-  likes: number;
-  comments: number;
-  caption: string;
-};
-
-function parseRecentPost(value: unknown): RecentPost | null {
-  if (typeof value !== "object" || value === null) return null;
-  const o = value as Record<string, unknown>;
-  if (
-    typeof o.type !== "string" ||
-    typeof o.date !== "string" ||
-    typeof o.caption !== "string"
-  ) {
-    return null;
-  }
-  const views = Number(o.views);
-  const likes = Number(o.likes);
-  const comments = Number(o.comments);
-  if (
-    !Number.isFinite(views) ||
-    !Number.isFinite(likes) ||
-    !Number.isFinite(comments)
-  ) {
-    return null;
-  }
-  return {
-    type: o.type,
-    date: o.date,
-    views,
-    likes,
-    comments,
-    caption: o.caption,
-  };
-}
-
 async function getUserIdByEmail(
   supabase: SupabaseClient,
   email: string
@@ -119,16 +80,17 @@ export async function POST(request: Request) {
   if (typeof bio !== "string") {
     return NextResponse.json({ error: "bio must be a string" }, { status: 400 });
   }
-  if (!Array.isArray(recent_posts)) {
-    return NextResponse.json({ error: "recent_posts must match the expected shape" }, { status: 400 });
-  }
-  const parsedRecentPosts: RecentPost[] = [];
-  for (const item of recent_posts) {
-    const parsed = parseRecentPost(item);
-    if (!parsed) {
-      return NextResponse.json({ error: "recent_posts must match the expected shape" }, { status: 400 });
-    }
-    parsedRecentPosts.push(parsed);
+  let recentPostsJsonb: unknown[] | null = null;
+  let recentPostsRaw: string | null = null;
+  if (typeof recent_posts === "string") {
+    recentPostsRaw = recent_posts;
+  } else if (Array.isArray(recent_posts)) {
+    recentPostsJsonb = recent_posts;
+  } else {
+    return NextResponse.json(
+      { error: "recent_posts must be a string or JSON array" },
+      { status: 400 }
+    );
   }
   if (typeof ai_pattern_analysis !== "string" || typeof ai_full_analysis !== "string") {
     return NextResponse.json(
@@ -168,7 +130,8 @@ export async function POST(request: Request) {
     following,
     post_count,
     bio,
-    recent_posts: parsedRecentPosts,
+    recent_posts: recentPostsJsonb,
+    recent_posts_raw: recentPostsRaw,
     ai_pattern_analysis,
     ai_full_analysis,
   });

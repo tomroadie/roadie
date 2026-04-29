@@ -20,17 +20,34 @@ type RecentPost = {
   caption: string;
 };
 
-function isRecentPost(value: unknown): value is RecentPost {
-  if (typeof value !== "object" || value === null) return false;
+function parseRecentPost(value: unknown): RecentPost | null {
+  if (typeof value !== "object" || value === null) return null;
   const o = value as Record<string, unknown>;
-  return (
-    typeof o.type === "string" &&
-    typeof o.date === "string" &&
-    typeof o.views === "number" &&
-    typeof o.likes === "number" &&
-    typeof o.comments === "number" &&
-    typeof o.caption === "string"
-  );
+  if (
+    typeof o.type !== "string" ||
+    typeof o.date !== "string" ||
+    typeof o.caption !== "string"
+  ) {
+    return null;
+  }
+  const views = Number(o.views);
+  const likes = Number(o.likes);
+  const comments = Number(o.comments);
+  if (
+    !Number.isFinite(views) ||
+    !Number.isFinite(likes) ||
+    !Number.isFinite(comments)
+  ) {
+    return null;
+  }
+  return {
+    type: o.type,
+    date: o.date,
+    views,
+    likes,
+    comments,
+    caption: o.caption,
+  };
 }
 
 async function getUserIdByEmail(
@@ -77,9 +94,9 @@ export async function POST(request: Request) {
 
   const o = body as Record<string, unknown>;
   const instagram_handle = o.instagram_handle;
-  const followers = o.followers;
-  const following = o.following;
-  const post_count = o.post_count;
+  const followers = Number(o.followers);
+  const following = Number(o.following);
+  const post_count = Number(o.post_count);
   const bio = o.bio;
   const recent_posts = o.recent_posts;
   const ai_pattern_analysis = o.ai_pattern_analysis;
@@ -89,7 +106,11 @@ export async function POST(request: Request) {
   if (typeof instagram_handle !== "string" || !instagram_handle.trim()) {
     return NextResponse.json({ error: "Invalid or missing instagram_handle" }, { status: 400 });
   }
-  if (typeof followers !== "number" || typeof following !== "number" || typeof post_count !== "number") {
+  if (
+    !Number.isFinite(followers) ||
+    !Number.isFinite(following) ||
+    !Number.isFinite(post_count)
+  ) {
     return NextResponse.json(
       { error: "followers, following, and post_count must be numbers" },
       { status: 400 }
@@ -98,8 +119,16 @@ export async function POST(request: Request) {
   if (typeof bio !== "string") {
     return NextResponse.json({ error: "bio must be a string" }, { status: 400 });
   }
-  if (!Array.isArray(recent_posts) || !recent_posts.every(isRecentPost)) {
+  if (!Array.isArray(recent_posts)) {
     return NextResponse.json({ error: "recent_posts must match the expected shape" }, { status: 400 });
+  }
+  const parsedRecentPosts: RecentPost[] = [];
+  for (const item of recent_posts) {
+    const parsed = parseRecentPost(item);
+    if (!parsed) {
+      return NextResponse.json({ error: "recent_posts must match the expected shape" }, { status: 400 });
+    }
+    parsedRecentPosts.push(parsed);
   }
   if (typeof ai_pattern_analysis !== "string" || typeof ai_full_analysis !== "string") {
     return NextResponse.json(
@@ -139,7 +168,7 @@ export async function POST(request: Request) {
     following,
     post_count,
     bio,
-    recent_posts,
+    recent_posts: parsedRecentPosts,
     ai_pattern_analysis,
     ai_full_analysis,
   });

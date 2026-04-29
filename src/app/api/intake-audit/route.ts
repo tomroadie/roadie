@@ -118,10 +118,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 
-  if (!userId) {
-    return NextResponse.json({ error: "No user found for that email" }, { status: 404 });
-  }
-
   const { error: insertError } = await supabase.from("audits").insert({
     user_id: userId,
     email: email.trim(),
@@ -143,16 +139,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .update({ instagram_handle: instagram_handle.trim() })
-    .eq("id", userId);
+  if (userId) {
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ instagram_handle: instagram_handle.trim() })
+      .eq("id", userId);
 
-  if (profileError) {
-    return NextResponse.json(
-      { error: "Failed to update profile", details: profileError.message },
-      { status: 500 }
-    );
+    if (profileError) {
+      return NextResponse.json(
+        { error: "Failed to update profile", details: profileError.message },
+        { status: 500 }
+      );
+    }
   }
 
   return NextResponse.json({ success: true });

@@ -1,9 +1,11 @@
 import { createClient } from "@/utils/supabase/server";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { AppNav } from "@/components/app-nav";
+import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { EventsSection } from "./events-section";
 import type { EventRow } from "@/types/event";
+import { getActiveArtistIdForUser } from "@/lib/active-artist";
 
 export default async function EventsPage() {
   const supabase = await createClient();
@@ -15,10 +17,21 @@ export default async function EventsPage() {
     redirect("/login");
   }
 
+  const cookieStore = await cookies();
+  const activeArtistId = await getActiveArtistIdForUser(
+    supabase,
+    user.id,
+    cookieStore
+  );
+
+  if (!activeArtistId) {
+    redirect("/onboarding");
+  }
+
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("artist_name")
-    .eq("id", user.id)
+    .eq("id", activeArtistId)
     .maybeSingle();
 
   if (profileError) {
@@ -32,7 +45,7 @@ export default async function EventsPage() {
   const { data: eventsRows, error: eventsError } = await supabase
     .from("events")
     .select("id, title, event_date, event_type, notes")
-    .eq("user_id", user.id)
+    .eq("artist_id", activeArtistId)
     .order("event_date", { ascending: true });
 
   if (eventsError) {
@@ -55,9 +68,9 @@ export default async function EventsPage() {
         <LogoutButton />
       </header>
 
-      <AppNav />
+      <AppNavWrapper />
 
-      <EventsSection initialEvents={initialEvents} userId={user.id} />
+      <EventsSection initialEvents={initialEvents} artistId={activeArtistId} />
     </div>
   );
 }

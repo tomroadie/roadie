@@ -118,8 +118,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 
+  let artistId: string | null = null;
+  if (userId) {
+    const handle = instagram_handle.trim();
+    const { data: handleMatch } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("owner_user_id", userId)
+      .eq("instagram_handle", handle)
+      .maybeSingle();
+
+    if (handleMatch?.id) {
+      artistId = handleMatch.id;
+    } else {
+      const { data: primaryArtist } = await supabase
+        .from("artists")
+        .select("id")
+        .eq("owner_user_id", userId)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      artistId = primaryArtist?.id ?? null;
+    }
+  }
+
   const { error: insertError } = await supabase.from("audits").insert({
     user_id: userId,
+    artist_id: artistId,
     email: email.trim(),
     instagram_handle: instagram_handle.trim(),
     followers,
@@ -139,11 +164,11 @@ export async function POST(request: Request) {
     );
   }
 
-  if (userId) {
+  if (userId && artistId) {
     const { error: profileError } = await supabase
       .from("profiles")
       .update({ instagram_handle: instagram_handle.trim() })
-      .eq("id", userId);
+      .eq("id", artistId);
 
     if (profileError) {
       return NextResponse.json(

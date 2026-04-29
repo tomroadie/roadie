@@ -19,10 +19,10 @@ function formatEventDate(isoDate: string): string {
 
 type EventsSectionProps = {
   initialEvents: EventRow[];
-  userId: string;
+  artistId: string;
 };
 
-export function EventsSection({ initialEvents, userId }: EventsSectionProps) {
+export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
   const [events, setEvents] = useState<EventRow[]>(initialEvents);
   const [title, setTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
@@ -50,7 +50,7 @@ export function EventsSection({ initialEvents, userId }: EventsSectionProps) {
     const { data, error } = await supabase
       .from("events")
       .insert({
-        user_id: userId,
+        artist_id: artistId,
         title: title.trim(),
         event_date: eventDate,
         event_type: eventType,

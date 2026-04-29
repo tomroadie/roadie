@@ -1,9 +1,11 @@
 import { createClient } from "@/utils/supabase/server";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { AppNav } from "@/components/app-nav";
+import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "./logout-button";
 import { WeeklyPlanSection } from "./weekly-plan-section";
 import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
+import { getActiveArtistIdForUser } from "@/lib/active-artist";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -15,10 +17,21 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  const cookieStore = await cookies();
+  const activeArtistId = await getActiveArtistIdForUser(
+    supabase,
+    user.id,
+    cookieStore
+  );
+
+  if (!activeArtistId) {
+    redirect("/onboarding");
+  }
+
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("artist_name")
-    .eq("id", user.id)
+    .eq("id", activeArtistId)
     .maybeSingle();
 
   if (profileError) {
@@ -33,7 +46,7 @@ export default async function DashboardPage() {
   const { data: weeklyPlan } = await supabase
     .from("weekly_plans")
     .select("ideas")
-    .eq("user_id", user.id)
+    .eq("artist_id", activeArtistId)
     .order("week_start", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -54,7 +67,7 @@ export default async function DashboardPage() {
         <LogoutButton />
       </header>
 
-      <AppNav />
+      <AppNavWrapper />
 
       <WeeklyPlanSection initialIdeas={initialIdeas} />
     </div>

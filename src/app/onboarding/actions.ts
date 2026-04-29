@@ -34,9 +34,19 @@ export async function completeOnboarding(
     return { error: "Please select a valid genre." };
   }
 
+  const { error: artistErr } = await supabase.from("artists").upsert(
+    { id: user.id, owner_user_id: user.id },
+    { onConflict: "id" }
+  );
+
+  if (artistErr) {
+    return { error: artistErr.message };
+  }
+
   const { error } = await supabase.from("profiles").upsert(
     {
       id: user.id,
+      owner_user_id: user.id,
       artist_name: artistName,
       genre,
       sound_description: soundDescription || null,

@@ -1,7 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { AppNav } from "@/components/app-nav";
+import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
+import { AddArtistForm } from "./add-artist-form";
+import { getActiveArtistIdForUser } from "@/lib/active-artist";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -13,10 +16,21 @@ export default async function SettingsPage() {
     redirect("/login");
   }
 
+  const cookieStore = await cookies();
+  const activeArtistId = await getActiveArtistIdForUser(
+    supabase,
+    user.id,
+    cookieStore
+  );
+
+  if (!activeArtistId) {
+    redirect("/onboarding");
+  }
+
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("artist_name")
-    .eq("id", user.id)
+    .eq("id", activeArtistId)
     .maybeSingle();
 
   if (profileError) {
@@ -35,18 +49,15 @@ export default async function SettingsPage() {
             Settings
           </h1>
           <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-            Account and preferences — coming soon.
+            Artists you manage and account preferences.
           </p>
         </div>
         <LogoutButton />
       </header>
 
-      <AppNav />
+      <AppNavWrapper />
 
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        This section is a placeholder. More options will land here in a future
-        update.
-      </p>
+      <AddArtistForm />
     </div>
   );
 }

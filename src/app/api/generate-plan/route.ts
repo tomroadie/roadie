@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/utils/supabase/server";
+import { cookies } from "next/headers";
+import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { getMondayDateString } from "@/lib/week";
 import { parseIdeasJson } from "@/lib/parse-ideas-json";
 import { NextResponse } from "next/server";
@@ -16,10 +18,24 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const cookieStore = await cookies();
+  const activeArtistId = await getActiveArtistIdForUser(
+    supabase,
+    user.id,
+    cookieStore
+  );
+
+  if (!activeArtistId) {
+    return NextResponse.json(
+      { error: "No active artist. Complete onboarding first." },
+      { status: 400 }
+    );
+  }
+
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("artist_name, genre, sound_description, similar_artists")
-    .eq("id", user.id)
+    .eq("id", activeArtistId)
     .maybeSingle();
 
   if (profileError) {
@@ -39,7 +55,7 @@ export async function POST() {
   const { data: events, error: eventsError } = await supabase
     .from("events")
     .select("title, event_date, event_type, notes")
-    .eq("user_id", user.id)
+    .eq("artist_id", activeArtistId)
     .order("event_date", { ascending: true });
 
   if (eventsError) {
@@ -125,7 +141,7 @@ No markdown fences, no commentary outside the JSON array.`;
   const { data: existing } = await supabase
     .from("weekly_plans")
     .select("id")
-    .eq("user_id", user.id)
+    .eq("artist_id", activeArtistId)
     .eq("week_start", weekStart)
     .maybeSingle();
 
@@ -143,7 +159,7 @@ No markdown fences, no commentary outside the JSON array.`;
     }
   } else {
     const { error: insertError } = await supabase.from("weekly_plans").insert({
-      user_id: user.id,
+      artist_id: activeArtistId,
       week_start: weekStart,
       ideas,
     });

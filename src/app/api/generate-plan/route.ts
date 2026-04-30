@@ -191,7 +191,7 @@ No markdown fences, no commentary outside the JSON array.`;
   if (existing?.id) {
     const { error: updateError } = await supabase
       .from("weekly_plans")
-      .update({ ideas })
+      .update({ ideas, created_at: new Date().toISOString() })
       .eq("id", existing.id);
 
     if (updateError) {

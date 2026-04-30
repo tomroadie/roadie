@@ -6,6 +6,16 @@ import { LogoutButton } from "@/app/dashboard/logout-button";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { parseFullAnalysisText } from "@/lib/parse-full-analysis";
 
+function sectionAccent(title: string): { border: string; label: string } {
+  const t = title.toLowerCase();
+  if (t.includes("position")) return { border: "border-l-purple-500", label: "text-purple-700" };
+  if (t.includes("content")) return { border: "border-l-blue-500", label: "text-blue-700" };
+  if (t.includes("engagement")) return { border: "border-l-teal-500", label: "text-teal-700" };
+  if (t.includes("core")) return { border: "border-l-amber-500", label: "text-amber-800" };
+  if (t.includes("opportun")) return { border: "border-l-emerald-500", label: "text-emerald-700" };
+  return { border: "border-l-zinc-300 dark:border-l-zinc-700", label: "text-slate-700 dark:text-slate-200" };
+}
+
 export default async function InsightsPage() {
   const supabase = await createClient();
   const {
@@ -76,7 +86,7 @@ export default async function InsightsPage() {
 
       {!audit ? (
         <div className="mt-10 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/80 p-10 text-center dark:border-zinc-700 dark:bg-zinc-950/40">
-          <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
             {emptyMessage}
           </p>
         </div>
@@ -89,66 +99,78 @@ export default async function InsightsPage() {
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">
               Artist snapshot
             </h2>
-            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-              <div>
-                <dt className="text-zinc-500 dark:text-zinc-400">Followers</dt>
-                <dd className="font-medium text-foreground">
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                  Followers
+                </p>
+                <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
                   {audit.followers.toLocaleString()}
-                </dd>
+                </p>
               </div>
-              <div>
-                <dt className="text-zinc-500 dark:text-zinc-400">Following</dt>
-                <dd className="font-medium text-foreground">
+              <div className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                  Following
+                </p>
+                <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
                   {audit.following.toLocaleString()}
-                </dd>
+                </p>
               </div>
-              <div>
-                <dt className="text-zinc-500 dark:text-zinc-400">Posts</dt>
-                <dd className="font-medium text-foreground">
+              <div className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                  Posts
+                </p>
+                <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
                   {audit.post_count.toLocaleString()}
-                </dd>
+                </p>
               </div>
-            </dl>
+            </div>
             {audit.bio?.trim() ? (
-              <p className="mt-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+              <p className="mt-5 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
                 {audit.bio}
               </p>
             ) : null}
           </section>
 
-          <section className="rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+          <section className="rounded-2xl bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
             <h2 className="text-lg font-semibold tracking-tight text-foreground">
               Your content pattern
             </h2>
-            <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+            <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
               {audit.ai_pattern_analysis}
             </p>
           </section>
 
-          <section className="rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+          <section className="rounded-2xl bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
             <h2 className="text-lg font-semibold tracking-tight text-foreground">
               Full analysis
             </h2>
-            <div className="mt-4 space-y-6">
-              {parseFullAnalysisText(audit.ai_full_analysis).map((sec, i) => (
-                <div key={`${sec.title}-${i}`}>
-                  <h3 className="text-sm font-semibold text-foreground">
-                    {sec.title}
-                  </h3>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-                    {sec.body}
-                  </p>
-                </div>
-              ))}
+            <div className="mt-5 space-y-4">
+              {parseFullAnalysisText(audit.ai_full_analysis).map((sec, i) => {
+                const a = sectionAccent(sec.title);
+                return (
+                  <div
+                    key={`${sec.title}-${i}`}
+                    className={`rounded-2xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950 ${a.border} border-l-4`}
+                  >
+                    <h3 className={`text-sm font-semibold ${a.label}`}>
+                      {sec.title}
+                    </h3>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                      {sec.body}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </section>
 
           {audit.recent_posts_raw?.trim() ? (
-            <section className="rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+            <section className="rounded-2xl bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
               <h2 className="text-lg font-semibold tracking-tight text-foreground">
                 Recent posts analysed
               </h2>
-              <pre className="mt-4 overflow-x-auto whitespace-pre-wrap font-sans text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+              <pre className="mt-4 overflow-x-auto whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700 dark:text-slate-300">
                 {audit.recent_posts_raw}
               </pre>
             </section>

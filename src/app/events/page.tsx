@@ -61,7 +61,7 @@ export default async function EventsPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Your dates
           </h1>
-          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+          <p className="mt-2 text-slate-500 dark:text-slate-400">
             Shows, releases, rehearsals — these shape your weekly content plan
           </p>
         </div>
@@ -69,6 +69,14 @@ export default async function EventsPage() {
       </header>
 
       <AppNavWrapper />
+
+      <div className="mt-6 rounded-2xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
+        <h2 className="text-sm font-semibold text-foreground">Why dates matter</h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+          Your dates shape your weekly content plan. The more specific you are,
+          the better your ideas.
+        </p>
+      </div>
 
       <EventsSection initialEvents={initialEvents} artistId={activeArtistId} />
     </div>

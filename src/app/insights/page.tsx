@@ -8,6 +8,7 @@ import { parseFullAnalysisText } from "@/lib/parse-full-analysis";
 import Link from "next/link";
 import { canDo, normalizePlan } from "@/lib/plan-limits";
 import { RefreshAuditButton } from "./refresh-audit-button";
+import { RecentPostsCards } from "./recent-posts-cards";
 
 function sectionAccent(title: string): { border: string; label: string } {
   const t = title.toLowerCase();
@@ -188,14 +189,7 @@ export default async function InsightsPage() {
             </section>
 
             {audit.recent_posts_raw?.trim() ? (
-              <section className="rounded-2xl bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
-                <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                  Recent posts analysed
-                </h2>
-                <pre className="mt-4 overflow-x-auto whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                  {audit.recent_posts_raw}
-                </pre>
-              </section>
+              <RecentPostsCards raw={audit.recent_posts_raw} />
             ) : null}
           </div>
         )}

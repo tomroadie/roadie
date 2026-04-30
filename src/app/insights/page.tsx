@@ -7,6 +7,7 @@ import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { parseFullAnalysisText } from "@/lib/parse-full-analysis";
 import Link from "next/link";
 import { canDo, normalizePlan } from "@/lib/plan-limits";
+import { userIsAdmin } from "@/lib/is-admin";
 import { RefreshAuditButton } from "./refresh-audit-button";
 import { RecentPostsCards } from "./recent-posts-cards";
 
@@ -56,6 +57,8 @@ export default async function InsightsPage() {
     redirect("/login");
   }
 
+  const isAdmin = await userIsAdmin(supabase, user.id);
+
   const { data: planRow, error: planError } = await supabase
     .from("profiles")
     .select("plan")
@@ -68,8 +71,8 @@ export default async function InsightsPage() {
   }
 
   const plan = normalizePlan(planRow?.plan);
-  const canRefreshAudit = canDo(plan, "canRefreshAudit");
-  const canViewLiveSocialData = canDo(plan, "canViewLiveSocialData");
+  const canRefreshAudit = canDo(plan, "canRefreshAudit", isAdmin);
+  const canViewLiveSocialData = canDo(plan, "canViewLiveSocialData", isAdmin);
 
   const cookieStore = await cookies();
   const activeArtistId = await getActiveArtistIdForUser(
@@ -154,8 +157,8 @@ export default async function InsightsPage() {
   const audit = auditByArtistId ?? auditByHandle ?? null;
   console.log("[Insights] audit found", audit ? { id: audit.id, created_at: audit.created_at } : null);
 
-  const emptyMessage =
-    "Your Instagram audit will appear here once you've completed the lead form. Share your profile to get started.";
+  const auditRequestMailto =
+    "mailto:hello@roadie.media?subject=Audit%20request";
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
@@ -180,7 +183,21 @@ export default async function InsightsPage() {
         {!audit ? (
           <div className="rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
             <p className="text-sm leading-relaxed text-muted">
-              {emptyMessage}
+              Your Instagram audit will appear here once your profile has been
+              analysed.
+            </p>
+            <p className="mt-4 text-sm leading-relaxed text-muted">
+              If you signed up via our Instagram audit form, this usually takes
+              5-10 minutes.
+            </p>
+            <p className="mt-4 text-sm leading-relaxed text-muted">
+              If you signed up directly,{" "}
+              <a
+                href={auditRequestMailto}
+                className="font-semibold text-brand underline-offset-4 hover:underline"
+              >
+                Request an audit →
+              </a>
             </p>
           </div>
         ) : (
@@ -261,6 +278,18 @@ export default async function InsightsPage() {
             {audit.recent_posts_raw?.trim() ? (
               <RecentPostsCards raw={sortRecentPostsRawByDateDesc(audit.recent_posts_raw)} />
             ) : null}
+
+            <section className="mt-10 rounded-xl border border-card-border bg-card p-7">
+              <Link
+                href="/dashboard"
+                className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 sm:w-auto"
+              >
+                Generate my weekly plan using these insights →
+              </Link>
+              <p className="mt-3 text-sm text-muted">
+                Your content plan uses this audit to shape every idea.
+              </p>
+            </section>
           </div>
         )}
       </div>
@@ -270,9 +299,11 @@ export default async function InsightsPage() {
           <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
             Live social performance
           </h2>
-          <span className="inline-flex items-center rounded-full border border-card-border bg-input px-3 py-1 text-xs font-bold uppercase tracking-widest text-muted">
-            Pro feature
-          </span>
+          {!canViewLiveSocialData ? (
+            <span className="inline-flex items-center rounded-full border border-card-border bg-input px-3 py-1 text-xs font-bold uppercase tracking-widest text-muted">
+              Pro feature
+            </span>
+          ) : null}
         </div>
 
         <div
@@ -285,14 +316,16 @@ export default async function InsightsPage() {
             Connect your Instagram, TikTok and Facebook to see real-time performance data,
             post analytics, and what&apos;s driving growth.
           </p>
-          <div className="mt-5">
-            <Link
-              href="/pricing"
-              className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
-            >
-              Upgrade to Pro
-            </Link>
-          </div>
+          {!canViewLiveSocialData ? (
+            <div className="mt-5">
+              <Link
+                href="/pricing"
+                className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
+              >
+                Upgrade to Pro
+              </Link>
+            </div>
+          ) : null}
         </div>
       </section>
     </div>

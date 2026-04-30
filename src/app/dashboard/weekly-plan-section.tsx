@@ -137,6 +137,7 @@ type WeeklyPlanSectionProps = {
   lastGeneratedAt: string | null;
   upcomingThisWeek: EventRow[];
   plan: string;
+  isAdmin?: boolean;
 };
 
 function hoursSince(iso: string): number {
@@ -153,13 +154,14 @@ export function WeeklyPlanSection({
   lastGeneratedAt,
   upcomingThisWeek,
   plan,
+  isAdmin = false,
 }: WeeklyPlanSectionProps) {
   const [ideas, setIdeas] = useState<ContentIdea[] | null>(initialIdeas);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmKind | null>(null);
   const normalizedPlan = normalizePlan(plan);
-  const canGenerate = canDo(normalizedPlan, "canGeneratePlan");
+  const canGenerate = canDo(normalizedPlan, "canGeneratePlan", isAdmin);
 
   async function runGenerate() {
     setError(null);
@@ -233,6 +235,7 @@ export function WeeklyPlanSection({
         </div>
         {canGenerate ? (
           <button
+            id="dashboard-generate-plan"
             type="button"
             onClick={requestGenerate}
             disabled={loading}

@@ -5,6 +5,7 @@ import { ACTIVE_ARTIST_COOKIE } from "@/lib/active-artist";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { GENRES } from "./genres";
+import { userIsAdmin } from "@/lib/is-admin";
 
 export type OnboardingState = { error?: string } | null;
 
@@ -27,6 +28,8 @@ export async function completeOnboarding(
     formData.get("sound_description") ?? ""
   ).trim();
   const similarArtists = String(formData.get("similar_artists") ?? "").trim();
+  const instagramRaw = String(formData.get("instagram_handle") ?? "").trim();
+  const instagramHandle = instagramRaw.replace(/^@+/, "") || null;
 
   if (!artistName || !genre) {
     return { error: "Artist name and genre are required." };
@@ -56,18 +59,26 @@ export async function completeOnboarding(
     });
   }
 
-  const { data: owned, error: ownedErr } = await supabase
+  const isAdmin = await userIsAdmin(supabase, user.id);
+
+  const { data: artistRow, error: artistLookupErr } = await supabase
     .from("artists")
-    .select("id")
+    .select("id, owner_user_id")
     .eq("id", activeArtistId)
-    .eq("owner_user_id", user.id)
     .maybeSingle();
 
-  if (ownedErr) {
-    return { error: ownedErr.message };
+  if (artistLookupErr) {
+    return { error: artistLookupErr.message };
   }
 
-  if (!owned) {
+  if (!artistRow) {
+    return {
+      error:
+        "That artist profile isn’t available. Pick an artist from the nav or add one in Settings.",
+    };
+  }
+
+  if (!isAdmin && artistRow.owner_user_id !== user.id) {
     return {
       error:
         "That artist profile isn’t available. Pick an artist from the nav or add one in Settings.",
@@ -91,6 +102,7 @@ export async function completeOnboarding(
       genre,
       sound_description: soundDescription || null,
       similar_artists: similarArtists || null,
+      instagram_handle: instagramHandle,
     },
     { onConflict: "id" }
   );
@@ -99,5 +111,5 @@ export async function completeOnboarding(
     return { error: error.message };
   }
 
-  redirect("/dashboard");
+  redirect("/dashboard?registered=true");
 }

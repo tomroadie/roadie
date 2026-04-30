@@ -4,6 +4,7 @@ import {
   fetchArtistsForUser,
   getActiveArtistIdForUser,
 } from "@/lib/active-artist";
+import { userIsAdmin } from "@/lib/is-admin";
 import { AppNav, type AppNavArtist } from "./app-nav";
 
 export async function AppNavWrapper() {
@@ -16,7 +17,10 @@ export async function AppNavWrapper() {
     return null;
   }
 
-  const artistsRows = await fetchArtistsForUser(supabase, user.id);
+  const [artistsRows, showAdminLink] = await Promise.all([
+    fetchArtistsForUser(supabase, user.id),
+    userIsAdmin(supabase, user.id),
+  ]);
   const cookieStore = await cookies();
   const activeArtistId = await getActiveArtistIdForUser(
     supabase,
@@ -46,6 +50,10 @@ export async function AppNavWrapper() {
   }
 
   return (
-    <AppNav artists={artists} activeArtistId={activeArtistId} />
+    <AppNav
+      artists={artists}
+      activeArtistId={activeArtistId}
+      showAdminLink={showAdminLink}
+    />
   );
 }

@@ -1,6 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { OnboardingForm } from "./onboarding-form";
 
 export default async function OnboardingPage() {
@@ -24,20 +23,12 @@ export default async function OnboardingPage() {
             Welcome to Roadie
           </h1>
           <p className="mt-2 text-sm text-muted">
-            Tell us about your project so we can tailor your content ideas.
+            Takes 2 minutes. We use this to tailor your weekly ideas and match
+            your voice.
           </p>
         </div>
 
         <OnboardingForm />
-
-        <p className="text-center">
-          <Link
-            href="/dashboard"
-            className="text-sm text-muted underline-offset-4 hover:text-brand hover:underline"
-          >
-            Back to dashboard
-          </Link>
-        </p>
       </div>
     </div>
   );

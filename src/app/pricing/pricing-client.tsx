@@ -21,19 +21,29 @@ const PLANS: Array<{
     key: "starter",
     name: "Starter",
     price: "£29/month",
-    blurb: "Weekly content plan, AI assistant, events calendar, up to 1 artist",
-    features: ["Weekly content plan", "Events calendar", "AI assistant", "Up to 1 artist"],
+    blurb:
+      "Weekly plan, AI assistant, events, Instagram audit — built for one artist.",
+    features: [
+      "Weekly plan (unlimited)",
+      "AI assistant",
+      "Events calendar",
+      "Instagram audit",
+      "1 artist",
+    ],
   },
   {
     key: "pro",
     name: "Pro",
     price: "£59/month",
-    blurb: "Everything in Starter + Instagram audit insights, trend feed, up to 3 artists",
+    blurb:
+      "Full audit insights, monthly refresh, and room for a small roster.",
     highlight: "Most popular",
     features: [
-      "Everything in Starter",
-      "Insights tab",
-      "Audit refresh",
+      "Weekly plan (unlimited)",
+      "AI assistant",
+      "Events calendar",
+      "Instagram audit + insights",
+      "Audit refresh (monthly)",
       "Up to 3 artists",
     ],
   },
@@ -41,8 +51,14 @@ const PLANS: Array<{
     key: "label",
     name: "Label",
     price: "£149/month",
-    blurb: "Everything in Pro + up to 10 artists, priority support",
-    features: ["Everything in Pro", "Up to 10 artists", "Priority support"],
+    blurb: "Pro capabilities for teams managing multiple artists.",
+    features: [
+      "Everything in Pro",
+      "Up to 10 artists",
+      "Weekly audit refresh",
+      "Priority support",
+      "Team roster management",
+    ],
   },
 ];
 
@@ -183,11 +199,22 @@ export default function PricingClient({
                 >
                   {loadingPlan === p.key ? "Redirecting…" : cta}
                 </button>
+                {!isCurrent ? (
+                  <p className="mt-2 text-center text-xs text-muted">
+                    21-day trial · No card required
+                  </p>
+                ) : null}
               </div>
             </div>
           );
         })}
       </div>
+
+      <p className="mt-10 text-center text-sm leading-relaxed text-muted">
+        All plans start with a 21-day free trial. No card required.
+        <br />
+        Cancel anytime — your data is always yours.
+      </p>
 
       {error ? (
         <p className="mt-6 text-sm text-red-400" role="alert">

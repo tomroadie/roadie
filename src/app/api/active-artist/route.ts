@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { ACTIVE_ARTIST_COOKIE } from "@/lib/active-artist";
+import { userIsAdmin } from "@/lib/is-admin";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -28,12 +29,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid artistId" }, { status: 400 });
   }
 
-  const { data: row, error } = await supabase
+  const admin = await userIsAdmin(supabase, user.id);
+
+  const lookup = supabase
     .from("artists")
     .select("id")
-    .eq("id", artistId.trim())
-    .eq("owner_user_id", user.id)
-    .maybeSingle();
+    .eq("id", artistId.trim());
+
+  const { data: row, error } = admin
+    ? await lookup.maybeSingle()
+    : await lookup.eq("owner_user_id", user.id).maybeSingle();
 
   if (error) {
     return NextResponse.json(

@@ -5,7 +5,8 @@ import { ACTIVE_ARTIST_COOKIE } from "@/lib/active-artist";
 import { GENRES } from "@/app/onboarding/genres";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { normalizePlan, PLAN_LIMITS, type RoadiePlan } from "@/lib/plan-limits";
+import { maxArtistsAllowed, normalizePlan, type RoadiePlan } from "@/lib/plan-limits";
+import { userIsAdmin } from "@/lib/is-admin";
 
 export type AddArtistState =
   | { error?: string; upgrade?: { plan: RoadiePlan; maxArtists: number } }
@@ -39,6 +40,8 @@ export async function addArtist(
     return { error: "Please select a valid genre." };
   }
 
+  const isAdmin = await userIsAdmin(supabase, user.id);
+
   const { data: planRow, error: planError } = await supabase
     .from("profiles")
     .select("plan")
@@ -51,7 +54,7 @@ export async function addArtist(
   }
 
   const plan = normalizePlan(planRow?.plan);
-  const maxArtists = PLAN_LIMITS[plan].maxArtists;
+  const maxArtists = maxArtistsAllowed(plan, isAdmin);
 
   const { count: artistCount, error: countError } = await supabase
     .from("artists")

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { userIsAdmin } from "@/lib/is-admin";
 
 export const ACTIVE_ARTIST_COOKIE = "active_artist_id";
 
@@ -38,7 +39,16 @@ export async function getActiveArtistIdForUser(
   userId: string,
   cookieStore: { get: (name: string) => { value: string } | undefined }
 ): Promise<string | null> {
-  const artists = await fetchArtistsForUser(supabase, userId);
   const raw = cookieStore.get(ACTIVE_ARTIST_COOKIE)?.value;
+  const admin = await userIsAdmin(supabase, userId);
+  if (admin && raw?.trim()) {
+    const { data: row } = await supabase
+      .from("artists")
+      .select("id")
+      .eq("id", raw.trim())
+      .maybeSingle();
+    if (row?.id) return row.id;
+  }
+  const artists = await fetchArtistsForUser(supabase, userId);
   return resolveActiveArtistId(artists, raw);
 }

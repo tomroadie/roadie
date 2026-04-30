@@ -6,6 +6,7 @@ import { getMondayDateString } from "@/lib/week";
 import { parseIdeasJson } from "@/lib/parse-ideas-json";
 import { NextResponse } from "next/server";
 import { canDo, normalizePlan } from "@/lib/plan-limits";
+import { userIsAdmin } from "@/lib/is-admin";
 
 const SYSTEM_PROMPT = `You are a creative content strategist who deeply understands music culture. You write like a human, not like a marketing bot.
 
@@ -38,6 +39,8 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const isAdmin = await userIsAdmin(supabase, user.id);
+
   const { data: planRow, error: planError } = await supabase
     .from("profiles")
     .select("plan")
@@ -53,7 +56,7 @@ export async function POST() {
   }
 
   const plan = normalizePlan(planRow?.plan);
-  if (!canDo(plan, "canGeneratePlan")) {
+  if (!canDo(plan, "canGeneratePlan", isAdmin)) {
     return NextResponse.json(
       { error: "Upgrade required", details: "Upgrade to generate your weekly plan." },
       { status: 403 }

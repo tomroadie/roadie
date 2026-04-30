@@ -2,8 +2,11 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { completeOnboarding } from "./actions";
-import { GENRES } from "./genres";
+import {
+  adminCreateClientArtist,
+  type AdminCreateArtistState,
+} from "./actions";
+import { GENRES } from "@/app/onboarding/genres";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -12,46 +15,61 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="flex h-11 w-full items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
     >
-      {pending ? "Saving…" : "Save and go to dashboard"}
+      {pending ? "Creating…" : "Create new artist"}
     </button>
   );
 }
 
-export function OnboardingForm() {
-  const [state, formAction] = useActionState(completeOnboarding, null);
+export function AdminCreateClientArtistForm() {
+  const [state, formAction] = useActionState<
+    AdminCreateArtistState,
+    FormData
+  >(adminCreateClientArtist, null);
 
   return (
-    <form action={formAction} className="space-y-6 rounded-xl border border-card-border bg-card p-6">
+    <form
+      action={formAction}
+      className="mt-6 space-y-4 rounded-xl border border-card-border bg-card p-7 shadow-sm"
+    >
+      <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
+        Create client artist
+      </h2>
+      <p className="text-sm text-muted">
+        Creates an artist owned by your admin account (no separate login). Labelled
+        as a managed client in the table below. Complete onboarding after create
+        if you need to adjust profile fields.
+      </p>
+
       <div className="space-y-4">
         <div>
           <label
-            htmlFor="artist_name"
+            htmlFor="admin-artist_name"
             className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
           >
             Artist name
           </label>
           <input
-            id="artist_name"
+            id="admin-artist_name"
             name="artist_name"
             type="text"
             required
             autoComplete="organization"
             className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
-            placeholder="Your stage or project name"
+            placeholder="Stage or project name"
           />
         </div>
 
         <div>
           <label
-            htmlFor="genre"
+            htmlFor="admin-artist_genre"
             className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
           >
             Genre
           </label>
           <select
-            id="genre"
+            id="admin-artist_genre"
             name="genre"
             required
             defaultValue=""
@@ -70,62 +88,56 @@ export function OnboardingForm() {
 
         <div>
           <label
-            htmlFor="sound_description"
+            htmlFor="admin-instagram"
+            className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
+          >
+            Instagram handle{" "}
+            <span className="font-normal text-muted">(for audits)</span>
+          </label>
+          <input
+            id="admin-instagram"
+            name="instagram_handle"
+            type="text"
+            className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
+            placeholder="@artist or URL"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor="admin-artist_sound"
             className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
           >
             Sub-genre or sound{" "}
             <span className="font-normal text-muted">(optional)</span>
           </label>
           <input
-            id="sound_description"
+            id="admin-artist_sound"
             name="sound_description"
             type="text"
             className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
-            placeholder="e.g. dark folk, cinematic trap, bedroom pop with jazz influences"
           />
         </div>
 
         <div>
           <label
-            htmlFor="similar_artists"
+            htmlFor="admin-artist_similar"
             className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
           >
             Similar artists{" "}
             <span className="font-normal text-muted">(optional)</span>
           </label>
           <input
-            id="similar_artists"
+            id="admin-artist_similar"
             name="similar_artists"
             type="text"
             className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
-            placeholder="e.g. Frank Ocean, SZA"
           />
-        </div>
-
-        <div>
-          <label
-            htmlFor="instagram_handle"
-            className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
-          >
-            Instagram handle{" "}
-            <span className="font-normal text-muted">(optional)</span>
-          </label>
-          <input
-            id="instagram_handle"
-            name="instagram_handle"
-            type="text"
-            autoComplete="off"
-            className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
-            placeholder="e.g. @dyeband"
-          />
-          <p className="mt-2 text-xs leading-relaxed text-muted">
-            We&apos;ll use this to pull your Instagram audit — takes 2-3 minutes
-          </p>
         </div>
       </div>
 
       {state?.error ? (
-        <p className="text-sm text-red-400" role="alert">
+        <p role="alert" className="text-sm text-red-400">
           {state.error}
         </p>
       ) : null}

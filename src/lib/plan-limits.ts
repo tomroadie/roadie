@@ -55,10 +55,17 @@ export function normalizePlan(plan: unknown): RoadiePlan {
 
 export function canDo(
   plan: unknown,
-  feature: Exclude<PlanFeature, "maxArtists">
+  feature: Exclude<PlanFeature, "maxArtists">,
+  isAdmin = false
 ): boolean {
+  if (isAdmin) return true;
   const p = normalizePlan(plan);
   return PLAN_LIMITS[p][feature];
+}
+
+export function maxArtistsAllowed(plan: unknown, isAdmin = false): number {
+  if (isAdmin) return 999;
+  return PLAN_LIMITS[normalizePlan(plan)].maxArtists;
 }
 
 export const PLAN_ORDER: RoadiePlan[] = ["free", "starter", "pro", "label"];

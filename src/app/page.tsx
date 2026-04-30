@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import { MetaPixelScript } from "@/components/meta-pixel-script";
+import { trackMeta } from "@/lib/meta-pixel";
 
 const BRAND_GREEN = "#00FF87";
 const BRAND_DARK = "#0A0A0F";
@@ -217,11 +219,16 @@ export default function Home() {
 
   const navItems = useMemo(() => NAV_LINKS, []);
 
+  function onLeadCtaClick() {
+    trackMeta("Lead");
+  }
+
   return (
     <div
       className="min-h-screen font-sans text-white"
       style={{ backgroundColor: BRAND_DARK }}
     >
+      <MetaPixelScript />
       <style jsx global>{`
         html {
           scroll-behavior: smooth;
@@ -275,17 +282,23 @@ export default function Home() {
             >
               Sign in
             </Link>
-            <Link
-              href="/dashboard"
-              className="inline-flex h-10 items-center justify-center rounded-lg border px-4 text-sm font-semibold shadow-sm transition-colors hover:bg-white/5"
-              style={{
-                borderColor: "rgba(0,255,135,0.55)",
-                color: BRAND_GREEN,
-                backgroundColor: "rgba(10,10,15,0.60)",
-              }}
-            >
-              Get started free
-            </Link>
+            <div className="flex flex-col items-end gap-0.5">
+              <Link
+                href="/dashboard"
+                onClick={onLeadCtaClick}
+                className="inline-flex h-10 items-center justify-center rounded-lg border px-4 text-sm font-semibold shadow-sm transition-colors hover:bg-white/5"
+                style={{
+                  borderColor: "rgba(0,255,135,0.55)",
+                  color: BRAND_GREEN,
+                  backgroundColor: "rgba(10,10,15,0.60)",
+                }}
+              >
+                Get started free
+              </Link>
+              <span className="text-[10px] font-medium text-white/45">
+                21-day trial · No card required
+              </span>
+            </div>
           </div>
 
           <button
@@ -340,9 +353,13 @@ export default function Home() {
                   >
                     Sign in
                   </Link>
+                  <div className="flex flex-col gap-1">
                   <Link
                     href="/dashboard"
-                    onClick={() => setMobileOpen(false)}
+                    onClick={() => {
+                      onLeadCtaClick();
+                      setMobileOpen(false);
+                    }}
                     className="inline-flex h-10 items-center justify-center rounded-lg border text-sm font-semibold shadow-sm transition-colors hover:bg-white/5"
                     style={{
                       borderColor: "rgba(0,255,135,0.55)",
@@ -352,6 +369,10 @@ export default function Home() {
                   >
                     Get started free
                   </Link>
+                    <span className="text-center text-[10px] font-medium text-white/45">
+                      21-day trial · No card required
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -393,9 +414,15 @@ export default function Home() {
                 anyone.
               </p>
 
+              <p className="mx-auto mt-5 max-w-2xl text-pretty text-sm leading-7 text-gray-500">
+                Connect your sound, upcoming dates, and Instagram profile → get 5
+                specific post ideas every week with hooks, captions, and timing.
+              </p>
+
               <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link
                   href="/dashboard"
+                  onClick={onLeadCtaClick}
                   className="inline-flex h-12 items-center justify-center rounded-xl border px-6 text-base font-semibold shadow-sm transition-colors hover:bg-white/5"
                   style={{
                     borderColor: "rgba(0,255,135,0.55)",
@@ -415,8 +442,13 @@ export default function Home() {
                 </a>
               </div>
 
-              <p className="mt-6 text-sm text-white/60">
-                Trusted by independent artists, managers and labels
+              <p className="mt-4 text-center text-xs text-white/55">
+                21-day free trial · No card required
+              </p>
+
+              <p className="mt-8 text-sm text-white/60">
+                Join artists using Roadie to show up consistently and grow their
+                audience.
               </p>
             </div>
           </div>
@@ -635,6 +667,101 @@ export default function Home() {
         </section>
 
         <section
+          className="py-24 md:py-32"
+          style={{ backgroundColor: BRAND_DARK }}
+          aria-labelledby="weekly-plan-preview-heading"
+        >
+          <div className="mx-auto max-w-6xl px-6">
+            <div className="mx-auto max-w-3xl text-center">
+              <h2
+                id="weekly-plan-preview-heading"
+                className="text-balance text-4xl font-black uppercase tracking-tight text-white md:text-5xl uppercase"
+              >
+                What your weekly plan looks like
+              </h2>
+              <p className="mt-3 text-sm font-medium text-gray-400">
+                Real ideas. Real hooks. Ready to post.
+              </p>
+            </div>
+
+            <div className="mx-auto mt-12 grid max-w-4xl gap-5 md:grid-cols-2">
+              <article
+                className="relative overflow-hidden rounded-xl border border-card-border bg-card p-6 transition-all duration-150 border-l-fuchsia-500 border-l-4"
+              >
+                <span className="inline-flex h-6 max-w-full items-center rounded-full bg-brand px-2.5 text-[11px] font-black uppercase tracking-wide text-brand-foreground ring-1 ring-inset ring-brand/30">
+                  Reel
+                </span>
+                <h3 className="mt-4 text-xl font-bold leading-snug text-white">
+                  POV: The mix is finally done and it&apos;s 2am — here&apos;s the
+                  hook that stops the scroll.
+                </h3>
+                <p className="mt-3 text-sm leading-7 text-muted-strong">
+                  12 seconds: room tone → first chorus hit → text overlay with the
+                  release date. Tag your producer in the comments — builds trust and
+                  signals momentum without begging for streams.
+                </p>
+                <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-widest text-brand">
+                      Why
+                    </dt>
+                    <dd className="mt-1 text-muted">
+                      Bridges studio authenticity with a clear ask (save / pre-save)
+                      while the algorithm favours native audio + fast retention.
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-widest text-brand">
+                      Timing
+                    </dt>
+                    <dd className="mt-1 text-muted">
+                      Tuesday 7–9pm local — peak engagement after work, ahead of
+                      mid-week noise.
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+
+              <article
+                className="relative overflow-hidden rounded-xl border border-card-border bg-card p-6 transition-all duration-150 border-l-sky-400 border-l-4"
+              >
+                <span className="inline-flex h-6 max-w-full items-center rounded-full bg-brand px-2.5 text-[11px] font-black uppercase tracking-wide text-brand-foreground ring-1 ring-inset ring-brand/30">
+                  Carousel
+                </span>
+                <h3 className="mt-4 text-xl font-bold leading-snug text-white">
+                  5 things nobody tells you about dropping your first EP
+                </h3>
+                <p className="mt-3 text-sm leading-7 text-muted-strong">
+                  Slide 1: bold title. Slides 2–4: myth vs reality (short bullets).
+                  Slide 5: CTA to pre-save + tour dates. Keep captions tight — let
+                  the carousel carry the story.
+                </p>
+                <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-widest text-brand">
+                      Why
+                    </dt>
+                    <dd className="mt-1 text-muted">
+                      Educational carousels earn saves and shares; fans learn your
+                      POV before you pitch the release.
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-widest text-brand">
+                      Timing
+                    </dt>
+                    <dd className="mt-1 text-muted">
+                      Thursday lunchtime — strong browse traffic; pair with a Story
+                      sticker pointing to slide 1.
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section
           id="features"
           className="py-24 md:py-32"
           style={{ backgroundColor: BRAND_DARK_SOFT }}
@@ -724,9 +851,10 @@ export default function Home() {
                   highlight: false,
                   badge: null,
                   features: [
-                    "Weekly plan",
+                    "Weekly plan (unlimited)",
                     "AI assistant",
                     "Events calendar",
+                    "Instagram audit",
                     "1 artist",
                   ],
                 },
@@ -737,10 +865,12 @@ export default function Home() {
                   highlight: true,
                   badge: "Most popular",
                   features: [
-                    "Everything in Starter",
-                    "Instagram insights",
-                    "Live social data",
-                    "3 artists",
+                    "Weekly plan (unlimited)",
+                    "AI assistant",
+                    "Events calendar",
+                    "Instagram audit + insights",
+                    "Audit refresh (monthly)",
+                    "Up to 3 artists",
                   ],
                 },
                 {
@@ -751,8 +881,10 @@ export default function Home() {
                   badge: null,
                   features: [
                     "Everything in Pro",
-                    "10 artists",
+                    "Up to 10 artists",
+                    "Weekly audit refresh",
                     "Priority support",
+                    "Team roster management",
                   ],
                 },
               ].map((plan) => (
@@ -865,12 +997,16 @@ export default function Home() {
                   >
                     Get started
                   </Link>
+                  <p className="mt-2 text-center text-xs text-gray-500">
+                    21-day trial · No card required
+                  </p>
                 </div>
               ))}
             </div>
 
             <p className="mt-10 text-center text-sm text-gray-400">
-              All plans include a 7-day free trial. Cancel anytime.
+              All plans include a 21-day free trial. No card required. Cancel
+              anytime.
             </p>
           </div>
         </section>
@@ -898,7 +1034,7 @@ export default function Home() {
                   content across a roster — with plans that stay grounded in each
                   artist’s voice.
                 </p>
-                <div className="mt-8 flex flex-wrap gap-3">
+                <div className="mt-8 flex flex-wrap items-start gap-3">
                   <Link
                     href="/pricing"
                     className="inline-flex h-11 items-center justify-center rounded-xl border px-5 text-sm font-semibold text-white/90 transition-colors hover:bg-white/5"
@@ -906,17 +1042,23 @@ export default function Home() {
                   >
                     View label pricing
                   </Link>
-                  <Link
-                    href="/dashboard"
-                    className="inline-flex h-11 items-center justify-center rounded-xl border px-5 text-sm font-semibold shadow-sm transition-colors hover:bg-white/5"
-                    style={{
-                      borderColor: "rgba(0,255,135,0.55)",
-                      color: BRAND_GREEN,
-                      backgroundColor: "rgba(10,10,15,0.60)",
-                    }}
-                  >
-                    Get started free
-                  </Link>
+                  <div className="flex flex-col gap-1">
+                    <Link
+                      href="/dashboard"
+                      onClick={onLeadCtaClick}
+                      className="inline-flex h-11 items-center justify-center rounded-xl border px-5 text-sm font-semibold shadow-sm transition-colors hover:bg-white/5"
+                      style={{
+                        borderColor: "rgba(0,255,135,0.55)",
+                        color: BRAND_GREEN,
+                        backgroundColor: "rgba(10,10,15,0.60)",
+                      }}
+                    >
+                      Get started free
+                    </Link>
+                    <span className="text-[11px] text-gray-500">
+                      21-day trial · No card required
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -1006,9 +1148,10 @@ export default function Home() {
                 Join artists using Roadie to show up consistently, grow their
                 audience, and spend less time stressing about content.
               </p>
-              <div className="mt-10 flex justify-center">
+              <div className="mt-10 flex flex-col items-center gap-2">
                 <Link
                   href="/dashboard"
+                  onClick={onLeadCtaClick}
                   className="inline-flex h-12 items-center justify-center rounded-xl border px-7 text-base font-semibold shadow-sm transition-colors hover:bg-white/5"
                   style={{
                     borderColor: "rgba(0,255,135,0.55)",
@@ -1018,6 +1161,9 @@ export default function Home() {
                 >
                   Get started free
                 </Link>
+                <span className="text-xs text-white/55">
+                  21-day free trial · No card required
+                </span>
               </div>
             </div>
           </div>
@@ -1048,24 +1194,29 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="flex items-center justify-center gap-4 text-sm font-semibold">
+          <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-start sm:justify-center">
             <Link
               href="/login"
-              className="text-white/70 transition-colors hover:text-white"
+              className="inline-flex h-10 items-center justify-center text-sm font-semibold text-white/70 transition-colors hover:text-white sm:px-2"
             >
               Sign in
             </Link>
-            <Link
-              href="/dashboard"
-              className="inline-flex h-10 items-center justify-center rounded-lg border px-4 text-sm font-semibold shadow-sm transition-colors hover:bg-white/5"
-              style={{
-                borderColor: "rgba(0,255,135,0.55)",
-                color: BRAND_GREEN,
-                backgroundColor: "rgba(10,10,15,0.60)",
-              }}
-            >
-              Get started
-            </Link>
+            <div className="flex flex-col items-center gap-0.5 sm:items-end">
+              <Link
+                href="/dashboard"
+                className="inline-flex h-10 items-center justify-center rounded-lg border px-4 text-sm font-semibold shadow-sm transition-colors hover:bg-white/5"
+                style={{
+                  borderColor: "rgba(0,255,135,0.55)",
+                  color: BRAND_GREEN,
+                  backgroundColor: "rgba(10,10,15,0.60)",
+                }}
+              >
+                Get started
+              </Link>
+              <span className="text-[10px] font-medium text-white/45">
+                21-day trial · No card required
+              </span>
+            </div>
           </div>
         </div>
       </footer>

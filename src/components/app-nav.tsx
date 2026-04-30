@@ -9,25 +9,32 @@ export type AppNavArtist = {
   label: string;
 };
 
-function buildLinks() {
-  return [
+function buildLinks(showAdminLink: boolean) {
+  const base = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/events", label: "Your dates" },
     { href: "/insights", label: "Insights" },
     { href: "/settings", label: "Settings" },
   ] as const;
+  if (!showAdminLink) return base;
+  return [...base, { href: "/admin", label: "Admin" } as const];
 }
 
 type AppNavProps = {
   artists: AppNavArtist[];
   activeArtistId: string | null;
+  showAdminLink?: boolean;
 };
 
-export function AppNav({ artists, activeArtistId }: AppNavProps) {
+export function AppNav({
+  artists,
+  activeArtistId,
+  showAdminLink = false,
+}: AppNavProps) {
   const pathname = usePathname();
   const [switching, setSwitching] = useState(false);
   const [switchError, setSwitchError] = useState<string | null>(null);
-  const links = useMemo(() => buildLinks(), []);
+  const links = useMemo(() => buildLinks(showAdminLink), [showAdminLink]);
 
   const selectValue = activeArtistId ?? "";
 

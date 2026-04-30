@@ -4,12 +4,15 @@ import { redirect } from "next/navigation";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "./logout-button";
 import { WeeklyPlanSection } from "./weekly-plan-section";
+import { FirstRunChecklist } from "./first-run-checklist";
 import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { getMondayDateString } from "@/lib/week";
 import type { EventRow } from "@/types/event";
 import Link from "next/link";
 import { normalizePlan } from "@/lib/plan-limits";
+import { userIsAdmin } from "@/lib/is-admin";
+import { DashboardTracking } from "./dashboard-tracking";
 
 function isoToday(): string {
   const d = new Date();
@@ -40,6 +43,8 @@ export default async function DashboardPage() {
     cookieStore
   );
 
+  const isAdmin = await userIsAdmin(supabase, user.id);
+
   if (!activeArtistId) {
     redirect("/onboarding");
   }
@@ -63,7 +68,7 @@ export default async function DashboardPage() {
 
   const { data: weeklyPlan } = await supabase
     .from("weekly_plans")
-    .select("ideas, created_at")
+    .select("ideas, created_at, week_start")
     .eq("artist_id", activeArtistId)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -71,6 +76,7 @@ export default async function DashboardPage() {
 
   const initialIdeas = normalizeIdeasFromDb(weeklyPlan?.ideas ?? null);
   const lastGeneratedAt = (weeklyPlan?.created_at as string | undefined) ?? null;
+  const planWeekStart = (weeklyPlan?.week_start as string | undefined) ?? null;
 
   const today = isoToday();
   const in7 = addDaysISO(today, 7);
@@ -82,6 +88,13 @@ export default async function DashboardPage() {
     .gte("event_date", today);
 
   const upcomingEventsCount = (upcomingAll ?? []).length;
+
+  const { count: eventsTotalCount } = await supabase
+    .from("events")
+    .select("id", { count: "exact", head: true })
+    .eq("artist_id", activeArtistId);
+
+  const hasAnyEvents = (eventsTotalCount ?? 0) > 0;
 
   const { data: upcomingWeekRows } = await supabase
     .from("events")
@@ -97,16 +110,27 @@ export default async function DashboardPage() {
     .toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
     .toUpperCase();
 
-  const ideasCount = initialIdeas?.length ?? 0;
-  const momentum =
-    ideasCount >= 5
-      ? { label: "High momentum", cls: "bg-brand text-brand-foreground ring-brand/30" }
-      : ideasCount > 0
-        ? { label: "Building", cls: "bg-amber-400 text-zinc-950 ring-amber-200/40" }
-        : { label: "Low momentum", cls: "bg-zinc-700 text-white ring-zinc-600/40" };
+  const hasPlanIdeas = (initialIdeas?.length ?? 0) > 0;
+  const momentum = !hasPlanIdeas
+    ? {
+        label: "Plan: Generate now",
+        cls: "bg-zinc-700 text-white ring-zinc-600/40",
+      }
+    : planWeekStart === weekStart
+      ? {
+          label: "Plan: Up to date",
+          cls: "bg-brand text-brand-foreground ring-brand/30",
+        }
+      : {
+          label: "Plan: Ready",
+          cls: "bg-amber-400 text-zinc-950 ring-amber-200/40",
+        };
+
+  const showFirstRunChecklist = !hasPlanIdeas && !hasAnyEvents;
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
+      <DashboardTracking />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">
@@ -125,7 +149,7 @@ export default async function DashboardPage() {
         <LogoutButton />
       </div>
 
-      {plan === "free" ? (
+      {plan === "free" && !isAdmin ? (
         <div className="mt-4 flex items-center gap-2 rounded-xl border-l-4 border-brand bg-card px-3 py-2 text-xs text-muted">
           You&apos;re on the free plan.{" "}
           <Link
@@ -141,12 +165,17 @@ export default async function DashboardPage() {
 
       <AppNavWrapper />
 
+      {showFirstRunChecklist ? (
+        <FirstRunChecklist hasEvents={hasAnyEvents} hasPlan={hasPlanIdeas} />
+      ) : null}
+
       <WeeklyPlanSection
         initialIdeas={initialIdeas}
         upcomingEventsCount={upcomingEventsCount}
         lastGeneratedAt={lastGeneratedAt}
         upcomingThisWeek={upcomingThisWeek}
         plan={plan}
+        isAdmin={isAdmin}
       />
     </div>
   );

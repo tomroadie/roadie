@@ -51,6 +51,9 @@ export async function POST(request: Request) {
     success_url: `${origin}/dashboard?upgraded=true`,
     cancel_url: `${origin}/pricing`,
     customer_email: user.email ?? undefined,
+    subscription_data: {
+      trial_period_days: 21,
+    },
     metadata: {
       userId: user.id,
       plan,

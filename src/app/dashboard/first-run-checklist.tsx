@@ -1,0 +1,70 @@
+import Link from "next/link";
+
+type Props = {
+  hasEvents: boolean;
+  hasPlan: boolean;
+};
+
+export function FirstRunChecklist({ hasEvents, hasPlan }: Props) {
+  const step1Done = true;
+  const step2Done = hasEvents;
+  const step3Done = hasPlan;
+
+  return (
+    <section
+      className="mt-10 rounded-xl border border-card-border bg-card p-6"
+      aria-labelledby="first-run-checklist-title"
+    >
+      <h2
+        id="first-run-checklist-title"
+        className="text-sm font-black uppercase tracking-tight text-foreground"
+      >
+        Get your first plan
+      </h2>
+      <ul className="mt-4 space-y-3 text-sm">
+        <li className="flex items-start gap-3">
+          <span className="mt-0.5 shrink-0 text-brand" aria-hidden>
+            ✓
+          </span>
+          <span className="text-muted-strong">Profile set up</span>
+        </li>
+        <li className="flex items-start gap-3">
+          <span
+            className={`mt-0.5 shrink-0 ${step2Done ? "text-brand" : "text-muted"}`}
+            aria-hidden
+          >
+            {step2Done ? "✓" : "+"}
+          </span>
+          {step2Done ? (
+            <span className="text-muted-strong">Add at least one date</span>
+          ) : (
+            <Link
+              href="/events"
+              className="font-medium text-foreground underline-offset-4 hover:text-brand hover:underline"
+            >
+              Add at least one date
+            </Link>
+          )}
+        </li>
+        <li className="flex items-start gap-3">
+          <span
+            className={`mt-0.5 shrink-0 ${step3Done ? "text-brand" : "text-muted"}`}
+            aria-hidden
+          >
+            {step3Done ? "✓" : "+"}
+          </span>
+          {step3Done ? (
+            <span className="text-muted-strong">Generate your first plan</span>
+          ) : (
+            <a
+              href="#dashboard-generate-plan"
+              className="font-medium text-foreground underline-offset-4 hover:text-brand hover:underline"
+            >
+              Generate your first plan
+            </a>
+          )}
+        </li>
+      </ul>
+    </section>
+  );
+}

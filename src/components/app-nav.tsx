@@ -9,11 +9,11 @@ export type AppNavArtist = {
   label: string;
 };
 
-function buildLinks(canViewInsights: boolean) {
+function buildLinks() {
   return [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/events", label: "Your dates" },
-    ...(canViewInsights ? [{ href: "/insights", label: "Insights" }] : []),
+    { href: "/insights", label: "Insights" },
     { href: "/settings", label: "Settings" },
   ] as const;
 }
@@ -21,14 +21,13 @@ function buildLinks(canViewInsights: boolean) {
 type AppNavProps = {
   artists: AppNavArtist[];
   activeArtistId: string | null;
-  canViewInsights: boolean;
 };
 
-export function AppNav({ artists, activeArtistId, canViewInsights }: AppNavProps) {
+export function AppNav({ artists, activeArtistId }: AppNavProps) {
   const pathname = usePathname();
   const [switching, setSwitching] = useState(false);
   const [switchError, setSwitchError] = useState<string | null>(null);
-  const links = useMemo(() => buildLinks(canViewInsights), [canViewInsights]);
+  const links = useMemo(() => buildLinks(), []);
 
   const selectValue = activeArtistId ?? "";
 
@@ -64,7 +63,7 @@ export function AppNav({ artists, activeArtistId, canViewInsights }: AppNavProps
   }
 
   return (
-    <header className="sticky top-0 z-40 mb-10 border-b border-zinc-200 bg-white/90 pb-4 pt-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
+    <header className="sticky top-0 z-40 mb-6 border-b border-zinc-200 bg-white/90 pb-3 pt-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4 sm:gap-6">
           <Link

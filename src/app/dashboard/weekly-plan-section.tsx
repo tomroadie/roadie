@@ -79,9 +79,9 @@ function IdeaCard({ idea }: { idea: ContentIdea }) {
     <article
       className={`relative overflow-hidden rounded-2xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 hover:translate-y-[-1px] dark:bg-zinc-950 ${accent.border} border-l-4`}
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex min-w-0 items-start justify-between gap-4">
         <span
-          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ring-1 ring-inset ${accent.pill}`}
+          className={`inline-flex h-6 max-w-full items-center rounded-full px-2.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-inset ${accent.pill} overflow-hidden text-ellipsis whitespace-nowrap`}
         >
           {idea.format}
         </span>

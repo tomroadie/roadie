@@ -106,7 +106,7 @@ export default async function DashboardPage() {
         : { label: "Low momentum", cls: "bg-zinc-100 text-zinc-700 ring-zinc-200" };
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-6 py-14">
+    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
@@ -116,7 +116,7 @@ export default async function DashboardPage() {
             {artistName}
           </h1>
           <div
-            className={`mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset shadow-[0_1px_3px_rgba(0,0,0,0.08)] ${momentum.cls}`}
+            className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset shadow-[0_1px_3px_rgba(0,0,0,0.08)] ${momentum.cls}`}
           >
             <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
             {momentum.label}
@@ -126,7 +126,7 @@ export default async function DashboardPage() {
       </div>
 
       {plan === "free" ? (
-        <div className="mt-6 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-200">
+        <div className="mt-4 flex items-center gap-2 rounded-lg bg-zinc-100/70 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-900/40 dark:text-zinc-300">
           You&apos;re on the free plan.{" "}
           <Link
             href="/pricing"
@@ -137,7 +137,7 @@ export default async function DashboardPage() {
         </div>
       ) : null}
 
-      <div className="mt-8 h-px w-full bg-zinc-200/80 dark:bg-zinc-800" />
+      <div className="mt-6 h-px w-full bg-zinc-200/80 dark:bg-zinc-800" />
 
       <AppNavWrapper />
 

@@ -105,7 +105,7 @@ export default function PricingClient({
   }
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-5xl flex-1 flex-col px-6 py-14">
+    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
       <div className="flex flex-col gap-2">
         <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
           Pricing
@@ -143,12 +143,12 @@ export default function PricingClient({
                   {p.highlight}
                 </div>
               ) : null}
-              {isCurrent ? (
-                <div className="absolute left-6 top-6 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                  Current plan
-                </div>
-              ) : null}
               <div className="space-y-2">
+                {isCurrent ? (
+                  <div className="inline-flex w-fit rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-2">
+                    Current plan
+                  </div>
+                ) : null}
                 <h2 className="text-xl font-semibold tracking-tight text-foreground">
                   {p.name}
                 </h2>

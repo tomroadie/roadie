@@ -9,22 +9,26 @@ export type AppNavArtist = {
   label: string;
 };
 
-const links = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/events", label: "Your dates" },
-  { href: "/insights", label: "Insights" },
-  { href: "/settings", label: "Settings" },
-] as const;
+function buildLinks(canViewInsights: boolean) {
+  return [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/events", label: "Your dates" },
+    ...(canViewInsights ? [{ href: "/insights", label: "Insights" }] : []),
+    { href: "/settings", label: "Settings" },
+  ] as const;
+}
 
 type AppNavProps = {
   artists: AppNavArtist[];
   activeArtistId: string | null;
+  canViewInsights: boolean;
 };
 
-export function AppNav({ artists, activeArtistId }: AppNavProps) {
+export function AppNav({ artists, activeArtistId, canViewInsights }: AppNavProps) {
   const pathname = usePathname();
   const [switching, setSwitching] = useState(false);
   const [switchError, setSwitchError] = useState<string | null>(null);
+  const links = useMemo(() => buildLinks(canViewInsights), [canViewInsights]);
 
   const selectValue = activeArtistId ?? "";
 

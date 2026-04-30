@@ -5,6 +5,7 @@ import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { getMondayDateString } from "@/lib/week";
 import { parseIdeasJson } from "@/lib/parse-ideas-json";
 import { NextResponse } from "next/server";
+import { canDo, normalizePlan } from "@/lib/plan-limits";
 
 const SYSTEM_PROMPT = `You are a creative content strategist who deeply understands music culture. You write like a human, not like a marketing bot.
 
@@ -18,6 +19,28 @@ export async function POST() {
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data: planRow, error: planError } = await supabase
+    .from("profiles")
+    .select("plan")
+    .eq("owner_user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (planError) {
+    return NextResponse.json(
+      { error: "Failed to load plan", details: planError.message },
+      { status: 500 }
+    );
+  }
+
+  const plan = normalizePlan(planRow?.plan);
+  if (!canDo(plan, "canGeneratePlan")) {
+    return NextResponse.json(
+      { error: "Upgrade required", details: "Upgrade to generate your weekly plan." },
+      { status: 403 }
+    );
   }
 
   const cookieStore = await cookies();

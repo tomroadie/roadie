@@ -5,8 +5,11 @@ import { ACTIVE_ARTIST_COOKIE } from "@/lib/active-artist";
 import { GENRES } from "@/app/onboarding/genres";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { normalizePlan, PLAN_LIMITS, type RoadiePlan } from "@/lib/plan-limits";
 
-export type AddArtistState = { error?: string } | null;
+export type AddArtistState =
+  | { error?: string; upgrade?: { plan: RoadiePlan; maxArtists: number } }
+  | null;
 
 export async function addArtist(
   _prev: AddArtistState,
@@ -36,6 +39,36 @@ export async function addArtist(
     return { error: "Please select a valid genre." };
   }
 
+  const { data: planRow, error: planError } = await supabase
+    .from("profiles")
+    .select("plan")
+    .eq("owner_user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (planError) {
+    return { error: planError.message };
+  }
+
+  const plan = normalizePlan(planRow?.plan);
+  const maxArtists = PLAN_LIMITS[plan].maxArtists;
+
+  const { count: artistCount, error: countError } = await supabase
+    .from("artists")
+    .select("id", { count: "exact", head: true })
+    .eq("owner_user_id", user.id);
+
+  if (countError) {
+    return { error: countError.message };
+  }
+
+  if (typeof artistCount === "number" && artistCount >= maxArtists) {
+    return {
+      error: `You've reached your artist limit on the ${plan} plan.`,
+      upgrade: { plan, maxArtists },
+    };
+  }
+
   const id = crypto.randomUUID();
 
   const { error: artistError } = await supabase.from("artists").insert({
@@ -51,6 +84,7 @@ export async function addArtist(
     id,
     owner_user_id: user.id,
     artist_name: artistName,
+    plan,
     genre,
     sound_description: soundDescription || null,
     similar_artists: similarArtists || null,

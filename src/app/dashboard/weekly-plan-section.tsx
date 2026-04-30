@@ -4,6 +4,7 @@ import type { ContentIdea } from "@/types/content-plan";
 import { useMemo, useState } from "react";
 import type { EventRow } from "@/types/event";
 import Link from "next/link";
+import { canDo, normalizePlan } from "@/lib/plan-limits";
 
 type Accent = {
   border: string;
@@ -133,6 +134,7 @@ type WeeklyPlanSectionProps = {
   upcomingEventsCount: number;
   lastGeneratedAt: string | null;
   upcomingThisWeek: EventRow[];
+  plan: string;
 };
 
 function hoursSince(iso: string): number {
@@ -148,12 +150,14 @@ export function WeeklyPlanSection({
   upcomingEventsCount,
   lastGeneratedAt,
   upcomingThisWeek,
+  plan,
 }: WeeklyPlanSectionProps) {
   const [ideas, setIdeas] = useState<ContentIdea[] | null>(initialIdeas);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmKind | null>(null);
-  const [queuedGenerate, setQueuedGenerate] = useState(false);
+  const normalizedPlan = normalizePlan(plan);
+  const canGenerate = canDo(normalizedPlan, "canGeneratePlan");
 
   async function runGenerate() {
     setError(null);
@@ -190,13 +194,12 @@ export function WeeklyPlanSection({
 
   function requestGenerate() {
     if (loading) return;
+    if (!canGenerate) return;
     if (upcomingEventsCount === 0) {
-      setQueuedGenerate(true);
       setConfirm("no-dates");
       return;
     }
     if (lastGeneratedAt && hoursSince(lastGeneratedAt) < 24) {
-      setQueuedGenerate(true);
       setConfirm("recent-plan");
       return;
     }
@@ -205,7 +208,6 @@ export function WeeklyPlanSection({
 
   async function confirmGenerateAnyway() {
     setConfirm(null);
-    setQueuedGenerate(false);
     await runGenerate();
   }
 
@@ -227,18 +229,39 @@ export function WeeklyPlanSection({
             )}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={requestGenerate}
-          disabled={loading}
-          className="inline-flex h-10 items-center justify-center rounded-lg bg-[#7C3AED] px-5 text-sm font-semibold text-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {loading
-            ? "Generating…"
-            : ideas?.length
-              ? "Regenerate plan"
-              : "Generate my weekly plan"}
-        </button>
+        {canGenerate ? (
+          <button
+            type="button"
+            onClick={requestGenerate}
+            disabled={loading}
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#7C3AED] px-5 text-sm font-semibold text-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading
+              ? "Generating…"
+              : ideas?.length
+                ? "Regenerate plan"
+                : "Generate my weekly plan"}
+          </button>
+        ) : (
+          <Link
+            href="/pricing"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-zinc-200 px-5 text-sm font-semibold text-zinc-700 shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-zinc-200/80 dark:bg-zinc-800 dark:text-zinc-200"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-4 w-4"
+            >
+              <path
+                fillRule="evenodd"
+                d="M5.5 8V6a4.5 4.5 0 1 1 9 0v2h.5A1.5 1.5 0 0 1 16.5 9.5v6A1.5 1.5 0 0 1 15 17H5A1.5 1.5 0 0 1 3.5 15.5v-6A1.5 1.5 0 0 1 5 8h.5Zm2-2a2.5 2.5 0 0 1 5 0v2h-5V6Z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Upgrade to generate your plan
+          </Link>
+        )}
       </div>
 
       {ideas?.length ? (
@@ -256,14 +279,35 @@ export function WeeklyPlanSection({
             dates, and Instagram audit.
           </p>
           <div className="mt-6 flex justify-center">
-            <button
-              type="button"
-              onClick={requestGenerate}
-              disabled={loading}
-              className="inline-flex h-10 items-center justify-center rounded-lg bg-[#7C3AED] px-5 text-sm font-semibold text-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Generate my weekly plan
-            </button>
+            {canGenerate ? (
+              <button
+                type="button"
+                onClick={requestGenerate}
+                disabled={loading}
+                className="inline-flex h-10 items-center justify-center rounded-lg bg-[#7C3AED] px-5 text-sm font-semibold text-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Generate my weekly plan
+              </button>
+            ) : (
+              <Link
+                href="/pricing"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-zinc-200 px-5 text-sm font-semibold text-zinc-700 shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-zinc-200/80 dark:bg-zinc-800 dark:text-zinc-200"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="h-4 w-4"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.5 8V6a4.5 4.5 0 1 1 9 0v2h.5A1.5 1.5 0 0 1 16.5 9.5v6A1.5 1.5 0 0 1 15 17H5A1.5 1.5 0 0 1 3.5 15.5v-6A1.5 1.5 0 0 1 5 8h.5Zm2-2a2.5 2.5 0 0 1 5 0v2h-5V6Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Upgrade to generate your plan
+              </Link>
+            )}
           </div>
         </div>
       ) : (
@@ -329,7 +373,6 @@ export function WeeklyPlanSection({
                   href="/events"
                   onClick={() => {
                     setConfirm(null);
-                    setQueuedGenerate(false);
                   }}
                   className="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:bg-zinc-50"
                 >
@@ -340,7 +383,6 @@ export function WeeklyPlanSection({
                   type="button"
                   onClick={() => {
                     setConfirm(null);
-                    setQueuedGenerate(false);
                   }}
                   className="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:bg-zinc-50"
                 >

@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { addArtist, type AddArtistState } from "./actions";
 import { GENRES } from "@/app/onboarding/genres";
+import Link from "next/link";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -113,9 +114,21 @@ export function AddArtistForm() {
       </div>
 
       {state?.error ? (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-          {state.error}
-        </p>
+        <div role="alert" className="space-y-2 text-sm text-red-600 dark:text-red-400">
+          <p>{state.error}</p>
+          {state.upgrade ? (
+            <p className="text-red-600 dark:text-red-400">
+              Upgrade to add more artists.{" "}
+              <Link
+                href="/pricing"
+                className="font-medium underline underline-offset-4 hover:no-underline"
+              >
+                View pricing
+              </Link>
+              .
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       <SubmitButton />

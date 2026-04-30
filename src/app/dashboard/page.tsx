@@ -9,6 +9,7 @@ import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { getMondayDateString } from "@/lib/week";
 import type { EventRow } from "@/types/event";
 import Link from "next/link";
+import { normalizePlan } from "@/lib/plan-limits";
 
 function isoToday(): string {
   const d = new Date();
@@ -58,7 +59,7 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
-  const plan = (profile?.plan as string | null | undefined) ?? "free";
+  const plan = normalizePlan(profile?.plan);
 
   const { data: weeklyPlan } = await supabase
     .from("weekly_plans")
@@ -145,6 +146,7 @@ export default async function DashboardPage() {
         upcomingEventsCount={upcomingEventsCount}
         lastGeneratedAt={lastGeneratedAt}
         upcomingThisWeek={upcomingThisWeek}
+        plan={plan}
       />
     </div>
   );

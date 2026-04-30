@@ -5,6 +5,7 @@ import {
   getActiveArtistIdForUser,
 } from "@/lib/active-artist";
 import { AppNav, type AppNavArtist } from "./app-nav";
+import { canDo, normalizePlan } from "@/lib/plan-limits";
 
 export async function AppNavWrapper() {
   const supabase = await createClient();
@@ -15,6 +16,16 @@ export async function AppNavWrapper() {
   if (!user) {
     return null;
   }
+
+  const { data: planRow } = await supabase
+    .from("profiles")
+    .select("plan")
+    .eq("owner_user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  const plan = normalizePlan(planRow?.plan);
+  const canViewInsights = canDo(plan, "canViewInsights");
 
   const artistsRows = await fetchArtistsForUser(supabase, user.id);
   const cookieStore = await cookies();
@@ -45,5 +56,11 @@ export async function AppNavWrapper() {
     }));
   }
 
-  return <AppNav artists={artists} activeArtistId={activeArtistId} />;
+  return (
+    <AppNav
+      artists={artists}
+      activeArtistId={activeArtistId}
+      canViewInsights={canViewInsights}
+    />
+  );
 }

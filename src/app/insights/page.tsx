@@ -5,6 +5,9 @@ import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { parseFullAnalysisText } from "@/lib/parse-full-analysis";
+import Link from "next/link";
+import { canDo, normalizePlan } from "@/lib/plan-limits";
+import { RefreshAuditButton } from "./refresh-audit-button";
 
 function sectionAccent(title: string): { border: string; label: string } {
   const t = title.toLowerCase();
@@ -25,6 +28,21 @@ export default async function InsightsPage() {
   if (!user) {
     redirect("/login");
   }
+
+  const { data: planRow, error: planError } = await supabase
+    .from("profiles")
+    .select("plan")
+    .eq("owner_user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (planError) {
+    throw new Error(planError.message);
+  }
+
+  const plan = normalizePlan(planRow?.plan);
+  const canViewInsights = canDo(plan, "canViewInsights");
+  const canRefreshAudit = canDo(plan, "canRefreshAudit");
 
   const cookieStore = await cookies();
   const activeArtistId = await getActiveArtistIdForUser(
@@ -79,19 +97,24 @@ export default async function InsightsPage() {
             Instagram audit and positioning notes for your active artist.
           </p>
         </div>
-        <LogoutButton />
+        <div className="flex items-center gap-3">
+          {canRefreshAudit ? <RefreshAuditButton /> : null}
+          <LogoutButton />
+        </div>
       </header>
 
       <AppNavWrapper />
 
-      {!audit ? (
-        <div className="mt-10 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/80 p-10 text-center dark:border-zinc-700 dark:bg-zinc-950/40">
-          <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-            {emptyMessage}
-          </p>
-        </div>
-      ) : (
-        <div className="mt-10 space-y-8">
+      <div className="relative mt-10">
+        <div className={canViewInsights ? "" : "pointer-events-none select-none blur-sm"}>
+          {!audit ? (
+            <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/80 p-10 text-center dark:border-zinc-700 dark:bg-zinc-950/40">
+              <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                {emptyMessage}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-8">
           <section className="rounded-2xl border border-zinc-200 bg-purple-50/40 p-7 shadow-sm dark:border-zinc-800 dark:bg-purple-950/10">
             <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               @{audit.instagram_handle.replace(/^@/, "")}
@@ -175,8 +198,31 @@ export default async function InsightsPage() {
               </pre>
             </section>
           ) : null}
+            </div>
+          )}
         </div>
-      )}
+
+        {!canViewInsights ? (
+          <div className="absolute inset-0 flex items-center justify-center px-4">
+            <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 text-center shadow-[0_10px_30px_rgba(0,0,0,0.12)] dark:border-zinc-800 dark:bg-zinc-950">
+              <p className="text-sm font-semibold text-foreground">
+                Upgrade to Pro to unlock your Instagram insights
+              </p>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                Insights are available on Pro and Label plans.
+              </p>
+              <div className="mt-5">
+                <Link
+                  href="/pricing"
+                  className="inline-flex h-10 items-center justify-center rounded-lg bg-[#7C3AED] px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#6D28D9]"
+                >
+                  View pricing
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

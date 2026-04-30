@@ -67,8 +67,9 @@ export default async function AdminPage() {
   const { data: profiles, error: profilesError } = await adminSupabase
     .from("profiles")
     .select(
-      "id, artist_name, genre, instagram_handle, plan, owner_user_id, client_managed"
-    );
+      "id, artist_name, genre, instagram_handle, plan, owner_user_id, created_at, similar_artists, sound_description, is_admin, stripe_customer_id"
+    )
+    .order("created_at", { ascending: false });
 
   if (profilesError) {
     return (
@@ -114,8 +115,12 @@ export default async function AdminPage() {
   }
 
   const rowsUnsorted: AdminArtistDirectoryRow[] = (profiles ?? []).map((p) => {
+    const profileCreated =
+      typeof p.created_at === "string" ? p.created_at : null;
     const createdAt =
-      createdAtByArtistId.get(p.id) ?? new Date(0).toISOString();
+      createdAtByArtistId.get(p.id) ??
+      profileCreated ??
+      new Date(0).toISOString();
     return {
       id: p.id,
       created_at: createdAt,
@@ -125,7 +130,6 @@ export default async function AdminPage() {
       genre: p.genre ?? "",
       instagram_handle: (p.instagram_handle ?? "").replace(/^@/, ""),
       plan: p.plan ?? "free",
-      client_managed: !!p.client_managed,
     };
   });
 

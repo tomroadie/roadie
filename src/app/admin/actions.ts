@@ -120,7 +120,6 @@ export async function adminCreateClientArtist(
     sound_description: soundDescription || null,
     similar_artists: similarArtists || null,
     instagram_handle: instagramHandle.replace(/^@/, "") || null,
-    client_managed: true,
   });
 
   if (profileError) {

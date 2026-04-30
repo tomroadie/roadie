@@ -12,7 +12,6 @@ export type AdminArtistDirectoryRow = {
   genre: string;
   instagram_handle: string;
   plan: string;
-  client_managed: boolean;
 };
 
 function formatCreated(iso: string): string {
@@ -110,14 +109,7 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
             {filtered.map((r) => (
               <tr key={r.id} className="text-foreground">
                 <td className="px-4 py-3 font-semibold">
-                  <span className="inline-flex flex-wrap items-center gap-2">
-                    {r.artist_name.trim() || "—"}
-                    {r.client_managed ? (
-                      <span className="rounded-full border border-brand/40 bg-brand/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-brand">
-                        Client artist
-                      </span>
-                    ) : null}
-                  </span>
+                  {r.artist_name.trim() || "—"}
                 </td>
                 <td className="max-w-[14rem] truncate px-4 py-3 text-muted-strong">
                   {r.owner_email}

@@ -6,8 +6,8 @@ export async function userIsAdmin(
 ): Promise<boolean> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id")
-    .eq("owner_user_id", userId)
+    .select("is_admin")
+    .or(`owner_user_id.eq.${userId},id.eq.${userId}`)
     .eq("is_admin", true)
     .limit(1)
     .maybeSingle();

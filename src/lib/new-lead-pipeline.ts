@@ -81,7 +81,7 @@ export async function enqueueNewLead(input: EnqueueNewLeadInput): Promise<void> 
     "apify~instagram-post-scraper",
     apifyToken,
     {
-      username: handle,
+      username: [handle],
       resultsLimit: 10,
     },
     {

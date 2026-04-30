@@ -213,7 +213,7 @@ export default async function InsightsPage() {
         >
           <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
             Connect your Instagram, TikTok and Facebook to see real-time performance data,
-            post analytics, and what's driving growth.
+            post analytics, and what&apos;s driving growth.
           </p>
           <div className="mt-5">
             <Link

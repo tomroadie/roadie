@@ -188,6 +188,13 @@ const NAV_LINKS = [
   { label: "For labels", href: "#for-labels" },
 ] as const;
 
+const TICKER_ITEMS = [
+  "Weekly content plan",
+  "Music industry expertise",
+  "AI assisted",
+  "Built for artists",
+] as const;
+
 export default function Home() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -245,7 +252,7 @@ export default function Home() {
             <img
               src="/logo.png"
               alt="Roadie"
-              style={{ height: 32, width: "auto" }}
+              className="h-12 w-auto object-contain"
             />
           </Link>
 
@@ -425,32 +432,41 @@ export default function Home() {
 
         <section
           aria-label="Ticker"
-          className="overflow-hidden border-y py-4"
+          className="overflow-hidden border-y py-3"
           style={{
-            backgroundColor: BRAND_DARK_SOFT,
-            borderColor: "rgba(255,255,255,0.08)",
+            backgroundColor: "#1a1a1a",
+            borderColor: "rgba(255,255,255,0.06)",
           }}
         >
           <div className="relative">
             <div
-              className="flex w-[200%] items-center gap-8 whitespace-nowrap text-xs font-black uppercase tracking-[0.24em]"
+              className="flex w-[200%] items-center gap-10 whitespace-nowrap text-xs font-medium tracking-[0.18em] text-white/85"
               style={{
-                animation: "roadie-ticker 22s linear infinite",
-                color: "rgba(255,255,255,0.85)",
+                animation: "roadie-ticker 30s linear infinite",
               }}
             >
-              <div className="flex w-1/2 items-center gap-8">
-                <span style={{ color: BRAND_GREEN }}>
-                  WEEKLY CONTENT PLAN ✦ MUSIC INDUSTRY EXPERTISE ✦ AI POWERED ✦
-                  BUILT FOR ARTISTS ✦ WEEKLY CONTENT PLAN ✦ MUSIC INDUSTRY
-                  EXPERTISE ✦ AI POWERED ✦ BUILT FOR ARTISTS ✦
+              <div className="flex w-1/2 items-center gap-10">
+                <span className="inline-flex items-center gap-4 uppercase">
+                  {TICKER_ITEMS.map((item, idx) => (
+                    <span key={item} className="inline-flex items-center gap-4">
+                      <span>{item}</span>
+                      {idx === TICKER_ITEMS.length - 1 ? null : (
+                        <span className="text-gray-500">◆</span>
+                      )}
+                    </span>
+                  ))}
                 </span>
               </div>
-              <div className="flex w-1/2 items-center gap-8" aria-hidden="true">
-                <span style={{ color: BRAND_GREEN }}>
-                  WEEKLY CONTENT PLAN ✦ MUSIC INDUSTRY EXPERTISE ✦ AI POWERED ✦
-                  BUILT FOR ARTISTS ✦ WEEKLY CONTENT PLAN ✦ MUSIC INDUSTRY
-                  EXPERTISE ✦ AI POWERED ✦ BUILT FOR ARTISTS ✦
+              <div className="flex w-1/2 items-center gap-10" aria-hidden="true">
+                <span className="inline-flex items-center gap-4 uppercase">
+                  {TICKER_ITEMS.map((item, idx) => (
+                    <span key={item} className="inline-flex items-center gap-4">
+                      <span>{item}</span>
+                      {idx === TICKER_ITEMS.length - 1 ? null : (
+                        <span className="text-gray-500">◆</span>
+                      )}
+                    </span>
+                  ))}
                 </span>
               </div>
             </div>

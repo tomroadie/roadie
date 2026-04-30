@@ -11,33 +11,27 @@ function verifyWebhookSecret(headerValue: string | null, secret: string): boolea
 }
 
 function cleanInstagramHandle(instagramUrlOrHandle: string): string | null {
-  const raw = instagramUrlOrHandle.trim();
-  if (!raw) return null;
+  // Cleaning logic:
+  // 1. Trim whitespace
+  // 2. Remove @ if present
+  // 3. If it contains 'instagram.com', extract everything after the last / before any ? or trailing slash
+  // 4. Remove any remaining slashes
+  // 5. Lowercase the result
+  const trimmed = instagramUrlOrHandle.trim();
+  if (!trimmed) return null;
 
-  // If already a handle:
-  const asHandle = raw.replace(/^@/, "");
-  if (/^[a-zA-Z0-9._]{1,30}$/.test(asHandle) && !asHandle.includes("/")) return asHandle;
+  const withoutAt = trimmed.replace(/^@/, "");
 
-  // Otherwise parse URL.
-  try {
-    const u = new URL(raw);
-    if (!/instagram\.com$/i.test(u.hostname) && !/^(www\.)?instagram\.com$/i.test(u.hostname)) {
-      return null;
-    }
-    const parts = u.pathname.split("/").filter(Boolean);
-    if (parts.length < 1) return null;
-    const handle = parts[0].replace(/^@/, "");
-    if (!/^[a-zA-Z0-9._]{1,30}$/.test(handle)) return null;
-    return handle;
-  } catch {
-    // Try to normalize common "instagram.com/handle" without protocol
-    const normalized = raw.replace(/^https?:\/\//i, "");
-    const m = normalized.match(/^(?:www\.)?instagram\.com\/([^/?#]+).*$/i);
-    if (!m) return null;
-    const handle = (m[1] ?? "").replace(/^@/, "");
-    if (!/^[a-zA-Z0-9._]{1,30}$/.test(handle)) return null;
-    return handle;
+  let candidate = withoutAt;
+  if (/instagram\.com/i.test(withoutAt)) {
+    const beforeQueryOrHash = withoutAt.split(/[?#]/)[0] ?? "";
+    const withoutTrailingSlash = beforeQueryOrHash.replace(/\/+$/, "");
+    const lastSlash = withoutTrailingSlash.lastIndexOf("/");
+    candidate = lastSlash === -1 ? "" : withoutTrailingSlash.slice(lastSlash + 1);
   }
+
+  const cleaned = candidate.replace(/^@/, "").replace(/\//g, "").toLowerCase();
+  return cleaned || null;
 }
 
 async function apifyRun(
@@ -102,7 +96,7 @@ export async function POST(request: Request) {
   const o = body as Record<string, unknown>;
   const email = o.email;
   const artist_name = o.artist_name;
-  const instagram_url = o.instagram_url;
+  const instagram_input = o.instagram_url ?? o.instagram_handle ?? o.instagram;
 
   if (typeof email !== "string" || !email.trim()) {
     return NextResponse.json({ error: "Invalid or missing email" }, { status: 400 });
@@ -110,13 +104,13 @@ export async function POST(request: Request) {
   if (typeof artist_name !== "string" || !artist_name.trim()) {
     return NextResponse.json({ error: "Invalid or missing artist_name" }, { status: 400 });
   }
-  if (typeof instagram_url !== "string" || !instagram_url.trim()) {
-    return NextResponse.json({ error: "Invalid or missing instagram_url" }, { status: 400 });
+  if (typeof instagram_input !== "string" || !instagram_input.trim()) {
+    return NextResponse.json({ error: "Invalid or missing instagram" }, { status: 400 });
   }
 
-  const handle = cleanInstagramHandle(instagram_url);
+  const handle = cleanInstagramHandle(instagram_input);
   if (!handle) {
-    return NextResponse.json({ error: "Invalid Instagram URL/handle" }, { status: 400 });
+    return NextResponse.json({ error: "Could not extract Instagram handle" }, { status: 400 });
   }
 
   const cleanInstagramUrl = `https://www.instagram.com/${handle}/`;

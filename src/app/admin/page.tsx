@@ -34,28 +34,9 @@ export default async function AdminPage() {
     redirect("/login");
   }
 
-  // Session from cookie-backed server client; admin row may match owner_user_id or legacy profiles.id = auth user id.
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .or(`owner_user_id.eq.${user.id},id.eq.${user.id}`)
-    .eq("is_admin", true)
-    .limit(1)
-    .maybeSingle();
-
-  if (profileError) {
-    return (
-      <AdminPageError message={`Could not verify admin access: ${profileError.message}`} />
-    );
-  }
-
-  if (!profile?.is_admin) {
-    redirect("/dashboard");
-  }
-
-  let svc: ReturnType<typeof createServiceRoleClient>;
+  let adminSupabase: ReturnType<typeof createServiceRoleClient>;
   try {
-    svc = createServiceRoleClient();
+    adminSupabase = createServiceRoleClient();
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return (
@@ -65,12 +46,39 @@ export default async function AdminPage() {
     );
   }
 
-  const { data: rawRows, error: artistsError } = await svc
-    .from("artists")
+  const { data: adminRow, error: adminCheckError } = await adminSupabase
+    .from("profiles")
+    .select("is_admin")
+    .or(`owner_user_id.eq.${user.id},id.eq.${user.id}`)
+    .eq("is_admin", true)
+    .limit(1)
+    .maybeSingle();
+
+  if (adminCheckError) {
+    return (
+      <AdminPageError message={`Could not verify admin access: ${adminCheckError.message}`} />
+    );
+  }
+
+  if (!adminRow?.is_admin) {
+    redirect("/dashboard");
+  }
+
+  const { data: profiles, error: profilesError } = await adminSupabase
+    .from("profiles")
     .select(
-      `id, created_at, owner_user_id, profiles!inner (artist_name, genre, instagram_handle, plan, client_managed)`
-    )
-    .order("created_at", { ascending: false });
+      "id, artist_name, genre, instagram_handle, plan, owner_user_id, client_managed"
+    );
+
+  if (profilesError) {
+    return (
+      <AdminPageError message={`Could not load profiles: ${profilesError.message}`} />
+    );
+  }
+
+  const { data: artistsRows, error: artistsError } = await adminSupabase
+    .from("artists")
+    .select("id, created_at");
 
   if (artistsError) {
     return (
@@ -78,11 +86,18 @@ export default async function AdminPage() {
     );
   }
 
-  const emailById = new Map<string, string>();
-  let page = 1;
+  const createdAtByArtistId = new Map(
+    (artistsRows ?? []).map((a) => [a.id, a.created_at as string])
+  );
+
+  const emailByUserId = new Map<string, string>();
+  let listPage = 1;
   for (;;) {
-    const { data: bundle, error: listErr } = await svc.auth.admin.listUsers({
-      page,
+    const {
+      data: listData,
+      error: listErr,
+    } = await adminSupabase.auth.admin.listUsers({
+      page: listPage,
       perPage: 200,
     });
     if (listErr) {
@@ -90,42 +105,34 @@ export default async function AdminPage() {
         <AdminPageError message={`Could not load user emails: ${listErr.message}`} />
       );
     }
-    for (const u of bundle.users) {
-      if (u.email) emailById.set(u.id, u.email);
+    const users = listData?.users ?? [];
+    for (const u of users) {
+      if (u.email) emailByUserId.set(u.id, u.email);
     }
-    if (!bundle.users.length || bundle.users.length < 200) break;
-    page += 1;
+    if (!users.length || users.length < 200) break;
+    listPage += 1;
   }
 
-  const rows: AdminArtistDirectoryRow[] = (rawRows ?? []).map((row) => {
-    const rawProf = row.profiles as
-      | {
-          artist_name: string | null;
-          genre: string | null;
-          instagram_handle: string | null;
-          plan: string | null;
-          client_managed: boolean | null;
-        }
-      | Array<{
-          artist_name: string | null;
-          genre: string | null;
-          instagram_handle: string | null;
-          plan: string | null;
-          client_managed: boolean | null;
-        }>;
-    const prof = Array.isArray(rawProf) ? rawProf[0] : rawProf;
+  const rowsUnsorted: AdminArtistDirectoryRow[] = (profiles ?? []).map((p) => {
+    const createdAt =
+      createdAtByArtistId.get(p.id) ?? new Date(0).toISOString();
     return {
-      id: row.id,
-      created_at: row.created_at,
-      owner_user_id: row.owner_user_id,
-      owner_email: emailById.get(row.owner_user_id) ?? "—",
-      artist_name: prof?.artist_name ?? "",
-      genre: prof?.genre ?? "",
-      instagram_handle: (prof?.instagram_handle ?? "").replace(/^@/, ""),
-      plan: prof?.plan ?? "free",
-      client_managed: !!prof?.client_managed,
+      id: p.id,
+      created_at: createdAt,
+      owner_user_id: p.owner_user_id,
+      owner_email: emailByUserId.get(p.owner_user_id) ?? "—",
+      artist_name: p.artist_name ?? "",
+      genre: p.genre ?? "",
+      instagram_handle: (p.instagram_handle ?? "").replace(/^@/, ""),
+      plan: p.plan ?? "free",
+      client_managed: !!p.client_managed,
     };
   });
+
+  const rows = rowsUnsorted.sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-6xl flex-1 flex-col px-4 py-10 sm:px-6">

@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
-const BRAND_PURPLE = "#7C3AED";
+const BRAND_GREEN = "#00FF87";
 const BRAND_DARK = "#0A0A0F";
+const BRAND_DARK_SOFT = "#111111";
+const CARD_BG = "#1A1A1A";
+const CARD_BORDER = "#333333";
 
 function IconSparkles(props: { className?: string }) {
   return (
@@ -208,34 +211,50 @@ export default function Home() {
   const navItems = useMemo(() => NAV_LINKS, []);
 
   return (
-    <div className="min-h-screen bg-white font-sans text-zinc-950">
+    <div
+      className="min-h-screen font-sans text-white"
+      style={{ backgroundColor: BRAND_DARK }}
+    >
       <style jsx global>{`
         html {
           scroll-behavior: smooth;
         }
+        @keyframes roadie-ticker {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
       `}</style>
 
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-black/5 bg-white/75 backdrop-blur supports-[backdrop-filter]:bg-white/65">
+      <header
+        className="fixed inset-x-0 top-0 z-50 border-b backdrop-blur supports-[backdrop-filter]:bg-white/5"
+        style={{
+          borderColor: "rgba(255,255,255,0.08)",
+          backgroundColor: "rgba(10,10,15,0.72)",
+        }}
+      >
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <Link
             href="/"
             className="inline-flex items-center gap-2 font-black tracking-tight"
             aria-label="Roadie home"
           >
-            <span
-              className="text-xl"
-              style={{ color: BRAND_PURPLE, letterSpacing: "-0.02em" }}
-            >
-              Roadie
-            </span>
+            <img
+              src="/logo.png"
+              alt="Roadie"
+              style={{ height: 32, width: "auto" }}
+            />
           </Link>
 
-          <nav className="hidden items-center gap-8 text-sm font-medium text-zinc-700 md:flex">
+          <nav className="hidden items-center gap-8 text-sm font-semibold text-white/80 md:flex">
             {navItems.map((item) => (
               <a
                 key={item.href}
                 href={item.href}
-                className="rounded-md px-1 py-1 transition-colors hover:text-zinc-950"
+                className="rounded-md px-1 py-1 transition-colors hover:text-white"
               >
                 {item.label}
               </a>
@@ -245,14 +264,18 @@ export default function Home() {
           <div className="hidden items-center gap-2 md:flex">
             <Link
               href="/login"
-              className="inline-flex h-10 items-center justify-center rounded-lg px-4 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-950/[0.04] hover:text-zinc-950"
+              className="inline-flex h-10 items-center justify-center rounded-lg px-4 text-sm font-semibold text-white/80 transition-colors hover:bg-white/5 hover:text-white"
             >
               Sign in
             </Link>
             <Link
               href="/dashboard"
-              className="inline-flex h-10 items-center justify-center rounded-lg px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:opacity-95"
-              style={{ backgroundColor: BRAND_PURPLE }}
+              className="inline-flex h-10 items-center justify-center rounded-lg border px-4 text-sm font-semibold shadow-sm transition-colors hover:bg-white/5"
+              style={{
+                borderColor: "rgba(0,255,135,0.55)",
+                color: BRAND_GREEN,
+                backgroundColor: "rgba(10,10,15,0.60)",
+              }}
             >
               Get started free
             </Link>
@@ -260,7 +283,7 @@ export default function Home() {
 
           <button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg transition-colors hover:bg-zinc-950/[0.04] md:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-white/90 transition-colors hover:bg-white/5 md:hidden"
             aria-label="Open menu"
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((v) => !v)}
@@ -280,11 +303,14 @@ export default function Home() {
         {mobileOpen ? (
           <div className="md:hidden">
             <div
-              className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
               onClick={() => setMobileOpen(false)}
               aria-hidden="true"
             />
-            <div className="relative z-50 border-t border-black/5 bg-white">
+            <div
+              className="relative z-50 border-t"
+              style={{ borderColor: "rgba(255,255,255,0.08)", backgroundColor: BRAND_DARK }}
+            >
               <div className="mx-auto max-w-6xl px-6 py-4">
                 <div className="flex flex-col gap-2">
                   {navItems.map((item) => (
@@ -292,7 +318,7 @@ export default function Home() {
                       key={item.href}
                       href={item.href}
                       onClick={() => setMobileOpen(false)}
-                      className="rounded-lg px-3 py-2 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-950/[0.04] hover:text-zinc-950"
+                      className="rounded-lg px-3 py-2 text-sm font-semibold text-white/85 transition-colors hover:bg-white/5 hover:text-white"
                     >
                       {item.label}
                     </a>
@@ -302,15 +328,20 @@ export default function Home() {
                   <Link
                     href="/login"
                     onClick={() => setMobileOpen(false)}
-                    className="inline-flex h-10 items-center justify-center rounded-lg border border-black/10 bg-white text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-950/[0.04]"
+                    className="inline-flex h-10 items-center justify-center rounded-lg border text-sm font-semibold text-white/85 transition-colors hover:bg-white/5"
+                    style={{ borderColor: "rgba(255,255,255,0.12)" }}
                   >
                     Sign in
                   </Link>
                   <Link
                     href="/dashboard"
                     onClick={() => setMobileOpen(false)}
-                    className="inline-flex h-10 items-center justify-center rounded-lg text-sm font-semibold text-white shadow-sm transition-colors hover:opacity-95"
-                    style={{ backgroundColor: BRAND_PURPLE }}
+                    className="inline-flex h-10 items-center justify-center rounded-lg border text-sm font-semibold shadow-sm transition-colors hover:bg-white/5"
+                    style={{
+                      borderColor: "rgba(0,255,135,0.55)",
+                      color: BRAND_GREEN,
+                      backgroundColor: "rgba(10,10,15,0.60)",
+                    }}
                   >
                     Get started free
                   </Link>
@@ -327,7 +358,7 @@ export default function Home() {
           style={{ backgroundColor: BRAND_DARK }}
         >
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute inset-0 opacity-[0.18] [background:radial-gradient(70%_50%_at_50%_0%,rgba(124,58,237,0.55)_0%,rgba(10,10,15,0)_65%)]" />
+            <div className="absolute inset-0 opacity-[0.18] [background:radial-gradient(70%_50%_at_50%_0%,rgba(0,255,135,0.45)_0%,rgba(10,10,15,0)_65%)]" />
             <div className="absolute inset-0 opacity-[0.25] [background:radial-gradient(55%_55%_at_20%_40%,rgba(255,255,255,0.08)_0%,rgba(10,10,15,0)_70%)]" />
           </div>
 
@@ -345,7 +376,7 @@ export default function Home() {
                 AI content planning for music artists
               </p>
 
-              <h1 className="text-balance text-5xl font-black tracking-tight text-white md:text-7xl">
+              <h1 className="text-balance text-6xl font-black uppercase tracking-tight text-white md:text-8xl">
                 Your weekly content plan. Built for your music.
               </h1>
 
@@ -358,14 +389,19 @@ export default function Home() {
               <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link
                   href="/dashboard"
-                  className="inline-flex h-12 items-center justify-center rounded-xl px-6 text-base font-semibold text-white shadow-sm transition-colors hover:opacity-95"
-                  style={{ backgroundColor: BRAND_PURPLE }}
+                  className="inline-flex h-12 items-center justify-center rounded-xl border px-6 text-base font-semibold shadow-sm transition-colors hover:bg-white/5"
+                  style={{
+                    borderColor: "rgba(0,255,135,0.55)",
+                    color: BRAND_GREEN,
+                    backgroundColor: "rgba(10,10,15,0.60)",
+                  }}
                 >
                   Get your first plan free
                 </Link>
                 <a
                   href="#how-it-works"
-                  className="group inline-flex h-12 items-center justify-center rounded-xl border border-white/15 bg-white/5 px-6 text-base font-semibold text-white transition-colors hover:bg-white/10"
+                  className="group inline-flex h-12 items-center justify-center rounded-xl border px-6 text-base font-semibold text-white transition-colors hover:bg-white/5"
+                  style={{ borderColor: "rgba(255,255,255,0.16)" }}
                 >
                   See how it works
                   <IconArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -378,79 +414,128 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-white" />
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-24"
+            style={{
+              background:
+                "linear-gradient(to bottom, rgba(10,10,15,0), rgba(17,17,17,1))",
+            }}
+          />
         </section>
 
-        <section id="problem" className="bg-white py-24 md:py-32">
+        <section
+          aria-label="Ticker"
+          className="overflow-hidden border-y py-4"
+          style={{
+            backgroundColor: BRAND_DARK_SOFT,
+            borderColor: "rgba(255,255,255,0.08)",
+          }}
+        >
+          <div className="relative">
+            <div
+              className="flex w-[200%] items-center gap-8 whitespace-nowrap text-xs font-black uppercase tracking-[0.24em]"
+              style={{
+                animation: "roadie-ticker 22s linear infinite",
+                color: "rgba(255,255,255,0.85)",
+              }}
+            >
+              <div className="flex w-1/2 items-center gap-8">
+                <span style={{ color: BRAND_GREEN }}>
+                  WEEKLY CONTENT PLAN ✦ MUSIC INDUSTRY EXPERTISE ✦ AI POWERED ✦
+                  BUILT FOR ARTISTS ✦ WEEKLY CONTENT PLAN ✦ MUSIC INDUSTRY
+                  EXPERTISE ✦ AI POWERED ✦ BUILT FOR ARTISTS ✦
+                </span>
+              </div>
+              <div className="flex w-1/2 items-center gap-8" aria-hidden="true">
+                <span style={{ color: BRAND_GREEN }}>
+                  WEEKLY CONTENT PLAN ✦ MUSIC INDUSTRY EXPERTISE ✦ AI POWERED ✦
+                  BUILT FOR ARTISTS ✦ WEEKLY CONTENT PLAN ✦ MUSIC INDUSTRY
+                  EXPERTISE ✦ AI POWERED ✦ BUILT FOR ARTISTS ✦
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="problem" className="py-24 md:py-32" style={{ backgroundColor: BRAND_DARK_SOFT }}>
           <div className="mx-auto max-w-6xl px-6">
             <div className="mx-auto max-w-3xl text-center">
               <p
                 className="text-xs font-bold tracking-[0.22em]"
-                style={{ color: BRAND_PURPLE }}
+                style={{ color: BRAND_GREEN }}
               >
                 THE PROBLEM
               </p>
-              <h2 className="mt-4 text-balance text-4xl font-black tracking-tight text-zinc-950 md:text-5xl">
+              <h2 className="mt-4 text-balance text-4xl font-black uppercase tracking-tight text-white md:text-5xl">
                 Content shouldn&apos;t feel like a second job.
               </h2>
             </div>
 
             <div className="mt-12 grid gap-6 md:grid-cols-3">
-              <div className="rounded-2xl border border-black/10 bg-white p-7 shadow-[0_1px_0_rgba(0,0,0,0.02)] transition-shadow hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
+              <div
+                className="rounded-2xl border p-7 transition-colors hover:bg-white/[0.03]"
+                style={{ backgroundColor: CARD_BG, borderColor: CARD_BORDER }}
+              >
                 <div
                   className="inline-flex h-10 w-10 items-center justify-center rounded-xl border"
                   style={{
-                    borderColor: "rgba(124,58,237,0.18)",
-                    backgroundColor: "rgba(124,58,237,0.06)",
-                    color: BRAND_PURPLE,
+                    borderColor: "rgba(0,255,135,0.28)",
+                    backgroundColor: "rgba(0,255,135,0.06)",
+                    color: BRAND_GREEN,
                   }}
                 >
                   <IconSparkles className="h-5 w-5" />
                 </div>
-                <h3 className="mt-5 text-lg font-bold tracking-tight">
+                <h3 className="mt-5 text-lg font-black uppercase tracking-tight text-white">
                   Blank screen syndrome
                 </h3>
-                <p className="mt-2 text-sm leading-7 text-zinc-600">
+                <p className="mt-2 text-sm leading-7 text-gray-400">
                   You know you should be posting. But staring at a blank screen
                   beats another generic idea that doesn&apos;t feel like you.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-black/10 bg-white p-7 shadow-[0_1px_0_rgba(0,0,0,0.02)] transition-shadow hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
+              <div
+                className="rounded-2xl border p-7 transition-colors hover:bg-white/[0.03]"
+                style={{ backgroundColor: CARD_BG, borderColor: CARD_BORDER }}
+              >
                 <div
                   className="inline-flex h-10 w-10 items-center justify-center rounded-xl border"
                   style={{
-                    borderColor: "rgba(124,58,237,0.18)",
-                    backgroundColor: "rgba(124,58,237,0.06)",
-                    color: BRAND_PURPLE,
+                    borderColor: "rgba(0,255,135,0.28)",
+                    backgroundColor: "rgba(0,255,135,0.06)",
+                    color: BRAND_GREEN,
                   }}
                 >
                   <IconTarget className="h-5 w-5" />
                 </div>
-                <h3 className="mt-5 text-lg font-bold tracking-tight">
+                <h3 className="mt-5 text-lg font-black uppercase tracking-tight text-white">
                   Generic AI doesn&apos;t get music
                 </h3>
-                <p className="mt-2 text-sm leading-7 text-zinc-600">
+                <p className="mt-2 text-sm leading-7 text-gray-400">
                   Tools built for coffee shops and fitness brands give you advice
                   that sounds right but misses what actually grows a fanbase.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-black/10 bg-white p-7 shadow-[0_1px_0_rgba(0,0,0,0.02)] transition-shadow hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
+              <div
+                className="rounded-2xl border p-7 transition-colors hover:bg-white/[0.03]"
+                style={{ backgroundColor: CARD_BG, borderColor: CARD_BORDER }}
+              >
                 <div
                   className="inline-flex h-10 w-10 items-center justify-center rounded-xl border"
                   style={{
-                    borderColor: "rgba(124,58,237,0.18)",
-                    backgroundColor: "rgba(124,58,237,0.06)",
-                    color: BRAND_PURPLE,
+                    borderColor: "rgba(0,255,135,0.28)",
+                    backgroundColor: "rgba(0,255,135,0.06)",
+                    color: BRAND_GREEN,
                   }}
                 >
                   <IconCalendar className="h-5 w-5" />
                 </div>
-                <h3 className="mt-5 text-lg font-bold tracking-tight">
+                <h3 className="mt-5 text-lg font-black uppercase tracking-tight text-white">
                   Your data sits unused
                 </h3>
-                <p className="mt-2 text-sm leading-7 text-zinc-600">
+                <p className="mt-2 text-sm leading-7 text-gray-400">
                   Your Instagram stats, upcoming shows, release dates — none of
                   it is shaping what you post. It should be.
                 </p>
@@ -462,17 +547,17 @@ export default function Home() {
         <section
           id="how-it-works"
           className="py-24 md:py-32"
-          style={{ backgroundColor: "#F8F8F8" }}
+          style={{ backgroundColor: BRAND_DARK }}
         >
           <div className="mx-auto max-w-6xl px-6">
             <div className="mx-auto max-w-3xl text-center">
               <p
                 className="text-xs font-bold tracking-[0.22em]"
-                style={{ color: BRAND_PURPLE }}
+                style={{ color: BRAND_GREEN }}
               >
                 HOW IT WORKS
               </p>
-              <h2 className="mt-4 text-balance text-4xl font-black tracking-tight text-zinc-950 md:text-5xl">
+              <h2 className="mt-4 text-balance text-4xl font-black uppercase tracking-tight text-white md:text-5xl">
                 Roadie thinks like a music marketing strategist. At AI speed.
               </h2>
             </div>
@@ -500,29 +585,30 @@ export default function Home() {
               ].map((step) => (
                 <div
                   key={step.n}
-                  className="rounded-2xl border border-black/10 bg-white p-7 shadow-[0_1px_0_rgba(0,0,0,0.02)] transition-shadow hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)]"
+                  className="rounded-2xl border p-7 transition-colors hover:bg-white/[0.03]"
+                  style={{ backgroundColor: CARD_BG, borderColor: CARD_BORDER }}
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <div
                         className="inline-flex h-10 w-10 items-center justify-center rounded-xl border"
                         style={{
-                          borderColor: "rgba(124,58,237,0.18)",
-                          backgroundColor: "rgba(124,58,237,0.06)",
-                          color: BRAND_PURPLE,
+                          borderColor: "rgba(0,255,135,0.28)",
+                          backgroundColor: "rgba(0,255,135,0.06)",
+                          color: BRAND_GREEN,
                         }}
                       >
                         {step.icon}
                       </div>
-                      <div className="text-sm font-bold tracking-tight text-zinc-900">
+                      <div className="text-sm font-black uppercase tracking-tight text-white">
                         {step.n}
                       </div>
                     </div>
-                    <div className="h-px flex-1 bg-black/5" />
+                    <div className="h-px flex-1 bg-white/10" />
                   </div>
-                  <p className="mt-5 text-base font-bold tracking-tight text-zinc-950">
+                  <p className="mt-5 text-base font-black uppercase tracking-tight text-white">
                     {step.title}{" "}
-                    <span className="font-semibold text-zinc-600">
+                    <span className="font-semibold normal-case text-gray-400">
                       {step.body}
                     </span>
                   </p>
@@ -532,13 +618,17 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="features" className="bg-white py-24 md:py-32">
+        <section
+          id="features"
+          className="py-24 md:py-32"
+          style={{ backgroundColor: BRAND_DARK_SOFT }}
+        >
           <div className="mx-auto max-w-6xl px-6">
             <div className="mx-auto max-w-3xl text-center">
-              <h2 className="text-balance text-4xl font-black tracking-tight text-zinc-950 md:text-5xl">
+              <h2 className="text-balance text-4xl font-black uppercase tracking-tight text-white md:text-5xl">
                 Everything shaped by your world
               </h2>
-              <p className="mt-5 text-lg leading-8 text-zinc-600">
+              <p className="mt-5 text-lg leading-8 text-gray-400">
                 Roadie is designed around the realities of building a fanbase —
                 not generic brand marketing.
               </p>
@@ -569,22 +659,23 @@ export default function Home() {
               ].map((f) => (
                 <div
                   key={f.title}
-                  className="group rounded-2xl border border-black/10 bg-white p-8 transition-colors hover:bg-zinc-950/[0.02]"
+                  className="group rounded-2xl border p-8 transition-colors hover:bg-white/[0.03]"
+                  style={{ backgroundColor: CARD_BG, borderColor: CARD_BORDER }}
                 >
                   <div
                     className="inline-flex h-10 w-10 items-center justify-center rounded-xl border transition-colors"
                     style={{
-                      borderColor: "rgba(124,58,237,0.18)",
-                      backgroundColor: "rgba(124,58,237,0.06)",
-                      color: BRAND_PURPLE,
+                      borderColor: "rgba(0,255,135,0.28)",
+                      backgroundColor: "rgba(0,255,135,0.06)",
+                      color: BRAND_GREEN,
                     }}
                   >
                     {f.icon}
                   </div>
-                  <h3 className="mt-5 text-lg font-bold tracking-tight text-zinc-950">
+                  <h3 className="mt-5 text-lg font-black uppercase tracking-tight text-white">
                     {f.title}
                   </h3>
-                  <p className="mt-2 text-sm leading-7 text-zinc-600">
+                  <p className="mt-2 text-sm leading-7 text-gray-400">
                     {f.body}
                   </p>
                 </div>
@@ -596,14 +687,14 @@ export default function Home() {
         <section
           id="pricing"
           className="py-24 md:py-32"
-          style={{ backgroundColor: "#F8F8F8" }}
+          style={{ backgroundColor: BRAND_DARK }}
         >
           <div className="mx-auto max-w-6xl px-6">
             <div className="mx-auto max-w-3xl text-center">
-              <h2 className="text-balance text-4xl font-black tracking-tight text-zinc-950 md:text-5xl">
+              <h2 className="text-balance text-4xl font-black uppercase tracking-tight text-white md:text-5xl">
                 Simple pricing. No surprises.
               </h2>
-              <p className="mt-5 text-lg leading-8 text-zinc-600">
+              <p className="mt-5 text-lg leading-8 text-gray-400">
                 Choose the plan that matches your output — upgrade anytime.
               </p>
             </div>
@@ -652,26 +743,31 @@ export default function Home() {
                 <div
                   key={plan.name}
                   className={classNames(
-                    "relative rounded-2xl border bg-white p-8 shadow-[0_1px_0_rgba(0,0,0,0.02)]",
+                    "relative rounded-2xl border p-8",
                     plan.highlight
                       ? "border-transparent ring-1 ring-inset"
-                      : "border-black/10"
+                      : ""
                   )}
                   style={
                     plan.highlight
                       ? ({
-                          boxShadow: "0 20px 60px rgba(0,0,0,0.10)",
+                          boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
                           ["--tw-ring-color" as never]:
-                            "rgba(124,58,237,0.35)",
+                            "rgba(0,255,135,0.40)",
+                          backgroundColor: CARD_BG,
+                          borderColor: CARD_BORDER,
                         } as CSSProperties)
-                      : undefined
+                      : ({
+                          backgroundColor: CARD_BG,
+                          borderColor: CARD_BORDER,
+                        } as CSSProperties)
                   }
                 >
                   {plan.badge ? (
                     <div className="absolute -top-3 left-6">
                       <span
-                        className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold text-white shadow-sm"
-                        style={{ backgroundColor: BRAND_PURPLE }}
+                        className="inline-flex items-center rounded-full px-3 py-1 text-xs font-black uppercase tracking-tight shadow-sm"
+                        style={{ backgroundColor: BRAND_GREEN, color: BRAND_DARK }}
                       >
                         {plan.badge}
                       </span>
@@ -680,10 +776,10 @@ export default function Home() {
 
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <h3 className="text-lg font-black tracking-tight text-zinc-950">
+                      <h3 className="text-lg font-black uppercase tracking-tight text-white">
                         {plan.name}
                       </h3>
-                      <p className="mt-1 text-sm text-zinc-600">
+                      <p className="mt-1 text-sm text-gray-400">
                         For {plan.name === "Label" ? "teams" : "artists"} who
                         ship weekly.
                       </p>
@@ -691,22 +787,22 @@ export default function Home() {
                   </div>
 
                   <div className="mt-6 flex items-baseline gap-2">
-                    <div className="text-4xl font-black tracking-tight text-zinc-950">
+                    <div className="text-4xl font-black uppercase tracking-tight text-white">
                       {plan.price}
                     </div>
-                    <div className="text-sm font-semibold text-zinc-600">
+                    <div className="text-sm font-semibold text-gray-400">
                       {plan.note}
                     </div>
                   </div>
 
-                  <ul className="mt-6 space-y-3 text-sm text-zinc-700">
+                  <ul className="mt-6 space-y-3 text-sm text-white/80">
                     {plan.features.map((f) => (
                       <li key={f} className="flex items-start gap-3">
                         <span
                           className="mt-0.5 inline-flex h-5 w-5 flex-none items-center justify-center rounded-full"
                           style={{
-                            backgroundColor: "rgba(124,58,237,0.10)",
-                            color: BRAND_PURPLE,
+                            backgroundColor: "rgba(0,255,135,0.10)",
+                            color: BRAND_GREEN,
                           }}
                         >
                           <svg
@@ -734,11 +830,21 @@ export default function Home() {
                     className={classNames(
                       "mt-8 inline-flex h-11 w-full items-center justify-center rounded-xl px-5 text-sm font-semibold transition-colors",
                       plan.highlight
-                        ? "text-white hover:opacity-95"
-                        : "border border-black/10 bg-white text-zinc-950 hover:bg-zinc-950/[0.04]"
+                        ? "border hover:bg-white/5"
+                        : "border hover:bg-white/5"
                     )}
                     style={
-                      plan.highlight ? { backgroundColor: BRAND_PURPLE } : undefined
+                      plan.highlight
+                        ? {
+                            borderColor: "rgba(0,255,135,0.55)",
+                            color: BRAND_GREEN,
+                            backgroundColor: "rgba(10,10,15,0.60)",
+                          }
+                        : {
+                            borderColor: "rgba(255,255,255,0.12)",
+                            color: "rgba(255,255,255,0.90)",
+                            backgroundColor: "rgba(10,10,15,0.35)",
+                          }
                     }
                   >
                     Get started
@@ -747,7 +853,7 @@ export default function Home() {
               ))}
             </div>
 
-            <p className="mt-10 text-center text-sm text-zinc-600">
+            <p className="mt-10 text-center text-sm text-gray-400">
               All plans include a 7-day free trial. Cancel anytime.
             </p>
           </div>
@@ -755,22 +861,23 @@ export default function Home() {
 
         <section
           id="for-labels"
-          className="bg-white py-24 md:py-32"
+          className="py-24 md:py-32"
           aria-label="For labels"
+          style={{ backgroundColor: BRAND_DARK_SOFT }}
         >
           <div className="mx-auto max-w-6xl px-6">
             <div className="grid items-center gap-10 md:grid-cols-2">
               <div>
                 <p
                   className="text-xs font-bold tracking-[0.22em]"
-                  style={{ color: BRAND_PURPLE }}
+                  style={{ color: BRAND_GREEN }}
                 >
                   FOR LABELS
                 </p>
-                <h2 className="mt-4 text-balance text-4xl font-black tracking-tight text-zinc-950 md:text-5xl">
+                <h2 className="mt-4 text-balance text-4xl font-black uppercase tracking-tight text-white md:text-5xl">
                   Keep multiple artists consistent — without losing the plot.
                 </h2>
-                <p className="mt-5 text-lg leading-8 text-zinc-600">
+                <p className="mt-5 text-lg leading-8 text-gray-400">
                   Roadie helps teams coordinate releases, campaigns, and weekly
                   content across a roster — with plans that stay grounded in each
                   artist’s voice.
@@ -778,26 +885,38 @@ export default function Home() {
                 <div className="mt-8 flex flex-wrap gap-3">
                   <Link
                     href="/pricing"
-                    className="inline-flex h-11 items-center justify-center rounded-xl border border-black/10 bg-white px-5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-zinc-950/[0.04]"
+                    className="inline-flex h-11 items-center justify-center rounded-xl border px-5 text-sm font-semibold text-white/90 transition-colors hover:bg-white/5"
+                    style={{ borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(10,10,15,0.35)" }}
                   >
                     View label pricing
                   </Link>
                   <Link
                     href="/dashboard"
-                    className="inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold text-white transition-colors hover:opacity-95"
-                    style={{ backgroundColor: BRAND_PURPLE }}
+                    className="inline-flex h-11 items-center justify-center rounded-xl border px-5 text-sm font-semibold shadow-sm transition-colors hover:bg-white/5"
+                    style={{
+                      borderColor: "rgba(0,255,135,0.55)",
+                      color: BRAND_GREEN,
+                      backgroundColor: "rgba(10,10,15,0.60)",
+                    }}
                   >
                     Get started free
                   </Link>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-black/10 bg-white p-8 shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
+              <div
+                className="rounded-2xl border p-8"
+                style={{
+                  backgroundColor: CARD_BG,
+                  borderColor: CARD_BORDER,
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
+                }}
+              >
                 <div className="flex items-center justify-between">
-                  <div className="text-sm font-bold text-zinc-950">
+                  <div className="text-sm font-black uppercase tracking-tight text-white">
                     Weekly planning board
                   </div>
-                  <div className="text-xs font-semibold text-zinc-500">
+                  <div className="text-xs font-semibold text-gray-400">
                     Monday
                   </div>
                 </div>
@@ -821,7 +940,8 @@ export default function Home() {
                   ].map((row) => (
                     <div
                       key={row.title}
-                      className="rounded-xl border border-black/10 bg-white p-4 transition-colors hover:bg-zinc-950/[0.02]"
+                      className="rounded-xl border p-4 transition-colors hover:bg-white/[0.03]"
+                      style={{ backgroundColor: "rgba(255,255,255,0.02)", borderColor: CARD_BORDER }}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -829,21 +949,21 @@ export default function Home() {
                             <span
                               className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold"
                               style={{
-                                backgroundColor: "rgba(124,58,237,0.10)",
-                                color: BRAND_PURPLE,
+                                backgroundColor: "rgba(0,255,135,0.12)",
+                                color: BRAND_GREEN,
                               }}
                             >
                               {row.tag}
                             </span>
                           </div>
-                          <div className="mt-2 text-sm font-semibold text-zinc-950">
+                          <div className="mt-2 text-sm font-semibold text-white">
                             {row.title}
                           </div>
-                          <div className="mt-1 text-xs text-zinc-500">
+                          <div className="mt-1 text-xs text-gray-400">
                             {row.meta}
                           </div>
                         </div>
-                        <IconArrowRight className="mt-1 h-4 w-4 text-zinc-300" />
+                        <IconArrowRight className="mt-1 h-4 w-4 text-white/25" />
                       </div>
                     </div>
                   ))}
@@ -858,12 +978,12 @@ export default function Home() {
           style={{ backgroundColor: BRAND_DARK }}
         >
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute inset-0 opacity-[0.16] [background:radial-gradient(60%_50%_at_50%_0%,rgba(124,58,237,0.55)_0%,rgba(10,10,15,0)_70%)]" />
+            <div className="absolute inset-0 opacity-[0.16] [background:radial-gradient(60%_50%_at_50%_0%,rgba(0,255,135,0.40)_0%,rgba(10,10,15,0)_70%)]" />
           </div>
 
           <div className="mx-auto max-w-6xl px-6">
             <div className="mx-auto max-w-3xl text-center">
-              <h2 className="text-balance text-4xl font-black tracking-tight text-white md:text-5xl">
+              <h2 className="text-balance text-4xl font-black uppercase tracking-tight text-white md:text-5xl">
                 Your next weekly plan is waiting.
               </h2>
               <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-8 text-gray-400">
@@ -873,8 +993,12 @@ export default function Home() {
               <div className="mt-10 flex justify-center">
                 <Link
                   href="/dashboard"
-                  className="inline-flex h-12 items-center justify-center rounded-xl px-7 text-base font-semibold text-white shadow-sm transition-colors hover:opacity-95"
-                  style={{ backgroundColor: BRAND_PURPLE }}
+                  className="inline-flex h-12 items-center justify-center rounded-xl border px-7 text-base font-semibold shadow-sm transition-colors hover:bg-white/5"
+                  style={{
+                    borderColor: "rgba(0,255,135,0.55)",
+                    color: BRAND_GREEN,
+                    backgroundColor: "rgba(10,10,15,0.60)",
+                  }}
                 >
                   Get started free
                 </Link>
@@ -884,20 +1008,26 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-black/5 bg-white py-10">
+      <footer
+        className="border-t py-10"
+        style={{ borderColor: "rgba(255,255,255,0.08)", backgroundColor: BRAND_DARK }}
+      >
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 md:flex-row md:items-center md:justify-between">
-          <div className="text-sm text-zinc-500">Roadie © 2026</div>
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="Roadie" style={{ height: 24, width: "auto" }} />
+            <div className="text-sm text-white/60">Roadie © 2026</div>
+          </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm font-medium text-zinc-600">
-            <Link className="transition-colors hover:text-zinc-950" href="/privacy">
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm font-semibold text-white/70">
+            <Link className="transition-colors hover:text-white" href="/privacy">
               Privacy
             </Link>
-            <span className="text-zinc-300">·</span>
-            <Link className="transition-colors hover:text-zinc-950" href="/terms">
+            <span className="text-white/20">·</span>
+            <Link className="transition-colors hover:text-white" href="/terms">
               Terms
             </Link>
-            <span className="text-zinc-300">·</span>
-            <Link className="transition-colors hover:text-zinc-950" href="/contact">
+            <span className="text-white/20">·</span>
+            <Link className="transition-colors hover:text-white" href="/contact">
               Contact
             </Link>
           </div>
@@ -905,14 +1035,18 @@ export default function Home() {
           <div className="flex items-center justify-center gap-4 text-sm font-semibold">
             <Link
               href="/login"
-              className="text-zinc-600 transition-colors hover:text-zinc-950"
+              className="text-white/70 transition-colors hover:text-white"
             >
               Sign in
             </Link>
             <Link
               href="/dashboard"
-              className="inline-flex h-10 items-center justify-center rounded-lg px-4 text-white shadow-sm transition-colors hover:opacity-95"
-              style={{ backgroundColor: BRAND_PURPLE }}
+              className="inline-flex h-10 items-center justify-center rounded-lg border px-4 text-sm font-semibold shadow-sm transition-colors hover:bg-white/5"
+              style={{
+                borderColor: "rgba(0,255,135,0.55)",
+                color: BRAND_GREEN,
+                backgroundColor: "rgba(10,10,15,0.60)",
+              }}
             >
               Get started
             </Link>

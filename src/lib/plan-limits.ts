@@ -3,6 +3,7 @@ export type RoadiePlan = "free" | "starter" | "pro" | "label";
 export type PlanFeature =
   | "canGeneratePlan"
   | "canViewInsights"
+  | "canViewLiveSocialData"
   | "canRefreshAudit"
   | "maxArtists";
 
@@ -12,31 +13,36 @@ export const PLAN_LIMITS: Record<
     maxArtists: number;
     canGeneratePlan: boolean;
     canViewInsights: boolean;
+    canViewLiveSocialData: boolean;
     canRefreshAudit: boolean;
   }
 > = {
   free: {
     maxArtists: 1,
     canGeneratePlan: false,
-    canViewInsights: false,
+    canViewInsights: true,
+    canViewLiveSocialData: false,
     canRefreshAudit: false,
   },
   starter: {
     maxArtists: 1,
     canGeneratePlan: true,
-    canViewInsights: false,
+    canViewInsights: true,
+    canViewLiveSocialData: false,
     canRefreshAudit: false,
   },
   pro: {
     maxArtists: 3,
     canGeneratePlan: true,
     canViewInsights: true,
+    canViewLiveSocialData: true,
     canRefreshAudit: true,
   },
   label: {
     maxArtists: 10,
     canGeneratePlan: true,
     canViewInsights: true,
+    canViewLiveSocialData: true,
     canRefreshAudit: true,
   },
 };

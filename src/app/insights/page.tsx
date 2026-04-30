@@ -41,8 +41,8 @@ export default async function InsightsPage() {
   }
 
   const plan = normalizePlan(planRow?.plan);
-  const canViewInsights = canDo(plan, "canViewInsights");
   const canRefreshAudit = canDo(plan, "canRefreshAudit");
+  const canViewLiveSocialData = canDo(plan, "canViewLiveSocialData");
 
   const cookieStore = await cookies();
   const activeArtistId = await getActiveArtistIdForUser(
@@ -105,124 +105,132 @@ export default async function InsightsPage() {
 
       <AppNavWrapper />
 
-      <div className="relative mt-10">
-        <div className={canViewInsights ? "" : "pointer-events-none select-none blur-sm"}>
-          {!audit ? (
-            <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/80 p-10 text-center dark:border-zinc-700 dark:bg-zinc-950/40">
-              <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-                {emptyMessage}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-8">
-          <section className="rounded-2xl border border-zinc-200 bg-purple-50/40 p-7 shadow-sm dark:border-zinc-800 dark:bg-purple-950/10">
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              @{audit.instagram_handle.replace(/^@/, "")}
+      <div className="mt-10">
+        {!audit ? (
+          <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/80 p-10 text-center dark:border-zinc-700 dark:bg-zinc-950/40">
+            <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+              {emptyMessage}
             </p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">
-              Artist snapshot
-            </h2>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
-                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                  Followers
-                </p>
-                <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
-                  {audit.followers.toLocaleString()}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
-                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                  Following
-                </p>
-                <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
-                  {audit.following.toLocaleString()}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
-                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                  Posts
-                </p>
-                <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
-                  {audit.post_count.toLocaleString()}
-                </p>
-              </div>
-            </div>
-            {audit.bio?.trim() ? (
-              <p className="mt-5 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                {audit.bio}
+          </div>
+        ) : (
+          <div className="space-y-8">
+            <section className="rounded-2xl border border-zinc-200 bg-purple-50/40 p-7 shadow-sm dark:border-zinc-800 dark:bg-purple-950/10">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                @{audit.instagram_handle.replace(/^@/, "")}
               </p>
-            ) : null}
-          </section>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">
+                Artist snapshot
+              </h2>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                    Followers
+                  </p>
+                  <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+                    {audit.followers.toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                    Following
+                  </p>
+                  <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+                    {audit.following.toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                    Posts
+                  </p>
+                  <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+                    {audit.post_count.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              {audit.bio?.trim() ? (
+                <p className="mt-5 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                  {audit.bio}
+                </p>
+              ) : null}
+            </section>
 
-          <section className="rounded-2xl bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
-            <h2 className="text-lg font-semibold tracking-tight text-foreground">
-              Your content pattern
-            </h2>
-            <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-              {audit.ai_pattern_analysis}
-            </p>
-          </section>
-
-          <section className="rounded-2xl bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
-            <h2 className="text-lg font-semibold tracking-tight text-foreground">
-              Full analysis
-            </h2>
-            <div className="mt-5 space-y-4">
-              {parseFullAnalysisText(audit.ai_full_analysis).map((sec, i) => {
-                const a = sectionAccent(sec.title);
-                return (
-                  <div
-                    key={`${sec.title}-${i}`}
-                    className={`rounded-2xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950 ${a.border} border-l-4`}
-                  >
-                    <h3 className={`text-sm font-semibold ${a.label}`}>
-                      {sec.title}
-                    </h3>
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                      {sec.body}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          {audit.recent_posts_raw?.trim() ? (
             <section className="rounded-2xl bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
               <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                Recent posts analysed
+                Your content pattern
               </h2>
-              <pre className="mt-4 overflow-x-auto whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                {audit.recent_posts_raw}
-              </pre>
+              <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                {audit.ai_pattern_analysis}
+              </p>
             </section>
-          ) : null}
-            </div>
-          )}
+
+            <section className="rounded-2xl bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                Full analysis
+              </h2>
+              <div className="mt-5 space-y-4">
+                {parseFullAnalysisText(audit.ai_full_analysis).map((sec, i) => {
+                  const a = sectionAccent(sec.title);
+                  return (
+                    <div
+                      key={`${sec.title}-${i}`}
+                      className={`rounded-2xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950 ${a.border} border-l-4`}
+                    >
+                      <h3 className={`text-sm font-semibold ${a.label}`}>
+                        {sec.title}
+                      </h3>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                        {sec.body}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {audit.recent_posts_raw?.trim() ? (
+              <section className="rounded-2xl bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                  Recent posts analysed
+                </h2>
+                <pre className="mt-4 overflow-x-auto whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                  {audit.recent_posts_raw}
+                </pre>
+              </section>
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      <section className="mt-12">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">
+            Live social performance
+          </h2>
+          <span className="inline-flex items-center rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700 ring-1 ring-inset ring-purple-200 dark:bg-purple-950/20 dark:text-purple-300 dark:ring-purple-900/40">
+            Pro feature
+          </span>
         </div>
 
-        {!canViewInsights ? (
-          <div className="absolute inset-0 flex items-center justify-center px-4">
-            <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 text-center shadow-[0_10px_30px_rgba(0,0,0,0.12)] dark:border-zinc-800 dark:bg-zinc-950">
-              <p className="text-sm font-semibold text-foreground">
-                Upgrade to Pro to unlock your Instagram insights
-              </p>
-              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                Insights are available on Pro and Label plans.
-              </p>
-              <div className="mt-5">
-                <Link
-                  href="/pricing"
-                  className="inline-flex h-10 items-center justify-center rounded-lg bg-[#7C3AED] px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#6D28D9]"
-                >
-                  View pricing
-                </Link>
-              </div>
-            </div>
+        <div
+          className={[
+            "mt-4 rounded-2xl border bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950",
+            canViewLiveSocialData ? "border-zinc-200 dark:border-zinc-800" : "border-zinc-200 dark:border-zinc-800 opacity-60 grayscale",
+          ].join(" ")}
+        >
+          <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+            Connect your Instagram, TikTok and Facebook to see real-time performance data,
+            post analytics, and what's driving growth.
+          </p>
+          <div className="mt-5">
+            <Link
+              href="/pricing"
+              className="inline-flex h-10 items-center justify-center rounded-lg bg-[#7C3AED] px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#6D28D9]"
+            >
+              Upgrade to Pro
+            </Link>
           </div>
-        ) : null}
-      </div>
+        </div>
+      </section>
     </div>
   );
 }

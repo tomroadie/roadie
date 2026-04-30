@@ -62,7 +62,7 @@ export function AppNav({ artists, activeArtistId }: AppNavProps) {
   return (
     <header className="sticky top-0 z-40 mb-10 border-b border-zinc-200 bg-white/90 pb-4 pt-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 sm:gap-6">
           <Link
             href="/dashboard"
             className="text-lg font-extrabold tracking-tight text-[#7C3AED]"
@@ -71,7 +71,7 @@ export function AppNav({ artists, activeArtistId }: AppNavProps) {
           </Link>
 
           <nav
-            className="hidden items-center gap-5 sm:flex"
+            className="hidden items-center gap-2 overflow-x-auto whitespace-nowrap pr-1 sm:flex"
             aria-label="Main"
           >
             {links.map(({ href, label }) => {
@@ -80,7 +80,7 @@ export function AppNav({ artists, activeArtistId }: AppNavProps) {
                 <Link
                   key={href}
                   href={href}
-                  className={`relative pb-1 text-sm font-medium transition-colors ${
+                  className={`relative shrink-0 px-1.5 py-1 text-sm font-medium transition-colors ${
                     active
                       ? "text-foreground"
                       : "text-slate-500 hover:text-foreground dark:text-slate-400"
@@ -88,7 +88,7 @@ export function AppNav({ artists, activeArtistId }: AppNavProps) {
                 >
                   {label}
                   {active ? (
-                    <span className="absolute inset-x-0 -bottom-0.5 h-0.5 rounded-full bg-[#7C3AED]" />
+                    <span className="absolute inset-x-1.5 bottom-0 h-0.5 rounded-full bg-[#7C3AED]" />
                   ) : null}
                 </Link>
               );
@@ -96,7 +96,7 @@ export function AppNav({ artists, activeArtistId }: AppNavProps) {
           </nav>
         </div>
 
-        <div className="flex flex-col gap-2 sm:items-end">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
           {artistOptions.length > 1 ? (
             <div className="flex items-center gap-3">
               <div className="relative">
@@ -147,7 +147,7 @@ export function AppNav({ artists, activeArtistId }: AppNavProps) {
             <Link
               key={href}
               href={href}
-              className={`relative pb-1 text-sm font-medium transition-colors ${
+              className={`relative px-1.5 py-1 text-sm font-medium transition-colors ${
                 active
                   ? "text-foreground"
                   : "text-slate-500 hover:text-foreground dark:text-slate-400"
@@ -155,7 +155,7 @@ export function AppNav({ artists, activeArtistId }: AppNavProps) {
             >
               {label}
               {active ? (
-                <span className="absolute inset-x-0 -bottom-0.5 h-0.5 rounded-full bg-[#7C3AED]" />
+                <span className="absolute inset-x-1.5 bottom-0 h-0.5 rounded-full bg-[#7C3AED]" />
               ) : null}
             </Link>
           );

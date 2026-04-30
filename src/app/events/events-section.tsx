@@ -266,9 +266,9 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
 
   return (
     <div className="space-y-10">
-      <form onSubmit={handleAdd} className="space-y-4">
-        <div className="space-y-4">
-          <div>
+      <form onSubmit={handleAdd} className="space-y-6">
+        <div className="flex flex-col gap-6">
+          <div className="mt-6">
             <label
               htmlFor="event-title"
               className="mb-1.5 block text-sm font-medium text-foreground"

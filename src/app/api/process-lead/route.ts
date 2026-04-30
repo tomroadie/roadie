@@ -47,6 +47,12 @@ type ApifyPostItem = {
   caption?: unknown;
 };
 
+type ApifyActorRun = {
+  data?: {
+    status?: unknown;
+  };
+};
+
 async function fetchApifyDatasetItems<T>(
   url: string,
   init?: RequestInit
@@ -62,6 +68,23 @@ async function fetchApifyDatasetItems<T>(
   }
   const json = (await res.json()) as unknown;
   return { ok: true, items: Array.isArray(json) ? (json as T[]) : [] };
+}
+
+async function fetchApifyRunStatus(
+  url: string
+): Promise<{ ok: true; status: string } | { ok: false; error: string; status: number }> {
+  const res = await fetch(url, { method: "GET" });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    return {
+      ok: false,
+      status: res.status,
+      error: `Apify run status error ${res.status}: ${text || res.statusText}`,
+    };
+  }
+  const json = (await res.json()) as ApifyActorRun;
+  const status = asString(json.data?.status).trim();
+  return status ? { ok: true, status } : { ok: false, status: 502, error: "Apify run status missing" };
 }
 
 function formatProfile(item: ApifyProfileItem, fallbackUsername: string): string {
@@ -224,11 +247,43 @@ export async function POST(request: Request) {
     );
   }
 
-  const postsUrl = `https://api.apify.com/v2/acts/apify~instagram-scraper/runs/${encodeURIComponent(
+  const postsRunStatusUrl = `https://api.apify.com/v2/actor-runs/${encodeURIComponent(
+    lead.apify_posts_run_id
+  )}?token=${encodeURIComponent(apifyToken)}`;
+  const profileRunStatusUrl = `https://api.apify.com/v2/actor-runs/${encodeURIComponent(
+    lead.apify_profile_run_id
+  )}?token=${encodeURIComponent(apifyToken)}`;
+
+  const [postsRunStatusRes, profileRunStatusRes] = await Promise.all([
+    fetchApifyRunStatus(postsRunStatusUrl),
+    fetchApifyRunStatus(profileRunStatusUrl),
+  ]);
+
+  if (!postsRunStatusRes.ok) {
+    return NextResponse.json({ error: postsRunStatusRes.error }, { status: 502 });
+  }
+  if (!profileRunStatusRes.ok) {
+    return NextResponse.json({ error: profileRunStatusRes.error }, { status: 502 });
+  }
+
+  if (postsRunStatusRes.status !== "SUCCEEDED" || profileRunStatusRes.status !== "SUCCEEDED") {
+    return NextResponse.json(
+      {
+        error: "Apify runs not finished",
+        details: {
+          posts: postsRunStatusRes.status,
+          profile: profileRunStatusRes.status,
+        },
+      },
+      { status: 409 }
+    );
+  }
+
+  const postsUrl = `https://api.apify.com/v2/actor-runs/${encodeURIComponent(
     lead.apify_posts_run_id
   )}/dataset/items?token=${encodeURIComponent(apifyToken)}&limit=10`;
 
-  const profileUrl = `https://api.apify.com/v2/acts/apify~instagram-profile-scraper/runs/${encodeURIComponent(
+  const profileUrl = `https://api.apify.com/v2/actor-runs/${encodeURIComponent(
     lead.apify_profile_run_id
   )}/dataset/items?token=${encodeURIComponent(apifyToken)}&limit=1`;
 

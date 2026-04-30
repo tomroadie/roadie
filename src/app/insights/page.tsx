@@ -58,7 +58,7 @@ export default async function InsightsPage() {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("artist_name")
+    .select("artist_name, instagram_handle")
     .eq("id", activeArtistId)
     .maybeSingle();
 
@@ -70,19 +70,40 @@ export default async function InsightsPage() {
     redirect("/onboarding");
   }
 
-  const { data: audit, error: auditError } = await supabase
+  console.log("[Insights] activeArtistId", activeArtistId);
+
+  // Method 1: fetch by artist_id
+  const { data: auditByArtistId, error: auditByArtistIdError } = await supabase
     .from("audits")
-    .select(
-      "instagram_handle, followers, following, post_count, bio, ai_pattern_analysis, ai_full_analysis, recent_posts_raw, created_at"
-    )
+    .select("*")
     .eq("artist_id", activeArtistId)
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .single();
 
-  if (auditError) {
-    throw new Error(auditError.message);
+  // `.single()` throws for “no rows”; treat that as “no audit yet”.
+  if (auditByArtistIdError && auditByArtistIdError.code !== "PGRST116") {
+    throw new Error(auditByArtistIdError.message);
   }
+
+  // Method 2 (fallback): fetch by instagram_handle
+  const { data: auditByHandle, error: auditByHandleError } =
+    auditByArtistId || !profile?.instagram_handle?.trim()
+      ? { data: null, error: null }
+      : await supabase
+          .from("audits")
+          .select("*")
+          .eq("instagram_handle", profile.instagram_handle)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+  if (auditByHandleError && auditByHandleError.code !== "PGRST116") {
+    throw new Error(auditByHandleError.message);
+  }
+
+  const audit = auditByArtistId ?? auditByHandle ?? null;
+  console.log("[Insights] audit found", audit ? { id: audit.id, created_at: audit.created_at } : null);
 
   const emptyMessage =
     "Your Instagram audit will appear here once you've completed the lead form. Share your profile to get started.";

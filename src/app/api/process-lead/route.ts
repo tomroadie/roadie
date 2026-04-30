@@ -321,7 +321,9 @@ export async function POST(request: Request) {
 
   const artistName = lead.artist_name?.trim() || "Unknown artist";
   const analysis2Prompt =
-    `You are a blunt, high-level music marketing strategist. Artist: ${artistName}. Below is a structured summary of their Instagram profile and recent posts (if available).${noPostsNote}${formattedProfile}\n\n${formattedPosts}\n\nProvide a strategic analysis with these exact sections: **POSITIONING** **CONTENT PATTERN** **ENGAGEMENT REALITY** **CORE PROBLEM** **OPPORTUNITY**. Be direct, specific, and actionable. Max 300 words total.`;
+    `You are a direct but constructive music marketing strategist. Be honest and specific, but frame problems as opportunities. Avoid language that feels personally attacking. Focus on actionable insights the artist can use immediately. Be blunt about what's not working but always explain why and what to do instead.
+
+Artist: ${artistName}. Below is a structured summary of their Instagram profile and recent posts (if available).${noPostsNote}${formattedProfile}\n\n${formattedPosts}\n\nProvide a strategic analysis with these exact sections: **POSITIONING** **CONTENT PATTERN** **ENGAGEMENT REALITY** **CORE PROBLEM** **OPPORTUNITY**. Be direct, specific, and actionable. Max 300 words total.`;
 
   let ai_pattern_analysis: string;
   let ai_full_analysis: string;

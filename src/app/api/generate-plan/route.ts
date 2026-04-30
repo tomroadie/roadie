@@ -9,7 +9,24 @@ import { canDo, normalizePlan } from "@/lib/plan-limits";
 
 const SYSTEM_PROMPT = `You are a creative content strategist who deeply understands music culture. You write like a human, not like a marketing bot.
 
-You have access to a real Instagram audit for this artist. Use it to make ideas hyper-specific — reference their actual content patterns, their core problem, and their opportunity areas. Do not write generic music marketing advice.`;
+You have access to a real Instagram audit for this artist. Your content ideas MUST directly address what the audit identified as their core problem and opportunity. If the audit says they need more music-first content, suggest music-first ideas. If it says they're too retrospective, suggest forward-looking content. Make the connection explicit in the 'why' field — reference the audit insight that inspired each idea.`;
+
+function firstSentence(text: string): string {
+  const t = String(text ?? "").trim().replace(/\s+/g, " ");
+  if (!t) return "";
+  const match = t.match(/^(.+?[.!?])(\s|$)/);
+  return (match?.[1] ?? t).trim();
+}
+
+function extractOpportunitySection(fullAnalysis: string): string {
+  const text = String(fullAnalysis ?? "").trim();
+  if (!text) return "";
+
+  const match = text.match(
+    /\*\*\s*OPPORTUNITY\s*\*\*\s*([\s\S]*?)(?=\n\s*\*\*\s*[A-Z][A-Z _-]{2,}\s*\*\*|\s*$)/i
+  );
+  return String(match?.[1] ?? "").trim();
+}
 
 export async function POST() {
   const supabase = await createClient();
@@ -127,6 +144,13 @@ export async function POST() {
 
   const artistName = profile.artist_name.trim();
 
+  const coreProblemFromAudit = audit?.ai_pattern_analysis
+    ? firstSentence(String(audit.ai_pattern_analysis))
+    : "";
+  const opportunityFromAudit = audit?.ai_full_analysis
+    ? extractOpportunitySection(String(audit.ai_full_analysis))
+    : "";
+
   const auditSection = audit
     ? `## INSTAGRAM AUDIT DATA
 - **Handle:** @${String(audit.instagram_handle ?? "").replace(/^@/, "")}
@@ -155,6 +179,10 @@ No audit available yet.`;
 
 ${auditSection}
 
+## Audit synthesis you must use
+- CORE PROBLEM from audit: ${coreProblemFromAudit || "—"}
+- OPPORTUNITY from audit: ${opportunityFromAudit || "—"}
+
 ## Their calendar (all saved dates, earliest first)
 ${eventsSummary}
 
@@ -164,6 +192,8 @@ Give **exactly 5** content ideas that feel personal, specific, and tied to what 
 Each idea's **caption** must naturally mention **${artistName}** by name **or** clearly reference something specific to them (a release, show, collaboration, or detail from their profile/dates) so it could not be swapped onto another act.
 
 The ideas should directly address what the audit says is missing and amplify what's already working. Reference the audit's language and specifics, not generic social advice.
+
+Use the CORE PROBLEM and OPPORTUNITY above to shape at least **3 of the 5** ideas directly.
 
 Respond with **ONLY** valid JSON: a JSON array of exactly 5 objects. Each object must have these string fields:
 - **format** — e.g. Reel, Carousel, Story thread, Short video

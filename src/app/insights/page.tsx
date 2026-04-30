@@ -167,9 +167,6 @@ export default async function InsightsPage() {
           <p className="mt-2 text-muted">
             Instagram audit and positioning notes for your active artist.
           </p>
-          <p className="mt-2 text-xs font-mono text-muted-strong">
-            Debug: activeArtistId = {activeArtistId}
-          </p>
         </div>
         <div className="flex items-center gap-3">
           {canRefreshAudit ? <RefreshAuditButton /> : null}

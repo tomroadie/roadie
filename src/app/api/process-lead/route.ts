@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
+import { generateAuditEmail } from "@/lib/emails/generate-audit-email";
 
 function verifyWebhookSecret(headerValue: string | null, secret: string): boolean {
   if (!headerValue || !secret) return false;
@@ -133,6 +134,7 @@ async function sendResendEmail(args: {
   to: string;
   subject: string;
   text: string;
+  html?: string;
 }): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -145,6 +147,7 @@ async function sendResendEmail(args: {
       to: [args.to],
       subject: args.subject,
       text: args.text,
+      html: args.html,
     }),
   });
 
@@ -389,11 +392,23 @@ export async function POST(request: Request) {
     `${formattedProfile}\n\n` +
     `${formattedPosts}`;
 
+  const emailHtml = generateAuditEmail({
+    artist_name: artistName,
+    instagram_handle: lead.instagram_handle.trim(),
+    followers: followers ?? "—",
+    following: following ?? "—",
+    post_count: post_count ?? "—",
+    bio,
+    ai_pattern_analysis,
+    ai_full_analysis,
+  });
+
   const emailSend = await sendResendEmail({
     apiKey: resendKey,
     to: lead.email.trim().toLowerCase(),
     subject: "Your Instagram audit is ready",
     text: emailText,
+    html: emailHtml,
   });
 
   if (!emailSend.ok) {

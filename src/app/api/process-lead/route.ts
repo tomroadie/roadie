@@ -341,6 +341,46 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: msg }, { status: 502 });
   }
 
+  // Persist audit + mark lead complete BEFORE attempting email.
+  const followers = asNumberOrNull((profileItem as ApifyProfileItem).followersCount);
+  const following = asNumberOrNull((profileItem as ApifyProfileItem).followsCount);
+  const post_count = asNumberOrNull((profileItem as ApifyProfileItem).postsCount);
+  const bio = asString((profileItem as ApifyProfileItem).biography);
+
+  const { error: auditInsertError } = await supabase.from("audits").insert({
+    user_id: null,
+    artist_id: null,
+    email: lead.email.trim(),
+    instagram_handle: lead.instagram_handle.trim(),
+    followers: followers ?? 0,
+    following: following ?? 0,
+    post_count: post_count ?? 0,
+    bio,
+    recent_posts: null,
+    recent_posts_raw: formattedPosts,
+    ai_pattern_analysis,
+    ai_full_analysis,
+  });
+
+  if (auditInsertError) {
+    return NextResponse.json(
+      { error: "Failed to save audit", details: auditInsertError.message },
+      { status: 500 }
+    );
+  }
+
+  const { error: pendingUpdateError } = await supabase
+    .from("pending_leads")
+    .update({ status: "complete" })
+    .eq("id", lead.id);
+
+  if (pendingUpdateError) {
+    return NextResponse.json(
+      { error: "Failed to update pending lead status", details: pendingUpdateError.message },
+      { status: 500 }
+    );
+  }
+
   const emailText =
     `Your Roadie Instagram audit is ready.\n\n` +
     `${ai_pattern_analysis}\n\n` +
@@ -357,37 +397,12 @@ export async function POST(request: Request) {
   });
 
   if (!emailSend.ok) {
-    return NextResponse.json(
-      { error: "Failed to send email", details: emailSend.error },
-      { status: 502 }
-    );
+    console.error("Resend send failed", {
+      pending_lead_id: lead.id,
+      status: emailSend.status,
+      error: emailSend.error,
+    });
   }
-
-  // Persist audit + mark lead complete (best-effort; email already sent).
-  const followers = asNumberOrNull((profileItem as ApifyProfileItem).followersCount);
-  const following = asNumberOrNull((profileItem as ApifyProfileItem).followsCount);
-  const post_count = asNumberOrNull((profileItem as ApifyProfileItem).postsCount);
-  const bio = asString((profileItem as ApifyProfileItem).biography);
-
-  await supabase.from("audits").insert({
-    user_id: null,
-    artist_id: null,
-    email: lead.email.trim(),
-    instagram_handle: lead.instagram_handle.trim(),
-    followers: followers ?? 0,
-    following: following ?? 0,
-    post_count: post_count ?? 0,
-    bio,
-    recent_posts: null,
-    recent_posts_raw: formattedPosts,
-    ai_pattern_analysis,
-    ai_full_analysis,
-  });
-
-  await supabase
-    .from("pending_leads")
-    .update({ status: "completed" })
-    .eq("id", lead.id);
 
   return NextResponse.json({
     success: true,

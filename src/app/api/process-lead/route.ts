@@ -304,17 +304,24 @@ export async function POST(request: Request) {
 
   const profileItem = profileRes.items[0] ?? {};
   const formattedProfile = formatProfile(profileItem, lead.instagram_handle.trim());
-  const formattedPosts = formatPosts(postsRes.items);
+  const hasPosts = postsRes.items.length > 0;
+  const formattedPosts = hasPosts
+    ? formatPosts(postsRes.items)
+    : "Posts\nNo post data was available for this artist.\n";
+  const noPostsNote = hasPosts
+    ? ""
+    : "\n\nNote: No post data was available for this artist. Base your analysis on the profile information only and note this limitation clearly.\n\n";
 
   const anthropic = new Anthropic({ apiKey: anthropicKey });
 
   const analysis1Prompt =
-    "You are analysing Instagram data for a music artist. Below is a structured summary of their profile and 3 recent posts. Your job is to identify the single most important pattern in how they show up. Focus on: what their bio suggests they want to be, what their recent content actually consists of, whether there is a gap between the two. Return 2-3 sentences maximum.\n\n" +
-    `${formattedProfile}\n\n${formatPosts(postsRes.items.slice(0, 3))}`;
+    "You are analysing Instagram data for a music artist. Below is a structured summary of their profile and recent posts (if available). Your job is to identify the single most important pattern in how they show up. Focus on: what their bio suggests they want to be, what their recent content actually consists of, whether there is a gap between the two. Return 2-3 sentences maximum.\n\n" +
+    `${formattedProfile}${noPostsNote}` +
+    (hasPosts ? `\n\n${formatPosts(postsRes.items.slice(0, 3))}` : "");
 
   const artistName = lead.artist_name?.trim() || "Unknown artist";
   const analysis2Prompt =
-    `You are a blunt, high-level music marketing strategist. Artist: ${artistName}. Below is a structured summary of their Instagram profile and recent posts. ${formattedProfile} ${formattedPosts}. Provide a strategic analysis with these exact sections: **POSITIONING** **CONTENT PATTERN** **ENGAGEMENT REALITY** **CORE PROBLEM** **OPPORTUNITY**. Be direct, specific, and actionable. Max 300 words total.`;
+    `You are a blunt, high-level music marketing strategist. Artist: ${artistName}. Below is a structured summary of their Instagram profile and recent posts (if available).${noPostsNote}${formattedProfile}\n\n${formattedPosts}\n\nProvide a strategic analysis with these exact sections: **POSITIONING** **CONTENT PATTERN** **ENGAGEMENT REALITY** **CORE PROBLEM** **OPPORTUNITY**. Be direct, specific, and actionable. Max 300 words total.`;
 
   let ai_pattern_analysis: string;
   let ai_full_analysis: string;

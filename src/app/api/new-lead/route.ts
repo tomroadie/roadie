@@ -38,11 +38,23 @@ function cleanInstagramHandle(instagramUrlOrHandle: string): string | null {
 async function apifyRun(
   actId: string,
   token: string,
-  input: Record<string, unknown>
+  input: Record<string, unknown>,
+  runOptions?: { memoryMbytes?: number; timeoutSecs?: number }
 ): Promise<string> {
+  const qs = new URLSearchParams({
+    token,
+    waitForFinish: "0",
+  });
+  if (typeof runOptions?.memoryMbytes === "number") {
+    qs.set("memoryMbytes", String(runOptions.memoryMbytes));
+  }
+  if (typeof runOptions?.timeoutSecs === "number") {
+    qs.set("timeoutSecs", String(runOptions.timeoutSecs));
+  }
+
   const url = `https://api.apify.com/v2/acts/${encodeURIComponent(
     actId
-  )}/runs?token=${encodeURIComponent(token)}&waitForFinish=0`;
+  )}/runs?${qs.toString()}`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -119,10 +131,18 @@ export async function POST(request: Request) {
   let apify_posts_run_id: string;
   let apify_profile_run_id: string;
   try {
-    apify_posts_run_id = await apifyRun("apify~instagram-scraper", apifyToken, {
-      directUrls: [cleanInstagramUrl],
-      resultsLimit: 10,
-    });
+    apify_posts_run_id = await apifyRun(
+      "apify~instagram-post-scraper",
+      apifyToken,
+      {
+        username: handle,
+        resultsLimit: 10,
+      },
+      {
+        memoryMbytes: 2048,
+        timeoutSecs: 300,
+      }
+    );
     apify_profile_run_id = await apifyRun("apify~instagram-profile-scraper", apifyToken, {
       usernames: [handle],
     });

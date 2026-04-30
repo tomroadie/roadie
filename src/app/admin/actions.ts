@@ -135,7 +135,7 @@ export async function adminCreateClientArtist(
     httpOnly: false,
   });
 
-  redirect("/onboarding");
+  redirect("/admin");
 }
 
 export async function adminRunAuditForArtist(

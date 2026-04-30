@@ -37,9 +37,9 @@ export function AdminCreateClientArtistForm() {
         Create client artist
       </h2>
       <p className="text-sm text-muted">
-        Creates an artist owned by your admin account (no separate login). Labelled
-        as a managed client in the table below. Complete onboarding after create
-        if you need to adjust profile fields.
+        Creates an artist owned by your admin account (no separate login). Appears
+        in the table below as a managed client; after create you return here with
+        that artist as your active context.
       </p>
 
       <div className="space-y-4">

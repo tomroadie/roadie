@@ -1,16 +1,64 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { ACTIVE_ARTIST_COOKIE } from "@/lib/active-artist";
+import {
+  ACTIVE_ARTIST_COOKIE,
+  getActiveArtistIdForUser,
+} from "@/lib/active-artist";
 import { GENRES } from "@/app/onboarding/genres";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { maxArtistsAllowed, normalizePlan, type RoadiePlan } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 
 export type AddArtistState =
   | { error?: string; upgrade?: { plan: RoadiePlan; maxArtists: number } }
   | null;
+
+export type InstagramHandleState = { error?: string } | null;
+
+export async function updateInstagramHandle(
+  _prev: InstagramHandleState,
+  formData: FormData
+): Promise<InstagramHandleState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const raw = String(formData.get("instagram_handle") ?? "").trim();
+  const normalized = raw.replace(/^@/, "").trim() || null;
+
+  const cookieStore = await cookies();
+  const activeArtistId = await getActiveArtistIdForUser(
+    supabase,
+    user.id,
+    cookieStore
+  );
+
+  if (!activeArtistId) {
+    return { error: "No active artist selected." };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ instagram_handle: normalized })
+    .eq("id", activeArtistId)
+    .eq("owner_user_id", user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/insights");
+  return null;
+}
 
 export async function addArtist(
   _prev: AddArtistState,

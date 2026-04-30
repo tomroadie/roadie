@@ -10,6 +10,7 @@ import { canDo, normalizePlan } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 import { RefreshAuditButton } from "./refresh-audit-button";
 import { RecentPostsCards } from "./recent-posts-cards";
+import { InsightsAuditEmptyState } from "./insights-audit-empty-state";
 
 function sortRecentPostsRawByDateDesc(raw: string): string {
   const blocks = raw
@@ -157,9 +158,6 @@ export default async function InsightsPage() {
   const audit = auditByArtistId ?? auditByHandle ?? null;
   console.log("[Insights] audit found", audit ? { id: audit.id, created_at: audit.created_at } : null);
 
-  const auditRequestMailto =
-    "mailto:hello@roadie.media?subject=Audit%20request";
-
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -182,23 +180,10 @@ export default async function InsightsPage() {
       <div className="mt-10">
         {!audit ? (
           <div className="rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
-            <p className="text-sm leading-relaxed text-muted">
-              Your Instagram audit will appear here once your profile has been
-              analysed.
-            </p>
-            <p className="mt-4 text-sm leading-relaxed text-muted">
-              If you signed up via our Instagram audit form, this usually takes
-              5-10 minutes.
-            </p>
-            <p className="mt-4 text-sm leading-relaxed text-muted">
-              If you signed up directly,{" "}
-              <a
-                href={auditRequestMailto}
-                className="font-semibold text-brand underline-offset-4 hover:underline"
-              >
-                Request an audit →
-              </a>
-            </p>
+            <InsightsAuditEmptyState
+              artistId={activeArtistId}
+              instagramHandle={profile?.instagram_handle ?? null}
+            />
           </div>
         ) : (
           <div className="space-y-8">

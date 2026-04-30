@@ -51,6 +51,93 @@ type EventsSectionProps = {
   artistId: string;
 };
 
+function EventList({
+  title,
+  rows,
+  deletingId,
+  onEdit,
+  onDelete,
+}: {
+  title: string;
+  rows: EventRow[];
+  deletingId: string | null;
+  onEdit: (ev: EventRow) => void;
+  onDelete: (id: string) => void;
+}) {
+  if (rows.length === 0) return null;
+  return (
+    <section className="mt-10">
+      <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500">
+        {title}
+      </h2>
+      <ul className="mt-4 flex flex-col gap-4">
+        {rows.map((ev) => (
+          <li key={ev.id}>
+            {(() => {
+              const d = formatEventDate(ev.event_date);
+              return (
+                <article className="flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex min-w-0 flex-1 gap-4">
+                    <div className="flex w-14 flex-col items-center justify-center rounded-2xl bg-white p-3 text-center shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
+                      <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+                        {d.month}
+                      </span>
+                      <span className="mt-1 text-xl font-extrabold leading-none text-foreground">
+                        {d.day}
+                      </span>
+                    </div>
+
+                    <div className="min-w-0 flex-1 space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-base font-semibold leading-snug text-foreground">
+                          {ev.title}
+                        </h3>
+                        <span
+                          className={`inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${badgeClass(
+                            ev.event_type
+                          )}`}
+                        >
+                          {ev.event_type}
+                        </span>
+                      </div>
+
+                      {ev.notes?.trim() ? (
+                        <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                          {ev.notes}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-slate-400">No content notes yet.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onEdit(ev)}
+                      className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDelete(ev.id)}
+                      disabled={deletingId === ev.id}
+                      className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-red-400 dark:hover:bg-red-950/40"
+                    >
+                      {deletingId === ev.id ? "Removing…" : "Delete"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })()}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
   const [events, setEvents] = useState<EventRow[]>(initialEvents);
   const [title, setTitle] = useState("");
@@ -184,83 +271,6 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
           : type === "Studio session"
             ? "Studio session"
             : ""
-    );
-  }
-
-  function EventList({ title, rows }: { title: string; rows: EventRow[] }) {
-    if (rows.length === 0) return null;
-    return (
-      <section className="mt-10">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500">
-          {title}
-        </h2>
-        <ul className="mt-4 flex flex-col gap-4">
-          {rows.map((ev) => (
-            <li key={ev.id}>
-              {(() => {
-                const d = formatEventDate(ev.event_date);
-                return (
-                  <article className="flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex min-w-0 flex-1 gap-4">
-                      <div className="flex w-14 flex-col items-center justify-center rounded-2xl bg-white p-3 text-center shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
-                        <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">
-                          {d.month}
-                        </span>
-                        <span className="mt-1 text-xl font-extrabold leading-none text-foreground">
-                          {d.day}
-                        </span>
-                      </div>
-
-                      <div className="min-w-0 flex-1 space-y-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-base font-semibold leading-snug text-foreground">
-                            {ev.title}
-                          </h3>
-                          <span
-                            className={`inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${badgeClass(
-                              ev.event_type
-                            )}`}
-                          >
-                            {ev.event_type}
-                          </span>
-                        </div>
-
-                        {ev.notes?.trim() ? (
-                          <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                            {ev.notes}
-                          </p>
-                        ) : (
-                          <p className="text-sm text-slate-400">
-                            No content notes yet.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex shrink-0 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(ev)}
-                        className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(ev.id)}
-                        disabled={deletingId === ev.id}
-                        className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-red-400 dark:hover:bg-red-950/40"
-                      >
-                        {deletingId === ev.id ? "Removing…" : "Delete"}
-                      </button>
-                    </div>
-                  </article>
-                );
-              })()}
-            </li>
-          ))}
-        </ul>
-      </section>
     );
   }
 
@@ -406,10 +416,34 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
           </div>
         ) : (
           <>
-            <EventList title="This week" rows={grouped.thisWeek} />
-            <EventList title="Next 30 days" rows={grouped.next30} />
-            <EventList title="Further ahead" rows={grouped.further} />
-            <EventList title="Past" rows={grouped.past} />
+            <EventList
+              title="This week"
+              rows={grouped.thisWeek}
+              deletingId={deletingId}
+              onEdit={startEdit}
+              onDelete={handleDelete}
+            />
+            <EventList
+              title="Next 30 days"
+              rows={grouped.next30}
+              deletingId={deletingId}
+              onEdit={startEdit}
+              onDelete={handleDelete}
+            />
+            <EventList
+              title="Further ahead"
+              rows={grouped.further}
+              deletingId={deletingId}
+              onEdit={startEdit}
+              onDelete={handleDelete}
+            />
+            <EventList
+              title="Past"
+              rows={grouped.past}
+              deletingId={deletingId}
+              onEdit={startEdit}
+              onDelete={handleDelete}
+            />
           </>
         )}
       </section>

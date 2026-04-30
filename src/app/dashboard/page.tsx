@@ -8,6 +8,7 @@ import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { getMondayDateString } from "@/lib/week";
 import type { EventRow } from "@/types/event";
+import Link from "next/link";
 
 function isoToday(): string {
   const d = new Date();
@@ -44,7 +45,7 @@ export default async function DashboardPage() {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("artist_name")
+    .select("artist_name, plan")
     .eq("id", activeArtistId)
     .maybeSingle();
 
@@ -56,6 +57,8 @@ export default async function DashboardPage() {
   if (!artistName) {
     redirect("/onboarding");
   }
+
+  const plan = (profile?.plan as string | null | undefined) ?? "free";
 
   const { data: weeklyPlan } = await supabase
     .from("weekly_plans")
@@ -120,6 +123,18 @@ export default async function DashboardPage() {
         </div>
         <LogoutButton />
       </div>
+
+      {plan === "free" ? (
+        <div className="mt-6 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-200">
+          You&apos;re on the free plan.{" "}
+          <Link
+            href="/pricing"
+            className="font-medium underline underline-offset-4 hover:no-underline"
+          >
+            View pricing
+          </Link>
+        </div>
+      ) : null}
 
       <div className="mt-8 h-px w-full bg-zinc-200/80 dark:bg-zinc-800" />
 

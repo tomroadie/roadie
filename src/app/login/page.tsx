@@ -2,11 +2,12 @@
 
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,7 +44,10 @@ export default function LoginPage() {
     }
 
     router.refresh();
-    router.push("/dashboard");
+    const redirectParam = searchParams.get("redirect");
+    const redirectTo =
+      redirectParam && redirectParam.startsWith("/") ? redirectParam : "/dashboard";
+    router.push(redirectTo);
     setLoading(false);
   }
 

@@ -10,6 +10,32 @@ import { canDo, normalizePlan } from "@/lib/plan-limits";
 import { RefreshAuditButton } from "./refresh-audit-button";
 import { RecentPostsCards } from "./recent-posts-cards";
 
+function sortRecentPostsRawByDateDesc(raw: string): string {
+  const blocks = raw
+    .split(/\n\s*---\s*\n/g)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  const scored = blocks.map((block, idx) => {
+    const dateMatch = block.match(/^Date:\s*(.+)$/m);
+    const dateStr = dateMatch?.[1]?.trim() ?? "";
+    const d = dateStr ? new Date(dateStr) : null;
+    const ts = d && Number.isFinite(d.getTime()) ? d.getTime() : null;
+    return { block, idx, ts };
+  });
+
+  scored.sort((a, b) => {
+    const at = a.ts;
+    const bt = b.ts;
+    if (at === null && bt === null) return a.idx - b.idx;
+    if (at === null) return 1;
+    if (bt === null) return -1;
+    return bt - at; // newest first
+  });
+
+  return scored.map((x) => x.block).join("\n\n---\n\n");
+}
+
 function sectionAccent(title: string): { border: string; label: string } {
   const t = title.toLowerCase();
   if (t.includes("position")) return { border: "border-l-purple-400", label: "text-purple-200" };
@@ -236,7 +262,7 @@ export default async function InsightsPage() {
             </section>
 
             {audit.recent_posts_raw?.trim() ? (
-              <RecentPostsCards raw={audit.recent_posts_raw} />
+              <RecentPostsCards raw={sortRecentPostsRawByDateDesc(audit.recent_posts_raw)} />
             ) : null}
           </div>
         )}

@@ -31,7 +31,8 @@ function cleanInstagramHandle(instagramUrlOrHandle: string): string | null {
   }
 
   const cleaned = candidate.replace(/^@/, "").replace(/\//g, "").toLowerCase();
-  return cleaned || null;
+  const sanitized = cleaned.replace(/[^a-z0-9._]/g, "");
+  return sanitized || null;
 }
 
 async function apifyRun(

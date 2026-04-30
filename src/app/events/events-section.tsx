@@ -8,13 +8,28 @@ import {
   type EventType,
 } from "@/types/event";
 
-function formatEventDate(isoDate: string): string {
+function formatEventDate(isoDate: string): { day: string; rest: string } {
   const d = new Date(isoDate + "T12:00:00");
-  return d.toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+  const day = d.toLocaleDateString("en-GB", { day: "numeric" });
+  const rest = d.toLocaleDateString("en-GB", { weekday: "short", month: "short" });
+  return { day, rest };
+}
+
+function badgeClass(type: string): string {
+  const t = type.toLowerCase();
+  if (t.includes("show") || t.includes("gig")) {
+    return "bg-purple-50 text-purple-700 ring-purple-200 dark:bg-purple-950/40 dark:text-purple-200 dark:ring-purple-900/40";
+  }
+  if (t.includes("release")) {
+    return "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:ring-amber-900/40";
+  }
+  if (t.includes("rehears")) {
+    return "bg-teal-50 text-teal-700 ring-teal-200 dark:bg-teal-950/30 dark:text-teal-200 dark:ring-teal-900/40";
+  }
+  if (t.includes("studio") || t.includes("session")) {
+    return "bg-blue-50 text-blue-700 ring-blue-200 dark:bg-blue-950/30 dark:text-blue-200 dark:ring-blue-900/40";
+  }
+  return "bg-zinc-50 text-zinc-700 ring-zinc-200 dark:bg-zinc-900/40 dark:text-zinc-200 dark:ring-zinc-800";
 }
 
 type EventsSectionProps = {
@@ -173,7 +188,7 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
         <button
           type="submit"
           disabled={submitting}
-          className="inline-flex h-10 items-center justify-center rounded-lg bg-foreground px-4 text-sm font-medium text-background transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-10 items-center justify-center rounded-lg bg-[#7C3AED] px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? "Adding…" : "Add date"}
         </button>
@@ -192,22 +207,37 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
           <ul className="mt-6 flex flex-col gap-4">
             {events.map((ev) => (
               <li key={ev.id}>
-                <article className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-background p-5 dark:border-zinc-800 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                      {formatEventDate(ev.event_date)}
-                    </p>
-                    <h3 className="text-base font-semibold text-foreground">
-                      {ev.title}
-                    </h3>
-                    <span className="inline-flex w-fit rounded-full border border-zinc-200 px-2.5 py-0.5 text-xs font-medium text-foreground dark:border-zinc-700">
-                      {ev.event_type}
-                    </span>
+                {(() => {
+                  const d = formatEventDate(ev.event_date);
+                  return (
+                <article className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex min-w-0 flex-1 gap-4">
+                    <div className="flex w-14 flex-col items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 py-2 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+                      <span className="text-lg font-semibold text-foreground">
+                        {d.day}
+                      </span>
+                      <span className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                        {d.rest}
+                      </span>
+                    </div>
+
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <h3 className="text-base font-semibold leading-snug text-foreground">
+                        {ev.title}
+                      </h3>
+                      <span
+                        className={`inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${badgeClass(
+                          ev.event_type
+                        )}`}
+                      >
+                        {ev.event_type}
+                      </span>
                     {ev.notes?.trim() ? (
                       <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
                         {ev.notes}
                       </p>
                     ) : null}
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -218,6 +248,8 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
                     {deletingId === ev.id ? "Removing…" : "Delete"}
                   </button>
                 </article>
+                  );
+                })()}
               </li>
             ))}
           </ul>

@@ -59,7 +59,7 @@ export default async function InsightsPage() {
     "Your Instagram audit will appear here once you've completed the lead form. Share your profile to get started.";
 
   return (
-    <div className="mx-auto flex min-h-full max-w-2xl flex-1 flex-col px-4 py-16">
+    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-6 py-14">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
@@ -82,7 +82,7 @@ export default async function InsightsPage() {
         </div>
       ) : (
         <div className="mt-10 space-y-8">
-          <section className="rounded-xl border border-zinc-200 bg-background p-6 dark:border-zinc-800">
+          <section className="rounded-2xl border border-zinc-200 bg-purple-50/40 p-7 shadow-sm dark:border-zinc-800 dark:bg-purple-950/10">
             <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               @{audit.instagram_handle.replace(/^@/, "")}
             </p>
@@ -116,7 +116,7 @@ export default async function InsightsPage() {
             ) : null}
           </section>
 
-          <section className="rounded-xl border border-zinc-200 bg-background p-6 dark:border-zinc-800">
+          <section className="rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
             <h2 className="text-lg font-semibold tracking-tight text-foreground">
               Your content pattern
             </h2>
@@ -125,7 +125,7 @@ export default async function InsightsPage() {
             </p>
           </section>
 
-          <section className="rounded-xl border border-zinc-200 bg-background p-6 dark:border-zinc-800">
+          <section className="rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
             <h2 className="text-lg font-semibold tracking-tight text-foreground">
               Full analysis
             </h2>
@@ -144,7 +144,7 @@ export default async function InsightsPage() {
           </section>
 
           {audit.recent_posts_raw?.trim() ? (
-            <section className="rounded-xl border border-zinc-200 bg-background p-6 dark:border-zinc-800">
+            <section className="rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
               <h2 className="text-lg font-semibold tracking-tight text-foreground">
                 Recent posts analysed
               </h2>

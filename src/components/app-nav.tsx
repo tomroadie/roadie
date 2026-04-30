@@ -60,40 +60,76 @@ export function AppNav({ artists, activeArtistId }: AppNavProps) {
   }
 
   return (
-    <div className="mb-10 space-y-3 border-b border-zinc-200 pb-4 dark:border-zinc-800">
-      {artistOptions.length > 1 ? (
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-          <label
-            htmlFor="artist-switcher"
-            className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400"
+    <header className="mb-10 border-b border-zinc-200 pb-4 dark:border-zinc-800">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-6">
+          <Link
+            href="/dashboard"
+            className="text-lg font-semibold tracking-tight text-foreground"
           >
-            Artist
-          </label>
-          <select
-            id="artist-switcher"
-            value={selectValue}
-            disabled={pending}
-            onChange={(e) => void handleArtistChange(e.target.value)}
-            className="max-w-xs rounded-lg border border-zinc-200 bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400/20 disabled:opacity-50 dark:border-zinc-800 dark:focus:border-zinc-600 dark:focus:ring-zinc-600/20"
+            Roadie
+          </Link>
+
+          <nav
+            className="hidden items-center gap-5 sm:flex"
+            aria-label="Main"
           >
-            {artistOptions.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.label}
-              </option>
-            ))}
-          </select>
-          {pending ? (
-            <span className="text-xs text-zinc-500">Updating…</span>
+            {links.map(({ href, label }) => {
+              const active = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`text-sm font-medium transition-colors ${
+                    active
+                      ? "text-foreground"
+                      : "text-zinc-500 hover:text-foreground dark:text-zinc-400"
+                  } ${active ? "underline underline-offset-4" : ""}`}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="flex flex-col gap-2 sm:items-end">
+          {artistOptions.length > 1 ? (
+            <div className="flex items-center gap-3">
+              <label
+                htmlFor="artist-switcher"
+                className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400"
+              >
+                Artist
+              </label>
+              <select
+                id="artist-switcher"
+                value={selectValue}
+                disabled={pending}
+                onChange={(e) => void handleArtistChange(e.target.value)}
+                className="max-w-xs rounded-lg border border-zinc-200 bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 disabled:opacity-50 dark:border-zinc-800 dark:focus:border-[#7C3AED] dark:focus:ring-[#7C3AED]/20"
+              >
+                {artistOptions.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+              {pending ? (
+                <span className="text-xs text-zinc-500">Updating…</span>
+              ) : null}
+            </div>
+          ) : null}
+
+          {switchError ? (
+            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+              {switchError}
+            </p>
           ) : null}
         </div>
-      ) : null}
-      {switchError ? (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-          {switchError}
-        </p>
-      ) : null}
+      </div>
 
-      <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Main">
+      <nav className="mt-4 flex flex-wrap gap-x-6 gap-y-2 sm:hidden" aria-label="Main">
         {links.map(({ href, label }) => {
           const active = pathname === href;
           return (
@@ -111,6 +147,6 @@ export function AppNav({ artists, activeArtistId }: AppNavProps) {
           );
         })}
       </nav>
-    </div>
+    </header>
   );
 }

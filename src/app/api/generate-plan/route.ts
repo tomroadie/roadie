@@ -6,7 +6,9 @@ import { getMondayDateString } from "@/lib/week";
 import { parseIdeasJson } from "@/lib/parse-ideas-json";
 import { NextResponse } from "next/server";
 
-const SYSTEM_PROMPT = `You are a creative content strategist who deeply understands music culture. You write like a human, not like a marketing bot. Avoid generic advice. Every idea should feel like it was written specifically for this artist.`;
+const SYSTEM_PROMPT = `You are a creative content strategist who deeply understands music culture. You write like a human, not like a marketing bot.
+
+You have access to a real Instagram audit for this artist. Use it to make ideas hyper-specific — reference their actual content patterns, their core problem, and their opportunity areas. Do not write generic music marketing advice.`;
 
 export async function POST() {
   const supabase = await createClient();
@@ -52,6 +54,23 @@ export async function POST() {
     );
   }
 
+  const { data: audit, error: auditError } = await supabase
+    .from("audits")
+    .select(
+      "instagram_handle, followers, bio, ai_pattern_analysis, ai_full_analysis, recent_posts_raw, created_at"
+    )
+    .eq("artist_id", activeArtistId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (auditError) {
+    return NextResponse.json(
+      { error: "Failed to load audit", details: auditError.message },
+      { status: 500 }
+    );
+  }
+
   const { data: events, error: eventsError } = await supabase
     .from("events")
     .select("title, event_date, event_type, notes")
@@ -85,19 +104,43 @@ export async function POST() {
 
   const artistName = profile.artist_name.trim();
 
+  const auditSection = audit
+    ? `## INSTAGRAM AUDIT DATA
+- **Handle:** @${String(audit.instagram_handle ?? "").replace(/^@/, "")}
+- **Followers:** ${Number(audit.followers ?? 0).toLocaleString()}
+- **Bio:** ${String(audit.bio ?? "").trim() || "—"}
+
+### Pattern analysis
+${String(audit.ai_pattern_analysis ?? "").trim()}
+
+### Full analysis
+${String(audit.ai_full_analysis ?? "").trim()}
+
+### Recent posts (raw)
+${String(audit.recent_posts_raw ?? "")
+  .trim()
+  .slice(0, 500)}${String(audit.recent_posts_raw ?? "").trim().length > 500 ? "…" : ""}
+`
+    : `## INSTAGRAM AUDIT DATA
+No audit available yet.`;
+
   const prompt = `## Artist
 - **Name:** ${artistName}
 - **Genre:** ${profile.genre ?? "unspecified"}
 - **Sound / how they describe themselves:** ${profile.sound_description?.trim() || "not specified"}
 - **Similar artists (for tone and reference):** ${profile.similar_artists?.trim() || "none listed"}
 
+${auditSection}
+
 ## Their calendar (all saved dates, earliest first)
 ${eventsSummary}
 
 ## What you must produce
-Give **exactly 5** content ideas that feel personal, specific, and tied to what is actually happening in this artist's world — their sound, references, and the dates above. No filler, no one-size-fits-all tips.
+Give **exactly 5** content ideas that feel personal, specific, and tied to what is actually happening in this artist's world — their sound, references, the dates above, and the Instagram audit data (if present). No filler, no one-size-fits-all tips.
 
 Each idea's **caption** must naturally mention **${artistName}** by name **or** clearly reference something specific to them (a release, show, collaboration, or detail from their profile/dates) so it could not be swapped onto another act.
+
+The ideas should directly address what the audit says is missing and amplify what's already working. Reference the audit's language and specifics, not generic social advice.
 
 Respond with **ONLY** valid JSON: a JSON array of exactly 5 objects. Each object must have these string fields:
 - **format** — e.g. Reel, Carousel, Story thread, Short video

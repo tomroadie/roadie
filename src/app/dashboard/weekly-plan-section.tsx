@@ -16,36 +16,36 @@ function getAccent(format: string): Accent {
   const f = format.trim().toLowerCase();
   if (f.includes("reel")) {
     return {
-      border: "border-l-[#7C3AED]",
-      pill: "bg-purple-50 text-purple-700 ring-purple-200",
-      label: "text-purple-700",
+      border: "border-l-fuchsia-500",
+      pill: "bg-brand text-brand-foreground",
+      label: "text-brand",
     };
   }
   if (f.includes("carousel")) {
     return {
-      border: "border-l-blue-500",
-      pill: "bg-blue-50 text-blue-700 ring-blue-200",
-      label: "text-blue-700",
+      border: "border-l-sky-400",
+      pill: "bg-brand text-brand-foreground",
+      label: "text-brand",
     };
   }
   if (f.includes("story")) {
     return {
-      border: "border-l-teal-500",
-      pill: "bg-teal-50 text-teal-700 ring-teal-200",
-      label: "text-teal-700",
+      border: "border-l-teal-400",
+      pill: "bg-brand text-brand-foreground",
+      label: "text-brand",
     };
   }
   if (f.includes("video")) {
     return {
-      border: "border-l-amber-500",
-      pill: "bg-amber-50 text-amber-800 ring-amber-200",
-      label: "text-amber-800",
+      border: "border-l-amber-400",
+      pill: "bg-brand text-brand-foreground",
+      label: "text-brand",
     };
   }
   return {
-    border: "border-l-zinc-300 dark:border-l-zinc-700",
-    pill: "bg-zinc-50 text-zinc-700 ring-zinc-200 dark:bg-zinc-900/40 dark:text-zinc-200 dark:ring-zinc-800",
-    label: "text-slate-600 dark:text-slate-300",
+    border: "border-l-zinc-600",
+    pill: "bg-brand text-brand-foreground",
+    label: "text-brand",
   };
 }
 
@@ -77,11 +77,15 @@ function IdeaCard({ idea }: { idea: ContentIdea }) {
 
   return (
     <article
-      className={`relative overflow-hidden rounded-2xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-transform duration-150 hover:translate-y-[-1px] dark:bg-zinc-950 ${accent.border} border-l-4`}
+      className={[
+        "relative overflow-hidden rounded-xl border border-card-border bg-card p-6 transition-all duration-150",
+        "hover:-translate-y-[1px] hover:shadow-[0_0_0_1px_rgba(0,255,135,0.20),0_18px_60px_rgba(0,0,0,0.45)]",
+        `${accent.border} border-l-4`,
+      ].join(" ")}
     >
       <div className="flex min-w-0 items-start justify-between gap-4">
         <span
-          className={`inline-flex h-6 max-w-full items-center rounded-full px-2.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-inset ${accent.pill} overflow-hidden text-ellipsis whitespace-nowrap`}
+          className={`inline-flex h-6 max-w-full items-center rounded-full px-2.5 text-[11px] font-black uppercase tracking-wide ring-1 ring-inset ring-brand/30 ${accent.pill} overflow-hidden text-ellipsis whitespace-nowrap`}
         >
           {idea.format}
         </span>
@@ -91,7 +95,7 @@ function IdeaCard({ idea }: { idea: ContentIdea }) {
         {idea.hook}
       </h3>
 
-      <p className="mt-3 text-sm leading-7 text-slate-700 dark:text-slate-300">
+      <p className="mt-3 text-sm leading-7 text-muted-strong">
         {idea.caption}
       </p>
 
@@ -102,7 +106,7 @@ function IdeaCard({ idea }: { idea: ContentIdea }) {
           >
             Why
           </dt>
-          <dd className="mt-1 text-slate-600 dark:text-slate-400">{idea.why}</dd>
+          <dd className="mt-1 text-muted">{idea.why}</dd>
         </div>
         <div>
           <dt
@@ -110,9 +114,7 @@ function IdeaCard({ idea }: { idea: ContentIdea }) {
           >
             Timing
           </dt>
-          <dd className="mt-1 text-slate-600 dark:text-slate-400">
-            {idea.timing}
-          </dd>
+          <dd className="mt-1 text-muted">{idea.timing}</dd>
         </div>
       </dl>
 
@@ -120,7 +122,7 @@ function IdeaCard({ idea }: { idea: ContentIdea }) {
         <button
           type="button"
           onClick={() => void handleCopy()}
-          className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-[#7C3AED]/40 bg-transparent px-4 text-sm font-semibold text-[#7C3AED] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:border-[#7C3AED]/60 hover:bg-purple-50 sm:w-auto dark:hover:bg-purple-950/20"
+          className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand sm:w-auto"
         >
           {copied ? "Copied" : "Copy idea"}
         </button>
@@ -215,13 +217,13 @@ export function WeeklyPlanSection({
     <section className="mt-12">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">
+          <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
             Your weekly plan
           </h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm text-muted">
             Five ideas shaped by your profile, dates, and Instagram audit.
           </p>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-sm text-muted">
             {upcomingEventsCount > 0 ? (
               <>Plan shaped by {upcomingEventsCount} upcoming events.</>
             ) : (
@@ -234,7 +236,7 @@ export function WeeklyPlanSection({
             type="button"
             onClick={requestGenerate}
             disabled={loading}
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#7C3AED] px-5 text-sm font-semibold text-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading
               ? "Generating…"
@@ -245,7 +247,7 @@ export function WeeklyPlanSection({
         ) : (
           <Link
             href="/pricing"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-zinc-200 px-5 text-sm font-semibold text-zinc-700 shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-zinc-200/80 dark:bg-zinc-800 dark:text-zinc-200"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-card-border bg-card px-5 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
           >
             <svg
               aria-hidden="true"
@@ -273,8 +275,8 @@ export function WeeklyPlanSection({
           ))}
         </ul>
       ) : !loading ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:border-zinc-700 dark:bg-zinc-950">
-          <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+        <div className="mt-6 rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
+          <p className="text-sm leading-relaxed text-muted">
             No plan for this week yet. Generate tailored ideas from your profile,
             dates, and Instagram audit.
           </p>
@@ -284,14 +286,14 @@ export function WeeklyPlanSection({
                 type="button"
                 onClick={requestGenerate}
                 disabled={loading}
-                className="inline-flex h-10 items-center justify-center rounded-lg bg-[#7C3AED] px-5 text-sm font-semibold text-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Generate my weekly plan
               </button>
             ) : (
               <Link
                 href="/pricing"
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-zinc-200 px-5 text-sm font-semibold text-zinc-700 shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-zinc-200/80 dark:bg-zinc-800 dark:text-zinc-200"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-card-border bg-card px-5 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
               >
                 <svg
                   aria-hidden="true"
@@ -311,13 +313,11 @@ export function WeeklyPlanSection({
           </div>
         </div>
       ) : (
-        <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-          Creating your plan…
-        </p>
+        <p className="mt-4 text-sm text-muted">Creating your plan…</p>
       )}
 
-      <div className="mt-10 rounded-2xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
-        <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+      <div className="mt-10 rounded-xl border border-card-border bg-card p-6">
+        <p className="text-xs font-bold uppercase tracking-widest text-brand">
           Upcoming this week
         </p>
         {upcomingThisWeek.length > 0 ? (
@@ -325,9 +325,9 @@ export function WeeklyPlanSection({
             {upcomingThisWeek.map((ev) => (
               <span
                 key={ev.id}
-                className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-200"
+                className="inline-flex items-center gap-2 rounded-full bg-input px-3 py-1 text-xs font-medium text-foreground"
               >
-                <span className="text-slate-500">
+                <span className="text-muted">
                   {new Date(ev.event_date + "T12:00:00").toLocaleDateString(
                     "en-GB",
                     { weekday: "short", day: "numeric", month: "short" }
@@ -338,9 +338,9 @@ export function WeeklyPlanSection({
             ))}
           </div>
         ) : (
-          <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-3 text-sm text-muted">
             Nothing scheduled this week —{" "}
-            <Link href="/events" className="font-semibold text-[#7C3AED]">
+            <Link href="/events" className="font-semibold text-brand hover:underline">
               add a date
             </Link>
             .
@@ -349,20 +349,20 @@ export function WeeklyPlanSection({
       </div>
 
       {error ? (
-        <p className="mt-4 text-sm text-red-600 dark:text-red-400" role="alert">
+        <p className="mt-4 text-sm text-red-400" role="alert">
           {error}
         </p>
       ) : null}
 
       {confirm ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+          <div className="w-full max-w-md rounded-xl border border-card-border bg-card p-6 shadow-[0_18px_70px_rgba(0,0,0,0.65)]">
             <h3 className="text-base font-semibold text-foreground">
               {confirm === "no-dates"
                 ? "Your dates are empty"
                 : "Regenerate your plan?"}
             </h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+            <p className="mt-2 text-sm leading-relaxed text-muted">
               {confirm === "no-dates"
                 ? "Content ideas will be more generic without dates. Add dates first or continue anyway?"
                 : "You generated a plan today. Regenerate with updated info?"}
@@ -374,7 +374,7 @@ export function WeeklyPlanSection({
                   onClick={() => {
                     setConfirm(null);
                   }}
-                  className="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:bg-zinc-50"
+                  className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
                 >
                   Add dates
                 </Link>
@@ -384,7 +384,7 @@ export function WeeklyPlanSection({
                   onClick={() => {
                     setConfirm(null);
                   }}
-                  className="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:bg-zinc-50"
+                  className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
                 >
                   Cancel
                 </button>
@@ -392,7 +392,7 @@ export function WeeklyPlanSection({
               <button
                 type="button"
                 onClick={() => void confirmGenerateAnyway()}
-                className="inline-flex h-10 items-center justify-center rounded-lg bg-[#7C3AED] px-4 text-sm font-semibold text-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-[#6D28D9]"
+                className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
               >
                 {confirm === "no-dates" ? "Generate anyway" : "Regenerate"}
               </button>

@@ -13,7 +13,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="inline-flex h-10 items-center justify-center rounded-lg bg-[#7C3AED] px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {pending ? "Creating…" : "Add artist"}
     </button>
@@ -27,11 +27,11 @@ export function AddArtistForm() {
   );
 
   return (
-    <form action={formAction} className="mt-6 space-y-4 rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-      <h2 className="text-lg font-semibold tracking-tight text-foreground">
+    <form action={formAction} className="mt-6 space-y-4 rounded-xl border border-card-border bg-card p-7 shadow-sm">
+      <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
         Add another artist
       </h2>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="text-sm text-muted">
         Creates a separate profile, calendar, weekly plans, and audits for this
         act. Switch between artists from the navigation bar.
       </p>
@@ -40,7 +40,7 @@ export function AddArtistForm() {
         <div>
           <label
             htmlFor="add-artist_name"
-            className="mb-1.5 block text-sm font-medium text-foreground"
+            className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
           >
             Artist name
           </label>
@@ -50,7 +50,7 @@ export function AddArtistForm() {
             type="text"
             required
             autoComplete="organization"
-            className="w-full rounded-lg border border-zinc-200 bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-zinc-400 focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-zinc-800 dark:focus:border-[#7C3AED] dark:focus:ring-[#7C3AED]/20"
+            className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
             placeholder="Stage or project name"
           />
         </div>
@@ -58,7 +58,7 @@ export function AddArtistForm() {
         <div>
           <label
             htmlFor="add-artist_genre"
-            className="mb-1.5 block text-sm font-medium text-foreground"
+            className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
           >
             Genre
           </label>
@@ -67,7 +67,7 @@ export function AddArtistForm() {
             name="genre"
             required
             defaultValue=""
-            className="w-full rounded-lg border border-zinc-200 bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-zinc-800 dark:focus:border-[#7C3AED] dark:focus:ring-[#7C3AED]/20"
+            className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-brand focus:ring-2 focus:ring-brand/20"
           >
             <option value="" disabled>
               Select a genre
@@ -83,45 +83,45 @@ export function AddArtistForm() {
         <div>
           <label
             htmlFor="add-artist_sound"
-            className="mb-1.5 block text-sm font-medium text-foreground"
+            className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
           >
             Sub-genre or sound{" "}
-            <span className="font-normal text-zinc-500">(optional)</span>
+            <span className="font-normal text-muted">(optional)</span>
           </label>
           <input
             id="add-artist_sound"
             name="sound_description"
             type="text"
-            className="w-full rounded-lg border border-zinc-200 bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-zinc-400 focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-zinc-800 dark:focus:border-[#7C3AED] dark:focus:ring-[#7C3AED]/20"
+            className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
           />
         </div>
 
         <div>
           <label
             htmlFor="add-artist_similar"
-            className="mb-1.5 block text-sm font-medium text-foreground"
+            className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
           >
             Similar artists{" "}
-            <span className="font-normal text-zinc-500">(optional)</span>
+            <span className="font-normal text-muted">(optional)</span>
           </label>
           <input
             id="add-artist_similar"
             name="similar_artists"
             type="text"
-            className="w-full rounded-lg border border-zinc-200 bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-zinc-400 focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-zinc-800 dark:focus:border-[#7C3AED] dark:focus:ring-[#7C3AED]/20"
+            className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
           />
         </div>
       </div>
 
       {state?.error ? (
-        <div role="alert" className="space-y-2 text-sm text-red-600 dark:text-red-400">
+        <div role="alert" className="space-y-2 text-sm text-red-400">
           <p>{state.error}</p>
           {state.upgrade ? (
-            <p className="text-red-600 dark:text-red-400">
+            <p className="text-red-400">
               Upgrade to add more artists.{" "}
               <Link
                 href="/pricing"
-                className="font-medium underline underline-offset-4 hover:no-underline"
+                className="font-semibold underline underline-offset-4 hover:text-brand hover:no-underline"
               >
                 View pricing
               </Link>

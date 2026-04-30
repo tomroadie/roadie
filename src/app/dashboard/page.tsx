@@ -100,23 +100,23 @@ export default async function DashboardPage() {
   const ideasCount = initialIdeas?.length ?? 0;
   const momentum =
     ideasCount >= 5
-      ? { label: "High momentum", cls: "bg-emerald-50 text-emerald-700 ring-emerald-200" }
+      ? { label: "High momentum", cls: "bg-brand text-brand-foreground ring-brand/30" }
       : ideasCount > 0
-        ? { label: "Building", cls: "bg-amber-50 text-amber-700 ring-amber-200" }
-        : { label: "Low momentum", cls: "bg-zinc-100 text-zinc-700 ring-zinc-200" };
+        ? { label: "Building", cls: "bg-amber-400 text-zinc-950 ring-amber-200/40" }
+        : { label: "Low momentum", cls: "bg-zinc-700 text-white ring-zinc-600/40" };
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">
             Week of {weekStartLabel}
           </p>
-          <h1 className="text-5xl font-extrabold tracking-tight text-foreground sm:text-6xl">
+          <h1 className="text-5xl font-black uppercase tracking-tight text-foreground sm:text-6xl">
             {artistName}
           </h1>
           <div
-            className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset shadow-[0_1px_3px_rgba(0,0,0,0.08)] ${momentum.cls}`}
+            className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-black uppercase tracking-wide ring-1 ring-inset ${momentum.cls}`}
           >
             <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
             {momentum.label}
@@ -126,18 +126,18 @@ export default async function DashboardPage() {
       </div>
 
       {plan === "free" ? (
-        <div className="mt-4 flex items-center gap-2 rounded-lg bg-zinc-100/70 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-900/40 dark:text-zinc-300">
+        <div className="mt-4 flex items-center gap-2 rounded-xl border-l-4 border-brand bg-card px-3 py-2 text-xs text-muted">
           You&apos;re on the free plan.{" "}
           <Link
             href="/pricing"
-            className="font-medium underline underline-offset-4 hover:no-underline"
+            className="font-semibold text-foreground underline underline-offset-4 hover:text-brand hover:no-underline"
           >
             View pricing
           </Link>
         </div>
       ) : null}
 
-      <div className="mt-6 h-px w-full bg-zinc-200/80 dark:bg-zinc-800" />
+      <div className="mt-6 h-px w-full bg-[#1a1a1a]" />
 
       <AppNavWrapper />
 

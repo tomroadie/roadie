@@ -67,12 +67,12 @@ function parseRecentPosts(raw: string): ParsedPost[] {
 
 function badgeClasses(type: string | null): string {
   const t = (type ?? "").trim().toLowerCase();
-  if (t.includes("video")) return "bg-purple-50 text-purple-700 ring-purple-200";
+  if (t.includes("video")) return "bg-purple-500/15 text-purple-200 ring-purple-500/25";
   if (t.includes("sidecar") || t.includes("carousel"))
-    return "bg-blue-50 text-blue-700 ring-blue-200";
-  if (t.includes("image")) return "bg-teal-50 text-teal-700 ring-teal-200";
-  if (t.includes("reel")) return "bg-amber-50 text-amber-800 ring-amber-200";
-  return "bg-zinc-100 text-zinc-700 ring-zinc-200 dark:bg-zinc-900/40 dark:text-zinc-200 dark:ring-zinc-800";
+    return "bg-sky-500/15 text-sky-200 ring-sky-500/25";
+  if (t.includes("image")) return "bg-teal-500/15 text-teal-200 ring-teal-500/25";
+  if (t.includes("reel")) return "bg-amber-500/15 text-amber-200 ring-amber-500/25";
+  return "bg-zinc-500/15 text-zinc-200 ring-zinc-500/25";
 }
 
 function formatDate(d: Date | null): string | null {
@@ -94,11 +94,11 @@ function StatChip({
   value: number | null;
 }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-200">
-      <span aria-hidden="true" className="text-zinc-500 dark:text-zinc-400">
+    <span className="inline-flex items-center gap-2 rounded-full bg-input px-3 py-1 text-xs font-medium text-foreground">
+      <span aria-hidden="true" className="text-muted">
         {icon}
       </span>
-      <span className="text-zinc-600 dark:text-zinc-300">{label}</span>
+      <span className="text-muted">{label}</span>
       <span className="font-semibold text-foreground">
         {value === null ? "—" : value.toLocaleString()}
       </span>
@@ -112,7 +112,7 @@ function Caption({ text }: { text: string }) {
   return (
     <div className="mt-3">
       <p
-        className="text-sm leading-relaxed text-slate-700 dark:text-slate-300"
+        className="text-sm leading-relaxed text-muted-strong"
         style={
           expanded
             ? undefined
@@ -129,7 +129,7 @@ function Caption({ text }: { text: string }) {
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="mt-2 text-xs font-semibold text-[#7C3AED] hover:underline"
+        className="mt-2 text-xs font-bold uppercase tracking-widest text-brand hover:underline"
       >
         {expanded ? "Show less" : "Show more"}
       </button>
@@ -154,12 +154,12 @@ export function RecentPostsCards({ raw }: { raw: string }) {
   if (validPosts.length === 0) return null;
 
   return (
-    <section className="rounded-2xl bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-zinc-950">
+    <section className="rounded-xl border border-card-border bg-card p-7">
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold tracking-tight text-foreground">
+        <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
           Recent posts
         </h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-muted">
           Last {validPosts.length} posts scraped from Instagram
         </p>
       </div>
@@ -168,7 +168,7 @@ export function RecentPostsCards({ raw }: { raw: string }) {
         {validPosts.map((p, idx) => (
           <article
             key={`${p.type ?? "post"}-${p.date?.toISOString() ?? "unknown"}-${idx}`}
-            className="mb-3 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+            className="mb-3 rounded-xl border border-card-border bg-input p-4"
           >
             <div className="flex items-center justify-between gap-3">
               <span
@@ -179,7 +179,7 @@ export function RecentPostsCards({ raw }: { raw: string }) {
               >
                 {p.type ?? "Post"}
               </span>
-              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <span className="text-xs font-medium text-muted">
                 {formatDate(p.date) ?? ""}
               </span>
             </div>

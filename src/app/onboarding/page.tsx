@@ -16,11 +16,14 @@ export default async function OnboardingPage() {
   return (
     <div className="flex min-h-full flex-1 flex-col items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm space-y-8">
+        <div className="flex justify-center">
+          <img src="/logo.png" height={48} alt="Roadie" className="h-12 w-auto" />
+        </div>
         <div className="text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-black uppercase tracking-tight text-foreground">
             Welcome to Roadie
           </h1>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="mt-2 text-sm text-muted">
             Tell us about your project so we can tailor your content ideas.
           </p>
         </div>
@@ -30,7 +33,7 @@ export default async function OnboardingPage() {
         <p className="text-center">
           <Link
             href="/dashboard"
-            className="text-sm text-zinc-500 underline-offset-4 hover:text-foreground hover:underline"
+            className="text-sm text-muted underline-offset-4 hover:text-brand hover:underline"
           >
             Back to dashboard
           </Link>

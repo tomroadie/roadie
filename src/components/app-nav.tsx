@@ -63,14 +63,15 @@ export function AppNav({ artists, activeArtistId }: AppNavProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 mb-6 border-b border-zinc-200 bg-white/90 pb-3 pt-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
+    <header className="sticky top-0 z-40 mb-6 border-b border-[#1a1a1a] bg-background/90 pb-3 pt-3 backdrop-blur">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4 sm:gap-6">
           <Link
             href="/dashboard"
-            className="text-lg font-extrabold tracking-tight text-[#7C3AED]"
+            className="inline-flex items-center"
+            aria-label="Roadie"
           >
-            Roadie
+            <img src="/logo.png" height={36} alt="Roadie" className="h-9 w-auto" />
           </Link>
 
           <nav
@@ -83,15 +84,13 @@ export function AppNav({ artists, activeArtistId }: AppNavProps) {
                 <Link
                   key={href}
                   href={href}
-                  className={`relative shrink-0 px-1.5 py-1 text-sm font-medium transition-colors ${
-                    active
-                      ? "text-foreground"
-                      : "text-slate-500 hover:text-foreground dark:text-slate-400"
+                  className={`relative shrink-0 px-1.5 py-1 text-sm font-semibold transition-colors ${
+                    active ? "text-brand" : "text-foreground hover:text-brand"
                   }`}
                 >
                   {label}
                   {active ? (
-                    <span className="absolute inset-x-1.5 bottom-0 h-0.5 rounded-full bg-[#7C3AED]" />
+                    <span className="absolute inset-x-1.5 bottom-0 h-0.5 rounded-full bg-brand" />
                   ) : null}
                 </Link>
               );
@@ -108,7 +107,7 @@ export function AppNav({ artists, activeArtistId }: AppNavProps) {
                   value={selectValue}
                   disabled={switching}
                   onChange={(e) => void handleArtistChange(e.target.value)}
-                  className="max-w-xs appearance-none rounded-full border border-zinc-200 bg-zinc-50 py-2 pl-4 pr-10 text-sm font-medium text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08)] outline-none ring-offset-background transition-colors focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900/30 dark:focus:border-[#7C3AED] dark:focus:ring-[#7C3AED]/20"
+                  className="max-w-xs appearance-none rounded-full border border-card-border bg-card py-2 pl-4 pr-10 text-sm font-semibold text-foreground shadow-sm outline-none ring-offset-background transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:opacity-50"
                 >
                   {artistOptions.map((a) => (
                     <option key={a.id} value={a.id}>
@@ -120,7 +119,7 @@ export function AppNav({ artists, activeArtistId }: AppNavProps) {
                   aria-hidden="true"
                   viewBox="0 0 20 20"
                   fill="currentColor"
-                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
                 >
                   <path
                     fillRule="evenodd"
@@ -130,13 +129,13 @@ export function AppNav({ artists, activeArtistId }: AppNavProps) {
                 </svg>
               </div>
               {switching ? (
-                <span className="text-xs text-slate-500">Updating…</span>
+                <span className="text-xs text-muted">Updating…</span>
               ) : null}
             </div>
           ) : null}
 
           {switchError ? (
-            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+            <p className="text-sm text-red-400" role="alert">
               {switchError}
             </p>
           ) : null}
@@ -150,15 +149,13 @@ export function AppNav({ artists, activeArtistId }: AppNavProps) {
             <Link
               key={href}
               href={href}
-              className={`relative px-1.5 py-1 text-sm font-medium transition-colors ${
-                active
-                  ? "text-foreground"
-                  : "text-slate-500 hover:text-foreground dark:text-slate-400"
+              className={`relative px-1.5 py-1 text-sm font-semibold transition-colors ${
+                active ? "text-brand" : "text-foreground hover:text-brand"
               }`}
             >
               {label}
               {active ? (
-                <span className="absolute inset-x-1.5 bottom-0 h-0.5 rounded-full bg-[#7C3AED]" />
+                <span className="absolute inset-x-1.5 bottom-0 h-0.5 rounded-full bg-brand" />
               ) : null}
             </Link>
           );

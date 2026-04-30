@@ -107,13 +107,13 @@ export default function PricingClient({
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
       <div className="flex flex-col gap-2">
-        <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">
           Pricing
         </p>
-        <h1 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl">
+        <h1 className="text-4xl font-black uppercase tracking-tight text-foreground sm:text-5xl">
           Upgrade when you’re ready
         </h1>
-        <p className="max-w-2xl text-base text-zinc-600 dark:text-zinc-400">
+        <p className="max-w-2xl text-base text-muted">
           Pick a plan that matches your workflow. You can cancel any time.
         </p>
       </div>
@@ -132,38 +132,38 @@ export default function PricingClient({
             <div
               key={p.key}
               className={[
-                "relative flex flex-col rounded-2xl border bg-background p-6 shadow-sm",
+                "relative flex flex-col rounded-xl border border-card-border bg-card p-6 shadow-sm",
                 isPopular
-                  ? "border-[#7C3AED]/30 ring-1 ring-[#7C3AED]/20"
-                  : "border-zinc-200 dark:border-zinc-800",
+                  ? "ring-1 ring-brand/20"
+                  : "",
               ].join(" ")}
             >
               {p.highlight ? (
-                <div className="absolute right-6 top-6 rounded-full bg-[#7C3AED]/10 px-3 py-1 text-xs font-semibold text-[#7C3AED]">
+                <div className="absolute right-6 top-6 rounded-full bg-brand px-3 py-1 text-xs font-black uppercase tracking-wide text-brand-foreground">
                   {p.highlight}
                 </div>
               ) : null}
               <div className="space-y-2">
                 {isCurrent ? (
-                  <div className="inline-flex w-fit rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-2">
+                  <div className="mb-2 inline-flex w-fit rounded-full bg-brand px-3 py-1 text-xs font-black uppercase tracking-wide text-brand-foreground">
                     Current plan
                   </div>
                 ) : null}
-                <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                <h2 className="text-xl font-black uppercase tracking-tight text-foreground">
                   {p.name}
                 </h2>
-                <p className="text-3xl font-extrabold tracking-tight text-foreground">
+                <p className="text-3xl font-black tracking-tight text-foreground">
                   {p.price}
                 </p>
-                <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                <p className="text-sm leading-relaxed text-muted">
                   {p.blurb}
                 </p>
               </div>
 
-              <ul className="mt-5 space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+              <ul className="mt-5 space-y-2 text-sm text-muted-strong">
                 {p.features.map((f) => (
                   <li key={f} className="flex items-start gap-2">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#7C3AED]/70" />
+                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
                     <span>{f}</span>
                   </li>
                 ))}
@@ -175,10 +175,10 @@ export default function PricingClient({
                   onClick={() => startCheckout(p.key)}
                   disabled={loadingPlan !== null || isCurrent}
                   className={[
-                    "flex h-11 w-full items-center justify-center rounded-lg px-4 text-sm font-medium shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                    "flex h-11 w-full items-center justify-center rounded-lg px-4 text-sm font-black uppercase tracking-wide shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
                     isPopular
-                      ? "bg-[#7C3AED] text-white hover:bg-[#6D28D9]"
-                      : "bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white",
+                      ? "bg-brand text-brand-foreground hover:brightness-95"
+                      : "border border-card-border bg-transparent text-foreground hover:border-brand",
                   ].join(" ")}
                 >
                   {loadingPlan === p.key ? "Redirecting…" : cta}
@@ -190,15 +190,15 @@ export default function PricingClient({
       </div>
 
       {error ? (
-        <p className="mt-6 text-sm text-red-600 dark:text-red-400" role="alert">
+        <p className="mt-6 text-sm text-red-400" role="alert">
           {error}
         </p>
       ) : null}
 
-      <div className="mt-10 text-sm text-zinc-600 dark:text-zinc-400">
+      <div className="mt-10 text-sm text-muted">
         <Link
           href="/dashboard"
-          className="underline underline-offset-4 hover:no-underline"
+          className="underline underline-offset-4 hover:text-brand hover:no-underline"
         >
           Back to dashboard
         </Link>

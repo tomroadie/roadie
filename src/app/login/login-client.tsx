@@ -54,21 +54,27 @@ export default function LoginClient() {
   return (
     <div className="flex min-h-full flex-1 flex-col items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm space-y-8">
+        <div className="flex justify-center">
+          <img src="/logo.png" height={48} alt="Roadie" className="h-12 w-auto" />
+        </div>
         <div className="text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-black uppercase tracking-tight text-foreground">
             {isSignUp ? "Create your Roadie account" : "Sign in to Roadie"}
           </h1>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="mt-2 text-sm text-muted">
             AI-powered content planning for music artists
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-6 rounded-xl border border-card-border bg-card p-6"
+        >
           <div className="space-y-4">
             <div>
               <label
                 htmlFor="email"
-                className="mb-1.5 block text-sm font-medium text-foreground"
+                className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
               >
                 Email
               </label>
@@ -80,14 +86,14 @@ export default function LoginClient() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-zinc-200 bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-zinc-400 focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-zinc-800 dark:focus:border-[#7C3AED] dark:focus:ring-[#7C3AED]/20"
+                className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
                 placeholder="you@example.com"
               />
             </div>
             <div>
               <label
                 htmlFor="password"
-                className="mb-1.5 block text-sm font-medium text-foreground"
+                className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
               >
                 Password
               </label>
@@ -100,14 +106,14 @@ export default function LoginClient() {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-zinc-200 bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-zinc-400 focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-zinc-800 dark:focus:border-[#7C3AED] dark:focus:ring-[#7C3AED]/20"
+                className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
                 placeholder="••••••••"
               />
             </div>
           </div>
 
           {error ? (
-            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+            <p className="text-sm text-red-400" role="alert">
               {error}
             </p>
           ) : null}
@@ -115,13 +121,13 @@ export default function LoginClient() {
           <button
             type="submit"
             disabled={loading}
-            className="flex h-11 w-full items-center justify-center rounded-lg bg-[#7C3AED] px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-11 w-full items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Please wait…" : isSignUp ? "Sign up" : "Sign in"}
           </button>
         </form>
 
-        <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-center text-sm text-muted">
           {isSignUp ? "Already have an account?" : "Need an account?"}{" "}
           <button
             type="button"
@@ -129,7 +135,7 @@ export default function LoginClient() {
               setIsSignUp(!isSignUp);
               setError(null);
             }}
-            className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
+            className="font-semibold text-foreground underline underline-offset-4 hover:text-brand hover:no-underline"
           >
             {isSignUp ? "Sign in" : "Sign up"}
           </button>
@@ -138,7 +144,7 @@ export default function LoginClient() {
         <p className="text-center">
           <Link
             href="/"
-            className="text-sm text-zinc-500 underline-offset-4 hover:text-foreground hover:underline"
+            className="text-sm text-muted underline-offset-4 hover:text-brand hover:underline"
           >
             Back to home
           </Link>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 function pendingStorageKey(artistId: string) {
@@ -14,6 +15,7 @@ export function InsightsAuditEmptyState({
   artistId: string;
   instagramHandle: string | null;
 }) {
+  const router = useRouter();
   const trimmed = instagramHandle?.trim() ?? "";
   const hasHandle = Boolean(trimmed);
   const displayHandle = trimmed.replace(/^@/, "");
@@ -34,11 +36,22 @@ export function InsightsAuditEmptyState({
 
   useEffect(() => {
     if (!pending) return;
-    const id = window.setInterval(() => {
-      window.location.reload();
+    const id = window.setInterval(async () => {
+      try {
+        const res = await fetch(
+          `/api/audit-status?artist_id=${encodeURIComponent(artistId)}`
+        );
+        const data = (await res.json()) as { ready?: boolean };
+        if (data.ready === true) {
+          clearInterval(id);
+          router.refresh();
+        }
+      } catch {
+        // keep polling
+      }
     }, 10_000);
     return () => clearInterval(id);
-  }, [pending]);
+  }, [pending, artistId, router]);
 
   const runAudit = async () => {
     setError(null);
@@ -94,7 +107,7 @@ export function InsightsAuditEmptyState({
   if (pending) {
     return (
       <>
-        <p className="text-sm leading-relaxed text-muted">
+        <p className="animate-pulse text-sm leading-relaxed text-muted">
           Checking for your audit results...
         </p>
         <p className="mt-5">

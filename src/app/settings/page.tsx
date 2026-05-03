@@ -5,6 +5,7 @@ import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { AddArtistForm } from "./add-artist-form";
 import { InstagramHandleForm } from "./instagram-handle-form";
+import { VoiceForm } from "./voice-form";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 
 export default async function SettingsPage() {
@@ -30,7 +31,7 @@ export default async function SettingsPage() {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("artist_name, instagram_handle")
+    .select("artist_name, instagram_handle, voice_description")
     .eq("id", activeArtistId)
     .maybeSingle();
 
@@ -59,6 +60,8 @@ export default async function SettingsPage() {
       <AppNavWrapper />
 
       <InstagramHandleForm initialHandle={profile.instagram_handle ?? null} />
+
+      <VoiceForm initialVoice={profile.voice_description ?? null} />
 
       <AddArtistForm />
     </div>

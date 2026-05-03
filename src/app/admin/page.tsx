@@ -67,7 +67,7 @@ export default async function AdminPage() {
   const { data: profiles, error: profilesError } = await adminSupabase
     .from("profiles")
     .select(
-      "id, artist_name, genre, instagram_handle, plan, owner_user_id, created_at, similar_artists, sound_description, is_admin, stripe_customer_id"
+      "id, artist_name, genre, instagram_handle, plan, owner_user_id, created_at, similar_artists, sound_description, voice_description, is_admin, stripe_customer_id"
     )
     .order("created_at", { ascending: false });
 

@@ -10,7 +10,9 @@ import { userIsAdmin } from "@/lib/is-admin";
 
 const SYSTEM_PROMPT = `You are a creative content strategist who deeply understands music culture. You write like a human, not like a marketing bot.
 
-You have access to a real Instagram audit for this artist. Your content ideas MUST directly address what the audit identified as their core problem and opportunity. If the audit says they need more music-first content, suggest music-first ideas. If it says they're too retrospective, suggest forward-looking content. Make the connection explicit in the 'why' field — reference the audit insight that inspired each idea.`;
+You have access to a real Instagram audit for this artist. Your content ideas MUST directly address what the audit identified as their core problem and opportunity. If the audit says they need more music-first content, suggest music-first ideas. If it says they're too retrospective, suggest forward-looking content. Make the connection explicit in the 'why' field — reference the audit insight that inspired each idea.
+
+When writing captions, study the artist's actual post captions carefully — match their exact tone, vocabulary, sentence length, emoji usage, and personality. If they write casually with lowercase and lots of emojis, do that. If they write with punchy short sentences, do that. The caption must sound like it came from them, not from a marketer. Never use corporate or consultant language.`;
 
 function firstSentence(text: string): string {
   const t = String(text ?? "").trim().replace(/\s+/g, " ");
@@ -96,7 +98,9 @@ export async function POST(request: Request) {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("artist_name, genre, sound_description, similar_artists")
+    .select(
+      "artist_name, genre, sound_description, similar_artists, voice_description"
+    )
     .eq("id", activeArtistId)
     .maybeSingle();
 
@@ -198,7 +202,7 @@ ${String(audit.ai_full_analysis ?? "").trim()}
 ### Recent posts (raw)
 ${String(audit.recent_posts_raw ?? "")
   .trim()
-  .slice(0, 500)}${String(audit.recent_posts_raw ?? "").trim().length > 500 ? "…" : ""}
+  .slice(0, 3000)}${String(audit.recent_posts_raw ?? "").trim().length > 3000 ? "…" : ""}
 `
     : `## INSTAGRAM AUDIT DATA
 No audit available yet.`;
@@ -208,6 +212,9 @@ No audit available yet.`;
 - **Genre:** ${profile.genre ?? "unspecified"}
 - **Sound / how they describe themselves:** ${profile.sound_description?.trim() || "not specified"}
 - **Similar artists (for tone and reference):** ${profile.similar_artists?.trim() || "none listed"}
+- **In their own words:** ${profile.voice_description?.trim() || "not provided"}
+
+If 'In their own words' is provided, treat it as the primary voice reference and make captions sound exactly like that person wrote them.
 
 ${auditSection}
 

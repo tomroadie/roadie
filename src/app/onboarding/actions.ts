@@ -94,6 +94,12 @@ export async function completeOnboarding(
     return { error: artistUpsertErr.message };
   }
 
+  const { data: existingProfile } = await supabase
+    .from("profiles")
+    .select("voice_description")
+    .eq("id", activeArtistId)
+    .maybeSingle();
+
   const { error } = await supabase.from("profiles").upsert(
     {
       id: activeArtistId,
@@ -103,6 +109,7 @@ export async function completeOnboarding(
       sound_description: soundDescription || null,
       similar_artists: similarArtists || null,
       instagram_handle: instagramHandle,
+      voice_description: existingProfile?.voice_description ?? null,
     },
     { onConflict: "id" }
   );

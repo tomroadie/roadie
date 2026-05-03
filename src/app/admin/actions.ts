@@ -119,6 +119,7 @@ export async function adminCreateClientArtist(
     genre,
     sound_description: soundDescription || null,
     similar_artists: similarArtists || null,
+    voice_description: null,
     instagram_handle: instagramHandle.replace(/^@/, "") || null,
   });
 

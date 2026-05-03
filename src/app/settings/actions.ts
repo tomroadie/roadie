@@ -18,6 +18,51 @@ export type AddArtistState =
 
 export type InstagramHandleState = { error?: string } | null;
 
+export type VoiceDescriptionState = { error?: string } | null;
+
+export async function updateVoiceDescription(
+  _prev: VoiceDescriptionState,
+  formData: FormData
+): Promise<VoiceDescriptionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const voiceDescription = String(
+    formData.get("voice_description") ?? ""
+  ).trim();
+  const normalized = voiceDescription || null;
+
+  const cookieStore = await cookies();
+  const activeArtistId = await getActiveArtistIdForUser(
+    supabase,
+    user.id,
+    cookieStore
+  );
+
+  if (!activeArtistId) {
+    return { error: "No active artist selected." };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ voice_description: normalized })
+    .eq("id", activeArtistId)
+    .eq("owner_user_id", user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/settings");
+  return null;
+}
+
 export async function updateInstagramHandle(
   _prev: InstagramHandleState,
   formData: FormData
@@ -139,6 +184,7 @@ export async function addArtist(
     genre,
     sound_description: soundDescription || null,
     similar_artists: similarArtists || null,
+    voice_description: null,
   });
 
   if (profileError) {

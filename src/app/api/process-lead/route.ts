@@ -359,9 +359,15 @@ Artist: ${artistName}. Below is a structured summary of their Instagram profile 
   const post_count = asNumberOrNull((profileItem as ApifyProfileItem).postsCount);
   const bio = asString((profileItem as ApifyProfileItem).biography);
 
+  const { data: profileLookup } = await supabase
+    .from("profiles")
+    .select("id, owner_user_id")
+    .eq("instagram_handle", lead.instagram_handle.trim())
+    .maybeSingle();
+
   const { error: auditInsertError } = await supabase.from("audits").insert({
-    user_id: null,
-    artist_id: null,
+    user_id: profileLookup?.owner_user_id ?? null,
+    artist_id: profileLookup?.id ?? null,
     email: lead.email.trim(),
     instagram_handle: lead.instagram_handle.trim(),
     followers: followers ?? 0,

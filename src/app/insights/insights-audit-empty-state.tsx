@@ -32,6 +32,14 @@ export function InsightsAuditEmptyState({
     }
   }, [artistId]);
 
+  useEffect(() => {
+    if (!pending) return;
+    const id = window.setInterval(() => {
+      window.location.reload();
+    }, 10_000);
+    return () => clearInterval(id);
+  }, [pending]);
+
   const runAudit = async () => {
     setError(null);
     setStarting(true);
@@ -87,7 +95,7 @@ export function InsightsAuditEmptyState({
     return (
       <>
         <p className="text-sm leading-relaxed text-muted">
-          Running your audit... check back in 3-5 minutes
+          Checking for your audit results...
         </p>
         <p className="mt-5">
           <button

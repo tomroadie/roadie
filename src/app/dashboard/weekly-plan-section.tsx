@@ -63,6 +63,7 @@ function buildCopyText(idea: ContentIdea): string {
 
 function IdeaCard({ idea }: { idea: ContentIdea }) {
   const [copied, setCopied] = useState(false);
+  const [rating, setRating] = useState<null | "up" | "down">(null);
   const accent = useMemo(() => getAccent(idea.format), [idea.format]);
 
   async function handleCopy() {
@@ -127,6 +128,37 @@ function IdeaCard({ idea }: { idea: ContentIdea }) {
           {copied ? "Copied" : "Copy idea"}
         </button>
       </div>
+
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          aria-pressed={rating === "up"}
+          aria-label="Thumbs up"
+          onClick={() => setRating("up")}
+          className={[
+            "inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-lg transition-colors hover:border-brand sm:flex-initial sm:min-w-[5rem]",
+            rating === "up" ? "text-emerald-400" : "text-foreground",
+          ].join(" ")}
+        >
+          👍
+        </button>
+        <button
+          type="button"
+          aria-pressed={rating === "down"}
+          aria-label="Thumbs down"
+          onClick={() => setRating("down")}
+          className={[
+            "inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-lg transition-colors hover:border-brand sm:flex-initial sm:min-w-[5rem]",
+            rating === "down" ? "text-red-400" : "text-foreground",
+          ].join(" ")}
+        >
+          👎
+        </button>
+      </div>
+
+      {rating !== null ? (
+        <p className="mt-2 text-xs text-muted">Thanks for the feedback</p>
+      ) : null}
     </article>
   );
 }
@@ -179,6 +211,12 @@ function hoursSince(iso: string): number {
 
 type ConfirmKind = "no-dates" | "recent-plan";
 
+type PlanAnswers = {
+  vibe: string;
+  avoid: string;
+  focus: string;
+};
+
 export function WeeklyPlanSection({
   initialIdeas,
   upcomingEventsCount,
@@ -192,6 +230,12 @@ export function WeeklyPlanSection({
   const [loadingStep, setLoadingStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmKind | null>(null);
+  const [showQuestionsModal, setShowQuestionsModal] = useState(false);
+  const [answers, setAnswers] = useState<PlanAnswers>({
+    vibe: "",
+    avoid: "",
+    focus: "",
+  });
   const normalizedPlan = normalizePlan(plan);
   const canGenerate = canDo(normalizedPlan, "canGeneratePlan", isAdmin);
 
@@ -214,13 +258,19 @@ export function WeeklyPlanSection({
     };
   }, [loading]);
 
-  async function runGenerate() {
+  async function runGenerate(answersParam: PlanAnswers | null) {
     setError(null);
     setLoading(true);
     try {
       const res = await fetch("/api/generate-plan", {
         method: "POST",
         credentials: "same-origin",
+        ...(answersParam !== null
+          ? {
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(answersParam),
+            }
+          : {}),
       });
       const data = (await res.json()) as {
         ideas?: ContentIdea[];
@@ -258,12 +308,12 @@ export function WeeklyPlanSection({
       setConfirm("recent-plan");
       return;
     }
-    void runGenerate();
+    setShowQuestionsModal(true);
   }
 
   async function confirmGenerateAnyway() {
     setConfirm(null);
-    await runGenerate();
+    await runGenerate(null);
   }
 
   return (
@@ -420,6 +470,82 @@ export function WeeklyPlanSection({
         <p className="mt-4 text-sm text-red-400" role="alert">
           {error}
         </p>
+      ) : null}
+
+      {showQuestionsModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-xl border border-card-border bg-card p-6 shadow-[0_18px_70px_rgba(0,0,0,0.65)]">
+            <h3 className="text-base font-semibold text-foreground">
+              Shape your plan
+            </h3>
+            <div className="mt-4 flex flex-col gap-4">
+              <label className="block">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  What&apos;s your vibe this week?
+                </span>
+                <input
+                  type="text"
+                  value={answers.vibe}
+                  onChange={(e) =>
+                    setAnswers((a) => ({ ...a, vibe: e.target.value }))
+                  }
+                  placeholder="e.g. Hype around release, low-key, behind the scenes..."
+                  className="mt-1.5 w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  Anything to avoid?
+                </span>
+                <input
+                  type="text"
+                  value={answers.avoid}
+                  onChange={(e) =>
+                    setAnswers((a) => ({ ...a, avoid: e.target.value }))
+                  }
+                  placeholder="e.g. No sales posts, avoid anything too polished"
+                  className="mt-1.5 w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  Anything specific to focus on?
+                </span>
+                <input
+                  type="text"
+                  value={answers.focus}
+                  onChange={(e) =>
+                    setAnswers((a) => ({ ...a, focus: e.target.value }))
+                  }
+                  placeholder="e.g. The show on Friday, new single announcement"
+                  className="mt-1.5 w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted"
+                />
+              </label>
+            </div>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuestionsModal(false);
+                  void runGenerate(null);
+                }}
+                className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
+              >
+                Skip
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuestionsModal(false);
+                  void runGenerate(answers);
+                }}
+                className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
+              >
+                Generate my plan
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {confirm ? (

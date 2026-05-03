@@ -29,7 +29,24 @@ function extractOpportunitySection(fullAnalysis: string): string {
   return String(match?.[1] ?? "").trim();
 }
 
-export async function POST() {
+function optionalBodyString(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.trim();
+}
+
+export async function POST(request: Request) {
+  let vibe = "";
+  let avoid = "";
+  let focus = "";
+  try {
+    const body = (await request.json()) as Record<string, unknown>;
+    vibe = optionalBodyString(body.vibe);
+    avoid = optionalBodyString(body.avoid);
+    focus = optionalBodyString(body.focus);
+  } catch {
+    /* no JSON body or invalid JSON — optional inputs stay empty */
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -154,6 +171,18 @@ export async function POST() {
     ? extractOpportunitySection(String(audit.ai_full_analysis))
     : "";
 
+  const artistInputLines: string[] = [];
+  if (vibe) artistInputLines.push(`- Vibe: ${vibe}`);
+  if (avoid) artistInputLines.push(`- Avoid: ${avoid}`);
+  if (focus) artistInputLines.push(`- Focus: ${focus}`);
+  const artistInputSection =
+    artistInputLines.length > 0
+      ? `## Artist's input for this week
+${artistInputLines.join("\n")}
+
+`
+      : "";
+
   const auditSection = audit
     ? `## INSTAGRAM AUDIT DATA
 - **Handle:** @${String(audit.instagram_handle ?? "").replace(/^@/, "")}
@@ -189,7 +218,7 @@ ${auditSection}
 ## Their calendar (all saved dates, earliest first)
 ${eventsSummary}
 
-## What you must produce
+${artistInputSection}## What you must produce
 Give **exactly 5** content ideas that feel personal, specific, and tied to what is actually happening in this artist's world — their sound, references, the dates above, and the Instagram audit data (if present). No filler, no one-size-fits-all tips.
 
 Each idea's **caption** must naturally mention **${artistName}** by name **or** clearly reference something specific to them (a release, show, collaboration, or detail from their profile/dates) so it could not be swapped onto another act.

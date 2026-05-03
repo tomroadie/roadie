@@ -17,7 +17,7 @@ export async function GET() {
     client_id: process.env.FACEBOOK_APP_ID!,
     redirect_uri: redirectUri,
     scope:
-      "instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement",
+      "instagram_basic,instagram_content_publishing,pages_read_engagement,business_management,pages_show_list",
     response_type: "code",
     state: user.id,
   });

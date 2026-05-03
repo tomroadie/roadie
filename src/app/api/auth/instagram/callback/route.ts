@@ -118,7 +118,7 @@ export async function GET(request: Request) {
         instagram_user_id: igUserId,
         instagram_token_expires_at: expiresAt.toISOString(),
       })
-      .eq("owner_user_id", state.trim())
+      .eq("id", state.trim())
       .select("id");
 
     if (dbError || !updated?.length) {

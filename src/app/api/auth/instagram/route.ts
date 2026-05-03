@@ -1,5 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getActiveArtistIdForUser } from "@/lib/active-artist";
 
 export async function GET() {
   const supabase = await createClient();
@@ -11,6 +13,20 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const cookieStore = await cookies();
+  const activeArtistId = await getActiveArtistIdForUser(
+    supabase,
+    user.id,
+    cookieStore
+  );
+
+  if (!activeArtistId) {
+    return NextResponse.json(
+      { error: "No active artist selected. Complete onboarding first." },
+      { status: 400 }
+    );
+  }
+
   const redirectUri =
     "https://app.roadie.media/api/auth/instagram/callback";
   const params = new URLSearchParams({
@@ -19,7 +35,7 @@ export async function GET() {
     scope:
       "instagram_basic,pages_show_list,pages_read_engagement,business_management",
     response_type: "code",
-    state: user.id,
+    state: activeArtistId,
   });
 
   const url = `https://www.facebook.com/v21.0/dialog/oauth?${params.toString()}`;

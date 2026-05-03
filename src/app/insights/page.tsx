@@ -149,48 +149,6 @@ function normalizeInstagramLivePayload(payload: {
   return { insights, media };
 }
 
-async function fetchInstagramLiveStats(): Promise<{
-  insights: InstagramLiveInsightRow[];
-  media: InstagramLiveMediaRow[];
-} | null> {
-  const hdrs = await headers();
-  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
-  const proto = hdrs.get("x-forwarded-proto") ?? "http";
-  const origin = host ? `${proto}://${host}` : "http://localhost:3000";
-
-  const res = await fetch(`${origin}/api/instagram-stats`, {
-    headers: {
-      cookie: hdrs.get("cookie") ?? "",
-    },
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    return null;
-  }
-
-  let json: unknown;
-  try {
-    json = await res.json();
-  } catch {
-    return null;
-  }
-
-  if (!json || typeof json !== "object") {
-    return null;
-  }
-
-  const o = json as { media?: unknown; insights?: unknown; error?: unknown };
-  if (typeof o.error === "string" && o.error === "not_connected") {
-    return null;
-  }
-
-  return normalizeInstagramLivePayload({
-    media: o.media,
-    insights: o.insights,
-  });
-}
-
 function sectionAccent(title: string): { border: string; label: string } {
   const t = title.toLowerCase();
   if (t.includes("position")) return { border: "border-l-purple-400", label: "text-purple-200" };
@@ -241,7 +199,9 @@ export default async function InsightsPage() {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("artist_name, instagram_handle, instagram_user_id")
+    .select(
+      "artist_name, instagram_handle, instagram_user_id, instagram_access_token"
+    )
     .eq("id", activeArtistId)
     .maybeSingle();
 
@@ -285,10 +245,44 @@ export default async function InsightsPage() {
 
   const audit = auditByArtistId ?? auditByHandle ?? null;
 
+  let liveSocialStats: {
+    insights: InstagramLiveInsightRow[];
+    media: InstagramLiveMediaRow[];
+  } | null = null;
+
   const instagramUserId = profile?.instagram_user_id?.trim();
-  const liveSocialStats = instagramUserId
-    ? await fetchInstagramLiveStats()
-    : null;
+  const instagramAccessToken = profile?.instagram_access_token?.trim();
+
+  if (instagramUserId && instagramAccessToken) {
+    const headersList = await headers();
+    const cookie = headersList.get("cookie") ?? "";
+    const hdrHost = headersList.get("x-forwarded-host") ?? headersList.get("host");
+    const hdrProto = headersList.get("x-forwarded-proto") ?? "http";
+    const fallbackOrigin = hdrHost
+      ? `${hdrProto}://${hdrHost}`
+      : "http://localhost:3000";
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? fallbackOrigin;
+
+    const statsRes = await fetch(
+      `${baseUrl}/api/instagram-stats?artist_id=${activeArtistId}`,
+      {
+        headers: { cookie },
+        cache: "no-store",
+      }
+    );
+
+    const statsJson = statsRes.ok ? await statsRes.json() : null;
+    if (
+      statsJson &&
+      typeof statsJson === "object" &&
+      (statsJson as { error?: string }).error !== "not_connected"
+    ) {
+      liveSocialStats = normalizeInstagramLivePayload(
+        statsJson as { media?: unknown; insights?: unknown }
+      );
+    }
+  }
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">

@@ -1,11 +1,12 @@
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
+import { userIsAdmin } from "@/lib/is-admin";
 import { NextResponse } from "next/server";
 
 const GRAPH_VERSION = "v19.0";
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -16,23 +17,69 @@ export async function GET() {
   }
 
   const cookieStore = await cookies();
-  const activeArtistId = await getActiveArtistIdForUser(
-    supabase,
-    user.id,
-    cookieStore
-  );
+  const admin = await userIsAdmin(supabase, user.id);
 
-  if (!activeArtistId) {
-    return NextResponse.json(
-      { error: "No active artist. Complete onboarding first." },
-      { status: 400 }
+  const url = new URL(request.url);
+  const requestedArtistId = url.searchParams.get("artist_id")?.trim() ?? "";
+
+  let profileId: string | null = null;
+
+  if (requestedArtistId) {
+    if (admin) {
+      const { data: row, error } = await supabase
+        .from("artists")
+        .select("id")
+        .eq("id", requestedArtistId)
+        .maybeSingle();
+
+      if (error) {
+        return NextResponse.json(
+          { error: "Lookup failed", details: error.message },
+          { status: 500 }
+        );
+      }
+      if (!row?.id) {
+        return NextResponse.json({ error: "Artist not found" }, { status: 404 });
+      }
+      profileId = row.id;
+    } else {
+      const { data: row, error } = await supabase
+        .from("artists")
+        .select("id")
+        .eq("id", requestedArtistId)
+        .eq("owner_user_id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        return NextResponse.json(
+          { error: "Lookup failed", details: error.message },
+          { status: 500 }
+        );
+      }
+      if (!row?.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      profileId = row.id;
+    }
+  } else {
+    profileId = await getActiveArtistIdForUser(
+      supabase,
+      user.id,
+      cookieStore
     );
+
+    if (!profileId) {
+      return NextResponse.json(
+        { error: "No active artist. Complete onboarding first." },
+        { status: 400 }
+      );
+    }
   }
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("instagram_access_token, instagram_user_id")
-    .eq("id", activeArtistId)
+    .eq("id", profileId)
     .maybeSingle();
 
   if (profileError) {

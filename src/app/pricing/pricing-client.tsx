@@ -161,7 +161,7 @@ export default function PricingClient({
         <span>Cancels anytime</span>
       </div>
 
-      <div className="mt-10 grid gap-5 md:grid-cols-4">
+      <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
         {PLANS.map((p) => {
           const isPopular = p.key === "pro";
           const isFree = p.key === "free";
@@ -176,7 +176,7 @@ export default function PricingClient({
               : "Start free trial";
 
           const ctaButtonClass = [
-            "flex h-11 w-full items-center justify-center rounded-lg px-4 text-sm font-black uppercase tracking-wide shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+            "flex h-11 w-full items-center justify-center whitespace-nowrap rounded-lg px-4 text-sm font-black uppercase tracking-wide shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
             isPopular
               ? "bg-brand text-brand-foreground hover:brightness-95"
               : "border border-card-border bg-transparent text-foreground hover:border-brand",
@@ -186,7 +186,7 @@ export default function PricingClient({
             <div
               key={p.key}
               className={[
-                "relative flex flex-col rounded-xl border border-card-border bg-card p-6 shadow-sm",
+                "relative flex min-w-0 flex-col rounded-xl border border-card-border bg-card p-6 shadow-sm",
                 isPopular ? "ring-1 ring-brand/20" : "",
               ].join(" ")}
             >
@@ -204,7 +204,9 @@ export default function PricingClient({
                 <h2 className="text-xl font-black uppercase tracking-tight text-foreground">
                   {p.name}
                 </h2>
-                <p className="text-3xl font-black tracking-tight text-foreground">{p.price}</p>
+                <p className="text-2xl font-black tracking-tight text-foreground md:text-3xl">
+                  {p.price}
+                </p>
                 <p className="text-sm leading-relaxed text-muted">{p.blurb}</p>
               </div>
 

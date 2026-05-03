@@ -190,34 +190,18 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
       notes: notes.trim() || null,
     };
 
-    let data: EventRow | null = null;
-    let error: { message: string } | null = null;
-
-    if (isEditing) {
-      const r = await supabase
-        .from("events")
-        .update(payload)
-        .eq("id", editingId as string)
-        .select("id, title, event_date, event_type, notes")
-        .single();
-      data = r.data as EventRow | null;
-      error = r.error;
-    } else {
-      const { data: authData } = await supabase.auth.getUser();
-      const user = authData.user;
-      if (!user) {
-        setFormError("You must be signed in to add an event.");
-        setSubmitting(false);
-        return;
-      }
-      const r = await supabase
-        .from("events")
-        .insert({ artist_id: artistId, user_id: user.id, ...payload })
-        .select("id, title, event_date, event_type, notes")
-        .single();
-      data = r.data as EventRow | null;
-      error = r.error;
-    }
+    const { data, error } = isEditing
+      ? await supabase
+          .from("events")
+          .update(payload)
+          .eq("id", editingId as string)
+          .select("id, title, event_date, event_type, notes")
+          .single()
+      : await supabase
+          .from("events")
+          .insert({ artist_id: artistId, ...payload })
+          .select("id, title, event_date, event_type, notes")
+          .single();
 
     if (error) {
       setFormError(error.message);

@@ -21,13 +21,12 @@ const PLANS: Array<{
     key: "starter",
     name: "Starter",
     price: "£29/month",
-    blurb:
-      "Weekly plan, AI assistant, events, Instagram audit — built for one artist.",
+    blurb: "Everything you need to show up consistently as an independent artist.",
     features: [
       "Weekly content plan",
       "Events calendar",
       "Instagram audit",
-      "AI vibe questions",
+      "Weekly focus questions",
       "1 artist",
     ],
   },
@@ -175,7 +174,7 @@ export default function PricingClient({
             <div
               key={p.key}
               className={[
-                "relative flex min-w-0 flex-col rounded-xl border border-card-border bg-card p-6 shadow-sm",
+                "relative flex h-full min-w-0 flex-col rounded-xl border border-card-border bg-card p-6 shadow-sm",
                 isPopular ? "ring-1 ring-brand/20" : "",
               ].join(" ")}
             >
@@ -206,7 +205,7 @@ export default function PricingClient({
                 ))}
               </ul>
 
-              <div className="mt-6">
+              <div className="mt-auto pt-6">
                 <button
                   type="button"
                   onClick={() => void startCheckout(p.key)}

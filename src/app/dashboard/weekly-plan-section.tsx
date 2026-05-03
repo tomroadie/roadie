@@ -311,9 +311,9 @@ export function WeeklyPlanSection({
     setShowQuestionsModal(true);
   }
 
-  async function confirmGenerateAnyway() {
+  function confirmGenerateAnyway() {
     setConfirm(null);
-    await runGenerate(null);
+    setShowQuestionsModal(true);
   }
 
   return (
@@ -585,7 +585,7 @@ export function WeeklyPlanSection({
               )}
               <button
                 type="button"
-                onClick={() => void confirmGenerateAnyway()}
+                onClick={confirmGenerateAnyway}
                 className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
               >
                 {confirm === "no-dates" ? "Generate anyway" : "Regenerate"}

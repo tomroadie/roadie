@@ -5,6 +5,10 @@ import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { AdminCreateClientArtistForm } from "./create-client-artist-form";
 import {
+  UsageAnalytics,
+  type UsageAnalyticsRecentEvent,
+} from "./usage-analytics";
+import {
   AdminArtistsTable,
   type AdminArtistDirectoryRow,
 } from "./admin-artists-table";
@@ -138,6 +142,50 @@ export default async function AdminPage() {
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
+  const { data: usageTypeRows, error: usageTypesError } = await adminSupabase
+    .from("usage_events")
+    .select("event_type");
+
+  if (usageTypesError) {
+    return (
+      <AdminPageError message={`Could not load usage totals: ${usageTypesError.message}`} />
+    );
+  }
+
+  const totalCounts: Record<string, number> = {};
+  for (const row of usageTypeRows ?? []) {
+    const et =
+      typeof row.event_type === "string" && row.event_type.trim()
+        ? row.event_type.trim()
+        : "(empty)";
+    totalCounts[et] = (totalCounts[et] ?? 0) + 1;
+  }
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: recentUsageRows, error: recentUsageError } = await adminSupabase
+    .from("usage_events")
+    .select("event_type, created_at, artist_id")
+    .gte("created_at", sevenDaysAgo)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (recentUsageError) {
+    return (
+      <AdminPageError message={`Could not load recent usage: ${recentUsageError.message}`} />
+    );
+  }
+
+  const recentEvents: UsageAnalyticsRecentEvent[] = (recentUsageRows ?? []).map((r) => ({
+    event_type: String(r.event_type ?? ""),
+    created_at:
+      typeof r.created_at === "string"
+        ? r.created_at
+        : r.created_at != null
+          ? String(r.created_at)
+          : "",
+    artist_id: String(r.artist_id ?? ""),
+  }));
+
   return (
     <div className="mx-auto flex min-h-full w-full max-w-6xl flex-1 flex-col px-4 py-10 sm:px-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -156,6 +204,8 @@ export default async function AdminPage() {
       </header>
 
       <AppNavWrapper />
+
+      <UsageAnalytics totalCounts={totalCounts} recentEvents={recentEvents} />
 
       <AdminCreateClientArtistForm />
 

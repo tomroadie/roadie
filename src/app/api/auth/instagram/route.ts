@@ -33,7 +33,7 @@ export async function GET() {
     client_id: process.env.FACEBOOK_APP_ID!,
     redirect_uri: redirectUri,
     scope:
-      "instagram_basic,pages_show_list,pages_read_engagement,business_management",
+      "instagram_basic,pages_show_list,pages_read_engagement,business_management,instagram_manage_insights",
     response_type: "code",
     state: activeArtistId,
   });

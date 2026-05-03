@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
+import { trackUsage } from "@/lib/track-usage";
 import { generateAuditEmail } from "@/lib/emails/generate-audit-email";
 
 function verifyWebhookSecret(headerValue: string | null, secret: string): boolean {
@@ -385,6 +386,19 @@ Artist: ${artistName}. Below is a structured summary of their Instagram profile 
       { error: "Failed to save audit", details: auditInsertError.message },
       { status: 500 }
     );
+  }
+
+  if (profileLookup?.owner_user_id && profileLookup?.id) {
+    await trackUsage({
+      supabase,
+      userId: profileLookup.owner_user_id,
+      artistId: profileLookup.id,
+      eventType: "audit_completed",
+      metadata: {
+        instagram_handle: lead.instagram_handle,
+        followers: followers ?? 0,
+      },
+    });
   }
 
   const { error: pendingUpdateError } = await supabase

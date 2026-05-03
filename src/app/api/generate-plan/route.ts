@@ -7,6 +7,7 @@ import { parseIdeasJson } from "@/lib/parse-ideas-json";
 import { NextResponse } from "next/server";
 import { canDo, normalizePlan } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
+import { trackUsage } from "@/lib/track-usage";
 
 const SYSTEM_PROMPT = `You are a creative content strategist who deeply understands music culture. You write like a human, not like a marketing bot.
 
@@ -306,6 +307,18 @@ No markdown fences, no commentary outside the JSON array.`;
       );
     }
   }
+
+  await trackUsage({
+    supabase,
+    userId: user.id,
+    artistId: activeArtistId,
+    eventType: "plan_generated",
+    metadata: {
+      week_start: weekStart,
+      has_audit: !!audit,
+      upcoming_events_count: events?.length ?? 0,
+    },
+  });
 
   return NextResponse.json({ ideas });
 }

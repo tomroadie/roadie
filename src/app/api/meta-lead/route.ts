@@ -214,7 +214,7 @@ export async function POST(request: Request) {
   let apify_posts_run_id: string;
   let apify_profile_run_id: string;
   try {
-    apify_posts_run_id = await apifyRun("apify~instagram-scraper", apifyToken, {
+    apify_posts_run_id = await apifyRun("apify~instagram-post-scraper", apifyToken, {
       directUrls: [cleanInstagramUrl],
       resultsLimit: 10,
     });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { enqueueNewLead } from "@/lib/new-lead-pipeline";
+import { trackUsage } from "@/lib/track-usage";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -74,6 +75,13 @@ export async function POST(request: Request) {
     else if (lower.includes("misconfiguration")) status = 500;
     return NextResponse.json({ error: msg }, { status });
   }
+
+  await trackUsage({
+    supabase,
+    userId: user.id,
+    artistId,
+    eventType: "audit_started",
+  });
 
   return NextResponse.json({
     success: true,

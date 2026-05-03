@@ -1,7 +1,7 @@
 "use client";
 
 import type { ContentIdea } from "@/types/content-plan";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { EventRow } from "@/types/event";
 import Link from "next/link";
 import { canDo, normalizePlan } from "@/lib/plan-limits";
@@ -131,6 +131,37 @@ function IdeaCard({ idea }: { idea: ContentIdea }) {
   );
 }
 
+const PLAN_LOADING_MESSAGES = [
+  "Analysing your Instagram...",
+  "Reading your dates...",
+  "Crafting your ideas...",
+  "Almost there...",
+] as const;
+
+function IdeaCardSkeleton() {
+  return (
+    <article className="rounded-xl border border-card-border bg-card p-6">
+      <div className="h-6 w-28 animate-pulse rounded-full bg-zinc-800" />
+      <div className="mt-4 h-7 max-w-[85%] animate-pulse rounded bg-zinc-800" />
+      <div className="mt-3 space-y-2">
+        <div className="h-4 w-full animate-pulse rounded bg-zinc-800" />
+        <div className="h-4 w-full animate-pulse rounded bg-zinc-800" />
+        <div className="h-4 w-[72%] animate-pulse rounded bg-zinc-800" />
+      </div>
+      <div className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+        <div>
+          <div className="h-3 w-10 animate-pulse rounded bg-zinc-800" />
+          <div className="mt-2 h-4 w-full animate-pulse rounded bg-zinc-800" />
+        </div>
+        <div>
+          <div className="h-3 w-14 animate-pulse rounded bg-zinc-800" />
+          <div className="mt-2 h-4 w-full animate-pulse rounded bg-zinc-800" />
+        </div>
+      </div>
+    </article>
+  );
+}
+
 type WeeklyPlanSectionProps = {
   initialIdeas: ContentIdea[] | null;
   upcomingEventsCount: number;
@@ -158,10 +189,30 @@ export function WeeklyPlanSection({
 }: WeeklyPlanSectionProps) {
   const [ideas, setIdeas] = useState<ContentIdea[] | null>(initialIdeas);
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmKind | null>(null);
   const normalizedPlan = normalizePlan(plan);
   const canGenerate = canDo(normalizedPlan, "canGeneratePlan", isAdmin);
+
+  useEffect(() => {
+    if (!loading) {
+      setLoadingStep(null);
+      return;
+    }
+
+    let index = 0;
+    setLoadingStep(PLAN_LOADING_MESSAGES[0]);
+    const id = window.setInterval(() => {
+      index = (index + 1) % PLAN_LOADING_MESSAGES.length;
+      setLoadingStep(PLAN_LOADING_MESSAGES[index]);
+    }, 3000);
+
+    return () => {
+      window.clearInterval(id);
+      setLoadingStep(null);
+    };
+  }, [loading]);
 
   async function runGenerate() {
     setError(null);
@@ -316,7 +367,21 @@ export function WeeklyPlanSection({
           </div>
         </div>
       ) : (
-        <p className="mt-4 text-sm text-muted">Creating your plan…</p>
+        <div className="mt-6 flex flex-col gap-5">
+          <p className="text-sm text-muted animate-pulse">
+            {loadingStep ?? PLAN_LOADING_MESSAGES[0]}
+          </p>
+          <ul className="flex flex-col gap-5">
+            {Array.from({ length: 5 }, (_, i) => (
+              <li key={i}>
+                <IdeaCardSkeleton />
+              </li>
+            ))}
+          </ul>
+          <p className="text-center text-xs text-muted">
+            Usually takes 20–30 seconds
+          </p>
+        </div>
       )}
 
       <div className="mt-10 rounded-xl border border-card-border bg-card p-6">

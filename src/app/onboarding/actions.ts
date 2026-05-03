@@ -28,6 +28,7 @@ export async function completeOnboarding(
     formData.get("sound_description") ?? ""
   ).trim();
   const similarArtists = String(formData.get("similar_artists") ?? "").trim();
+  const voiceDescription = String(formData.get("voice_description") ?? "").trim();
   const instagramRaw = String(formData.get("instagram_handle") ?? "").trim();
   const instagramHandle = instagramRaw.replace(/^@+/, "") || null;
 
@@ -94,12 +95,6 @@ export async function completeOnboarding(
     return { error: artistUpsertErr.message };
   }
 
-  const { data: existingProfile } = await supabase
-    .from("profiles")
-    .select("voice_description")
-    .eq("id", activeArtistId)
-    .maybeSingle();
-
   const { error } = await supabase.from("profiles").upsert(
     {
       id: activeArtistId,
@@ -109,7 +104,7 @@ export async function completeOnboarding(
       sound_description: soundDescription || null,
       similar_artists: similarArtists || null,
       instagram_handle: instagramHandle,
-      voice_description: existingProfile?.voice_description ?? null,
+      voice_description: voiceDescription || null,
     },
     { onConflict: "id" }
   );

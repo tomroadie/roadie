@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
@@ -11,6 +11,11 @@ import { userIsAdmin } from "@/lib/is-admin";
 import { RefreshAuditButton } from "./refresh-audit-button";
 import { RecentPostsCards } from "./recent-posts-cards";
 import { InsightsAuditEmptyState } from "./insights-audit-empty-state";
+import {
+  LiveStatsSection,
+  type InstagramLiveInsightRow,
+  type InstagramLiveMediaRow,
+} from "./live-stats-section";
 
 function sortRecentPostsRawByDateDesc(raw: string): string {
   const blocks = raw
@@ -36,6 +41,154 @@ function sortRecentPostsRawByDateDesc(raw: string): string {
   });
 
   return scored.map((x) => x.block).join("\n\n---\n\n");
+}
+
+function sumInstagramAccountMetric(insightsPayload: unknown, metric: string): number {
+  if (!insightsPayload || typeof insightsPayload !== "object") return 0;
+  const data = (insightsPayload as { data?: unknown }).data;
+  if (!Array.isArray(data)) return 0;
+  const row = data.find(
+    (d: unknown) =>
+      d &&
+      typeof d === "object" &&
+      (d as { name?: string }).name === metric
+  ) as { values?: Array<{ value?: number }> } | undefined;
+  if (!row?.values || !Array.isArray(row.values)) return 0;
+  return row.values.reduce(
+    (acc, v) => acc + (typeof v?.value === "number" ? v.value : 0),
+    0
+  );
+}
+
+function mediaMetric(
+  item: Record<string, unknown>,
+  metric: string
+): number | null {
+  const insights = item.insights;
+  if (!insights || typeof insights !== "object") return null;
+  const data = (insights as { data?: unknown }).data;
+  if (!Array.isArray(data)) return null;
+  const row = data.find(
+    (r: unknown) =>
+      r &&
+      typeof r === "object" &&
+      (r as { name?: string }).name === metric
+  ) as { values?: Array<{ value?: number }> } | undefined;
+  const v = row?.values?.[0]?.value;
+  return typeof v === "number" ? v : null;
+}
+
+function normalizeInstagramLivePayload(payload: {
+  media?: unknown;
+  insights?: unknown;
+}): {
+  insights: InstagramLiveInsightRow[];
+  media: InstagramLiveMediaRow[];
+} {
+  const impressions = sumInstagramAccountMetric(payload.insights, "impressions");
+  const reach = sumInstagramAccountMetric(payload.insights, "reach");
+  const profileViews = sumInstagramAccountMetric(
+    payload.insights,
+    "profile_views"
+  );
+
+  const insights: InstagramLiveInsightRow[] = [
+    { key: "impressions", label: "Impressions", value: impressions },
+    { key: "reach", label: "Reach", value: reach },
+    {
+      key: "profile_views",
+      label: "Profile views",
+      value: profileViews,
+    },
+  ];
+
+  const rawMedia = payload.media;
+  const list =
+    rawMedia &&
+    typeof rawMedia === "object" &&
+    Array.isArray((rawMedia as { data?: unknown }).data)
+      ? ((rawMedia as { data: Record<string, unknown>[] }).data ?? [])
+      : [];
+
+  const sorted = [...list].sort((a, b) => {
+    const ta =
+      typeof a.timestamp === "string"
+        ? new Date(a.timestamp).getTime()
+        : 0;
+    const tb =
+      typeof b.timestamp === "string"
+        ? new Date(b.timestamp).getTime()
+        : 0;
+    return tb - ta;
+  });
+
+  const media: InstagramLiveMediaRow[] = sorted.slice(0, 5).map((item) => {
+    const id = typeof item.id === "string" ? item.id : "";
+    const caption =
+      typeof item.caption === "string" ? item.caption : null;
+    const thumbnailUrl =
+      (typeof item.thumbnail_url === "string" && item.thumbnail_url) ||
+      (typeof item.media_url === "string" && item.media_url) ||
+      null;
+    const likes =
+      typeof item.like_count === "number" ? item.like_count : 0;
+    const comments =
+      typeof item.comments_count === "number" ? item.comments_count : 0;
+
+    return {
+      id,
+      caption,
+      thumbnailUrl,
+      likes,
+      comments,
+      impressions: mediaMetric(item, "impressions"),
+      reach: mediaMetric(item, "reach"),
+    };
+  });
+
+  return { insights, media };
+}
+
+async function fetchInstagramLiveStats(): Promise<{
+  insights: InstagramLiveInsightRow[];
+  media: InstagramLiveMediaRow[];
+} | null> {
+  const hdrs = await headers();
+  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
+  const proto = hdrs.get("x-forwarded-proto") ?? "http";
+  const origin = host ? `${proto}://${host}` : "http://localhost:3000";
+
+  const res = await fetch(`${origin}/api/instagram-stats`, {
+    headers: {
+      cookie: hdrs.get("cookie") ?? "",
+    },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    return null;
+  }
+
+  let json: unknown;
+  try {
+    json = await res.json();
+  } catch {
+    return null;
+  }
+
+  if (!json || typeof json !== "object") {
+    return null;
+  }
+
+  const o = json as { media?: unknown; insights?: unknown; error?: unknown };
+  if (typeof o.error === "string" && o.error === "not_connected") {
+    return null;
+  }
+
+  return normalizeInstagramLivePayload({
+    media: o.media,
+    insights: o.insights,
+  });
 }
 
 function sectionAccent(title: string): { border: string; label: string } {
@@ -88,7 +241,7 @@ export default async function InsightsPage() {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("artist_name, instagram_handle")
+    .select("artist_name, instagram_handle, instagram_user_id")
     .eq("id", activeArtistId)
     .maybeSingle();
 
@@ -131,6 +284,11 @@ export default async function InsightsPage() {
   }
 
   const audit = auditByArtistId ?? auditByHandle ?? null;
+
+  const instagramUserId = profile?.instagram_user_id?.trim();
+  const liveSocialStats = instagramUserId
+    ? await fetchInstagramLiveStats()
+    : null;
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
@@ -273,20 +431,29 @@ export default async function InsightsPage() {
             canViewLiveSocialData ? "" : "opacity-60 grayscale",
           ].join(" ")}
         >
-          <p className="text-sm leading-relaxed text-muted">
-            Connect your Instagram, TikTok and Facebook to see real-time performance data,
-            post analytics, and what&apos;s driving growth.
-          </p>
-          {!canViewLiveSocialData ? (
-            <div className="mt-5">
-              <Link
-                href="/pricing"
-                className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
-              >
-                Upgrade to Pro
-              </Link>
-            </div>
-          ) : null}
+          {canViewLiveSocialData && liveSocialStats ? (
+            <LiveStatsSection
+              insights={liveSocialStats.insights}
+              media={liveSocialStats.media}
+            />
+          ) : (
+            <>
+              <p className="text-sm leading-relaxed text-muted">
+                Connect your Instagram, TikTok and Facebook to see real-time performance data,
+                post analytics, and what&apos;s driving growth.
+              </p>
+              {!canViewLiveSocialData ? (
+                <div className="mt-5">
+                  <Link
+                    href="/pricing"
+                    className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
+                  >
+                    Upgrade to Pro
+                  </Link>
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
       </section>
     </div>

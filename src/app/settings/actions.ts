@@ -18,6 +18,8 @@ export type AddArtistState =
 
 export type InstagramHandleState = { error?: string } | null;
 
+export type InstagramDisconnectState = { error?: string } | null;
+
 export type VoiceDescriptionState = { error?: string } | null;
 
 export async function updateVoiceDescription(
@@ -102,6 +104,47 @@ export async function updateInstagramHandle(
 
   revalidatePath("/settings");
   revalidatePath("/insights");
+  return null;
+}
+
+export async function disconnectInstagram(
+  _prev: InstagramDisconnectState,
+  _formData: FormData
+): Promise<InstagramDisconnectState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const cookieStore = await cookies();
+  const activeArtistId = await getActiveArtistIdForUser(
+    supabase,
+    user.id,
+    cookieStore
+  );
+
+  if (!activeArtistId) {
+    return { error: "No active artist selected." };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      instagram_access_token: null,
+      instagram_user_id: null,
+    })
+    .eq("id", activeArtistId)
+    .eq("owner_user_id", user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/settings");
   return null;
 }
 

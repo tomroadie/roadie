@@ -37,6 +37,85 @@ function optionalBodyString(value: unknown): string {
   return value.trim();
 }
 
+function truncateForPlanCaption(text: string, max: number): string {
+  const t = String(text ?? "")
+    .trim()
+    .replace(/\s+/g, " ");
+  if (!t) return "(no caption)";
+  if (t.length <= max) return t;
+  return `${t.slice(0, max).trimEnd()}…`;
+}
+
+type PlanInstagramPostLine = {
+  captionSnippet: string;
+  likes: number;
+  comments: number;
+  engagementRateLabel: string;
+};
+
+function parseInstagramMediaForPlan(
+  mediaPayload: unknown,
+  followerCount: unknown
+): PlanInstagramPostLine[] {
+  const followersNum = Number(followerCount);
+  const followers =
+    Number.isFinite(followersNum) && followersNum > 0 ? followersNum : 0;
+
+  const rawMedia = mediaPayload;
+  const list =
+    rawMedia &&
+    typeof rawMedia === "object" &&
+    Array.isArray((rawMedia as { data?: unknown }).data)
+      ? ((rawMedia as { data: Record<string, unknown>[] }).data ?? [])
+      : [];
+
+  const sorted = [...list].sort((a, b) => {
+    const ta =
+      typeof a.timestamp === "string"
+        ? new Date(a.timestamp).getTime()
+        : 0;
+    const tb =
+      typeof b.timestamp === "string"
+        ? new Date(b.timestamp).getTime()
+        : 0;
+    return tb - ta;
+  });
+
+  return sorted.slice(0, 10).map((item) => {
+    const caption = typeof item.caption === "string" ? item.caption : "";
+    const likes = typeof item.like_count === "number" ? item.like_count : 0;
+    const comments =
+      typeof item.comments_count === "number" ? item.comments_count : 0;
+    const engagementRateLabel =
+      followers > 0
+        ? `${(((likes + comments) / followers) * 100).toFixed(2)}%`
+        : "—";
+
+    return {
+      captionSnippet: truncateForPlanCaption(caption, 80),
+      likes,
+      comments,
+      engagementRateLabel,
+    };
+  });
+}
+
+function formatInstagramLivePromptSection(
+  posts: PlanInstagramPostLine[]
+): string {
+  const lines = posts.map(
+    (p, i) =>
+      `${i + 1}. ${p.captionSnippet} — Likes: ${p.likes.toLocaleString()} — Comments: ${p.comments.toLocaleString()} — Engagement rate: ${p.engagementRateLabel}`
+  );
+
+  return `## Live Instagram performance (last 10 posts)
+
+Use this live data to identify what content formats and topics are actually performing for this artist right now. Reference specific posts that worked well when suggesting similar ideas.
+
+${lines.join("\n")}
+`;
+}
+
 export async function POST(request: Request) {
   let vibe = "";
   let avoid = "";
@@ -100,7 +179,7 @@ export async function POST(request: Request) {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, genre, sound_description, similar_artists, voice_description"
+      "artist_name, genre, sound_description, similar_artists, voice_description, instagram_access_token, instagram_user_id"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -134,6 +213,52 @@ export async function POST(request: Request) {
       { error: "Failed to load audit", details: auditError.message },
       { status: 500 }
     );
+  }
+
+  let instagramLiveSection = "";
+  const igToken = profile.instagram_access_token?.trim();
+  const igUserId = profile.instagram_user_id?.trim();
+  if (igToken && igUserId) {
+    try {
+      const hdrHost =
+        request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+      const hdrProto = request.headers.get("x-forwarded-proto") ?? "http";
+      const fallbackOrigin = hdrHost
+        ? `${hdrProto}://${hdrHost}`
+        : "http://localhost:3000";
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? fallbackOrigin;
+
+      const statsRes = await fetch(
+        `${baseUrl}/api/instagram-stats?artist_id=${encodeURIComponent(activeArtistId)}`,
+        {
+          headers: { cookie: request.headers.get("cookie") ?? "" },
+          cache: "no-store",
+        }
+      );
+
+      if (statsRes.ok) {
+        const statsJson = (await statsRes.json()) as {
+          error?: string;
+          media?: unknown;
+        };
+        if (
+          statsJson.error !== "not_connected" &&
+          statsJson.media !== undefined &&
+          statsJson.media !== null
+        ) {
+          const rows = parseInstagramMediaForPlan(
+            statsJson.media,
+            audit?.followers
+          );
+          if (rows.length > 0) {
+            instagramLiveSection = formatInstagramLivePromptSection(rows);
+          }
+        }
+      }
+    } catch {
+      /* skip live Instagram section */
+    }
   }
 
   const { data: events, error: eventsError } = await supabase
@@ -218,6 +343,7 @@ No audit available yet.`;
 If 'In their own words' is provided, treat it as the primary voice reference and make captions sound exactly like that person wrote them.
 
 ${auditSection}
+${instagramLiveSection}
 
 ## Audit synthesis you must use
 - CORE PROBLEM from audit: ${coreProblemFromAudit || "—"}

@@ -144,6 +144,9 @@ function normalizeInstagramLivePayload(payload: {
     const comments =
       typeof item.comments_count === "number" ? item.comments_count : 0;
 
+    const timestamp =
+      typeof item.timestamp === "string" ? item.timestamp : "";
+
     return {
       id,
       caption,
@@ -152,6 +155,7 @@ function normalizeInstagramLivePayload(payload: {
       comments,
       impressions: mediaMetric(item, "impressions"),
       reach: mediaMetric(item, "reach"),
+      timestamp,
     };
   });
 
@@ -438,6 +442,8 @@ export default async function InsightsPage() {
             <LiveStatsSection
               insights={liveSocialStats.insights}
               media={liveSocialStats.media}
+              followers={audit?.followers ?? 0}
+              timestamps={liveSocialStats.media.map((m) => m.timestamp)}
             />
           ) : (
             <>

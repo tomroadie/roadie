@@ -4,13 +4,13 @@ import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { comparePlans, normalizePlan, type RoadiePlan } from "@/lib/plan-limits";
+import { normalizePlan, type RoadiePlan } from "@/lib/plan-limits";
 
 type PriceIds = { starter: string; pro: string; label: string };
-type PlanKey = keyof PriceIds;
+type PaidPlanKey = keyof PriceIds;
 
 const PLANS: Array<{
-  key: PlanKey;
+  key: RoadiePlan;
   name: string;
   price: string;
   blurb: string;
@@ -18,16 +18,28 @@ const PLANS: Array<{
   features: string[];
 }> = [
   {
+    key: "free",
+    name: "Free",
+    price: "£0/month",
+    blurb: "Get started and see your Instagram audit.",
+    features: [
+      "Instagram audit (one-time)",
+      "View insights",
+      "1 artist",
+      "No weekly plan",
+    ],
+  },
+  {
     key: "starter",
     name: "Starter",
     price: "£29/month",
     blurb:
       "Weekly plan, AI assistant, events, Instagram audit — built for one artist.",
     features: [
-      "Weekly plan (unlimited)",
-      "AI assistant",
+      "Weekly content plan",
       "Events calendar",
       "Instagram audit",
+      "AI vibe questions",
       "1 artist",
     ],
   },
@@ -39,11 +51,9 @@ const PLANS: Array<{
       "Full audit insights, monthly refresh, and room for a small roster.",
     highlight: "Most popular",
     features: [
-      "Weekly plan (unlimited)",
-      "AI assistant",
-      "Events calendar",
-      "Instagram audit + insights",
+      "Everything in Starter",
       "Audit refresh (monthly)",
+      "Live social performance data",
       "Up to 3 artists",
     ],
   },
@@ -71,11 +81,11 @@ export default function PricingClient({
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const [loadingPlan, setLoadingPlan] = useState<PlanKey | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<PaidPlanKey | null>(null);
   const [error, setError] = useState<string | null>(null);
   const normalizedCurrent = normalizePlan(currentPlan);
 
-  async function startCheckout(plan: PlanKey) {
+  async function startCheckout(plan: PaidPlanKey) {
     setError(null);
     setLoadingPlan(plan);
 
@@ -84,6 +94,7 @@ export default function PricingClient({
     } = await supabase.auth.getUser();
 
     if (!user) {
+      setLoadingPlan(null);
       router.push("/login?redirect=/pricing");
       return;
     }
@@ -127,31 +138,56 @@ export default function PricingClient({
           Pricing
         </p>
         <h1 className="text-4xl font-black uppercase tracking-tight text-foreground sm:text-5xl">
-          Upgrade when you’re ready
+          Your music deserves a real content strategy
         </h1>
         <p className="max-w-2xl text-base text-muted">
-          Pick a plan that matches your workflow. You can cancel any time.
+          Join artists using Roadie to show up consistently, grow their audience, and spend
+          less time stressing about what to post.
         </p>
       </div>
 
-      <div className="mt-10 grid gap-5 md:grid-cols-3">
+      <div
+        className="mt-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-center text-xs font-bold uppercase tracking-widest text-muted"
+        aria-label="Highlights"
+      >
+        <span>5 ideas every week</span>
+        <span aria-hidden className="hidden sm:inline">
+          ·
+        </span>
+        <span>Based on your real Instagram data</span>
+        <span aria-hidden className="hidden sm:inline">
+          ·
+        </span>
+        <span>Cancels anytime</span>
+      </div>
+
+      <div className="mt-10 grid gap-5 md:grid-cols-4">
         {PLANS.map((p) => {
           const isPopular = p.key === "pro";
-          const isCurrent =
-            normalizedCurrent !== "free" && normalizedCurrent === (p.key as RoadiePlan);
-          const isUpgrade =
-            comparePlans(normalizedCurrent, p.key as RoadiePlan) < 0 &&
-            normalizedCurrent !== "free";
-          const cta =
-            isCurrent ? "Current plan" : isUpgrade ? "Upgrade" : "Get started";
+          const isFree = p.key === "free";
+          const isCurrent = normalizedCurrent === p.key;
+          const isPaid = p.key === "starter" || p.key === "pro" || p.key === "label";
+          const paidKey = isPaid ? (p.key as PaidPlanKey) : null;
+
+          const ctaLabel = isCurrent
+            ? "Current plan"
+            : isFree
+              ? "Get started"
+              : "Start free trial";
+
+          const ctaButtonClass = [
+            "flex h-11 w-full items-center justify-center rounded-lg px-4 text-sm font-black uppercase tracking-wide shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+            isPopular
+              ? "bg-brand text-brand-foreground hover:brightness-95"
+              : "border border-card-border bg-transparent text-foreground hover:border-brand",
+          ].join(" ");
+
           return (
             <div
               key={p.key}
               className={[
                 "relative flex flex-col rounded-xl border border-card-border bg-card p-6 shadow-sm",
-                isPopular
-                  ? "ring-1 ring-brand/20"
-                  : "",
+                isPopular ? "ring-1 ring-brand/20" : "",
               ].join(" ")}
             >
               {p.highlight ? (
@@ -168,12 +204,8 @@ export default function PricingClient({
                 <h2 className="text-xl font-black uppercase tracking-tight text-foreground">
                   {p.name}
                 </h2>
-                <p className="text-3xl font-black tracking-tight text-foreground">
-                  {p.price}
-                </p>
-                <p className="text-sm leading-relaxed text-muted">
-                  {p.blurb}
-                </p>
+                <p className="text-3xl font-black tracking-tight text-foreground">{p.price}</p>
+                <p className="text-sm leading-relaxed text-muted">{p.blurb}</p>
               </div>
 
               <ul className="mt-5 space-y-2 text-sm text-muted-strong">
@@ -186,20 +218,25 @@ export default function PricingClient({
               </ul>
 
               <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={() => startCheckout(p.key)}
-                  disabled={loadingPlan !== null || isCurrent}
-                  className={[
-                    "flex h-11 w-full items-center justify-center rounded-lg px-4 text-sm font-black uppercase tracking-wide shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-                    isPopular
-                      ? "bg-brand text-brand-foreground hover:brightness-95"
-                      : "border border-card-border bg-transparent text-foreground hover:border-brand",
-                  ].join(" ")}
-                >
-                  {loadingPlan === p.key ? "Redirecting…" : cta}
-                </button>
-                {!isCurrent ? (
+                {isFree && !isCurrent ? (
+                  <Link href="/login" className={ctaButtonClass}>
+                    {ctaLabel}
+                  </Link>
+                ) : isFree && isCurrent ? (
+                  <button type="button" disabled className={ctaButtonClass}>
+                    {ctaLabel}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => paidKey && void startCheckout(paidKey)}
+                    disabled={loadingPlan !== null || isCurrent || !paidKey}
+                    className={ctaButtonClass}
+                  >
+                    {paidKey && loadingPlan === paidKey ? "Redirecting…" : ctaLabel}
+                  </button>
+                )}
+                {!isCurrent && isPaid ? (
                   <p className="mt-2 text-center text-xs text-muted">
                     21-day trial · No card required
                   </p>
@@ -233,4 +270,3 @@ export default function PricingClient({
     </div>
   );
 }
-

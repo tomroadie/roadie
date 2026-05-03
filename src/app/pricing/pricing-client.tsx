@@ -10,25 +10,13 @@ type PriceIds = { starter: string; pro: string; label: string };
 type PaidPlanKey = keyof PriceIds;
 
 const PLANS: Array<{
-  key: RoadiePlan;
+  key: PaidPlanKey;
   name: string;
   price: string;
   blurb: string;
   highlight?: string;
   features: string[];
 }> = [
-  {
-    key: "free",
-    name: "Free",
-    price: "£0/month",
-    blurb: "Get started and see your Instagram audit.",
-    features: [
-      "Instagram audit (one-time)",
-      "View insights",
-      "1 artist",
-      "No weekly plan",
-    ],
-  },
   {
     key: "starter",
     name: "Starter",
@@ -140,6 +128,9 @@ export default function PricingClient({
         <h1 className="text-4xl font-black uppercase tracking-tight text-foreground sm:text-5xl">
           Your music deserves a real content strategy
         </h1>
+        {normalizedCurrent === "free" ? (
+          <p className="mt-3 text-sm text-muted">You&apos;re on the free plan</p>
+        ) : null}
         <p className="max-w-2xl text-base text-muted">
           Join artists using Roadie to show up consistently, grow their audience, and spend
           less time stressing about what to post.
@@ -161,22 +152,20 @@ export default function PricingClient({
         <span>Cancels anytime</span>
       </div>
 
-      <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+      <p className="mt-10 text-center text-sm leading-relaxed text-muted">
+        Start free — no card required. Your first{" "}
+        <span className="font-semibold text-brand">21 days are on us</span>.
+      </p>
+
+      <div className="mt-10 grid gap-5 md:grid-cols-3">
         {PLANS.map((p) => {
           const isPopular = p.key === "pro";
-          const isFree = p.key === "free";
           const isCurrent = normalizedCurrent === p.key;
-          const isPaid = p.key === "starter" || p.key === "pro" || p.key === "label";
-          const paidKey = isPaid ? (p.key as PaidPlanKey) : null;
 
-          const ctaLabel = isCurrent
-            ? "Current plan"
-            : isFree
-              ? "Get started"
-              : "Start free trial";
+          const ctaLabel = isCurrent ? "Current plan" : "Start free trial";
 
           const ctaButtonClass = [
-            "flex h-11 w-full items-center justify-center whitespace-nowrap rounded-lg px-4 text-sm font-black uppercase tracking-wide shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+            "flex h-11 w-full items-center justify-center rounded-lg px-4 text-sm font-black uppercase tracking-wide shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
             isPopular
               ? "bg-brand text-brand-foreground hover:brightness-95"
               : "border border-card-border bg-transparent text-foreground hover:border-brand",
@@ -204,9 +193,7 @@ export default function PricingClient({
                 <h2 className="text-xl font-black uppercase tracking-tight text-foreground">
                   {p.name}
                 </h2>
-                <p className="text-2xl font-black tracking-tight text-foreground md:text-3xl">
-                  {p.price}
-                </p>
+                <p className="text-3xl font-black tracking-tight text-foreground">{p.price}</p>
                 <p className="text-sm leading-relaxed text-muted">{p.blurb}</p>
               </div>
 
@@ -220,25 +207,15 @@ export default function PricingClient({
               </ul>
 
               <div className="mt-6">
-                {isFree && !isCurrent ? (
-                  <Link href="/login" className={ctaButtonClass}>
-                    {ctaLabel}
-                  </Link>
-                ) : isFree && isCurrent ? (
-                  <button type="button" disabled className={ctaButtonClass}>
-                    {ctaLabel}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => paidKey && void startCheckout(paidKey)}
-                    disabled={loadingPlan !== null || isCurrent || !paidKey}
-                    className={ctaButtonClass}
-                  >
-                    {paidKey && loadingPlan === paidKey ? "Redirecting…" : ctaLabel}
-                  </button>
-                )}
-                {!isCurrent && isPaid ? (
+                <button
+                  type="button"
+                  onClick={() => void startCheckout(p.key)}
+                  disabled={loadingPlan !== null || isCurrent}
+                  className={ctaButtonClass}
+                >
+                  {loadingPlan === p.key ? "Redirecting…" : ctaLabel}
+                </button>
+                {!isCurrent ? (
                   <p className="mt-2 text-center text-xs text-muted">
                     21-day trial · No card required
                   </p>

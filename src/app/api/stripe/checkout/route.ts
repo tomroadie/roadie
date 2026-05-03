@@ -1,6 +1,8 @@
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
+import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { planFromPriceId } from "@/lib/stripe-plans";
 
 export async function POST(request: Request) {
@@ -43,6 +45,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing Origin header" }, { status: 400 });
   }
 
+  const cookieStore = await cookies();
+  const activeArtistId = await getActiveArtistIdForUser(
+    supabase,
+    user.id,
+    cookieStore
+  );
+  if (!activeArtistId) {
+    return NextResponse.json(
+      { error: "No active artist. Complete onboarding first." },
+      { status: 400 }
+    );
+  }
+
   const stripe = new Stripe(stripeSecretKey);
 
   const session = await stripe.checkout.sessions.create({
@@ -57,6 +72,7 @@ export async function POST(request: Request) {
     metadata: {
       userId: user.id,
       plan,
+      artistId: activeArtistId,
     },
   });
 

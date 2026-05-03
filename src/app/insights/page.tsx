@@ -82,11 +82,6 @@ export default async function InsightsPage() {
     cookieStore
   );
 
-  console.log("[Insights][debug] activeArtistId resolved", {
-    userId: user.id,
-    activeArtistId,
-  });
-
   if (!activeArtistId) {
     redirect("/onboarding");
   }
@@ -105,8 +100,6 @@ export default async function InsightsPage() {
     redirect("/onboarding");
   }
 
-  console.log("[Insights][debug] activeArtistId used for audit query", activeArtistId);
-
   // Method 1: fetch by artist_id
   const { data: auditByArtistId, error: auditByArtistIdError } = await supabase
     .from("audits")
@@ -116,24 +109,12 @@ export default async function InsightsPage() {
     .limit(1)
     .single();
 
-  console.log("[Insights][debug] audit query by artist_id result", {
-    activeArtistId,
-    auditByArtistId: auditByArtistId ? { id: auditByArtistId.id, created_at: auditByArtistId.created_at } : null,
-    auditByArtistIdError,
-  });
-
   // `.single()` throws for “no rows”; treat that as “no audit yet”.
   if (auditByArtistIdError && auditByArtistIdError.code !== "PGRST116") {
     throw new Error(auditByArtistIdError.message);
   }
 
   // Method 2 (fallback): fetch by instagram_handle
-  if (!auditByArtistId && profile?.instagram_handle?.trim()) {
-    console.log("[Insights][debug] fallback instagram_handle for audit query", {
-      instagram_handle: profile.instagram_handle,
-    });
-  }
-
   const { data: auditByHandle, error: auditByHandleError } =
     auditByArtistId || !profile?.instagram_handle?.trim()
       ? { data: null, error: null }
@@ -145,18 +126,11 @@ export default async function InsightsPage() {
           .limit(1)
           .single();
 
-  console.log("[Insights][debug] audit query by instagram_handle result", {
-    instagram_handle: profile?.instagram_handle ?? null,
-    auditByHandle: auditByHandle ? { id: auditByHandle.id, created_at: auditByHandle.created_at } : null,
-    auditByHandleError,
-  });
-
   if (auditByHandleError && auditByHandleError.code !== "PGRST116") {
     throw new Error(auditByHandleError.message);
   }
 
   const audit = auditByArtistId ?? auditByHandle ?? null;
-  console.log("[Insights] audit found", audit ? { id: audit.id, created_at: audit.created_at } : null);
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
@@ -170,7 +144,9 @@ export default async function InsightsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {canRefreshAudit ? <RefreshAuditButton /> : null}
+          {canRefreshAudit ? (
+            <RefreshAuditButton artistId={activeArtistId} />
+          ) : null}
           <LogoutButton />
         </div>
       </header>

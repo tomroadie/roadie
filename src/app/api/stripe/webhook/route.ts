@@ -37,12 +37,13 @@ export async function POST(request: Request) {
   const session = event.data.object as Stripe.Checkout.Session;
   const userId = session.metadata?.userId;
   const plan = session.metadata?.plan as RoadiePlan | undefined;
+  const artistId = session.metadata?.artistId;
   const stripeCustomerId =
     typeof session.customer === "string" ? session.customer : session.customer?.id;
 
-  if (!userId || !plan) {
+  if (!userId || !plan || !artistId) {
     return NextResponse.json(
-      { error: "Missing userId/plan metadata on session" },
+      { error: "Missing userId/plan/artistId metadata on session" },
       { status: 400 }
     );
   }
@@ -58,7 +59,8 @@ export async function POST(request: Request) {
   const { error } = await supabase
     .from("profiles")
     .update({ plan, stripe_customer_id: stripeCustomerId })
-    .eq("owner_user_id", userId);
+    .eq("owner_user_id", userId)
+    .eq("id", artistId);
 
   if (error) {
     return NextResponse.json(

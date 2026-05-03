@@ -309,3 +309,92 @@ No markdown fences, no commentary outside the JSON array.`;
 
   return NextResponse.json({ ideas });
 }
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export async function PATCH(request: Request) {
+  let hook = "";
+  let rating: string | undefined;
+  try {
+    const body = (await request.json()) as Record<string, unknown>;
+    hook = typeof body.hook === "string" ? body.hook.trim() : "";
+    rating = typeof body.rating === "string" ? body.rating.trim() : undefined;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  if (!hook) {
+    return NextResponse.json({ error: "Expected hook" }, { status: 400 });
+  }
+  if (rating !== "up" && rating !== "down") {
+    return NextResponse.json(
+      { error: "Expected rating to be 'up' or 'down'" },
+      { status: 400 }
+    );
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const cookieStore = await cookies();
+  const activeArtistId = await getActiveArtistIdForUser(
+    supabase,
+    user.id,
+    cookieStore
+  );
+
+  if (!activeArtistId) {
+    return NextResponse.json(
+      { error: "No active artist. Complete onboarding first." },
+      { status: 400 }
+    );
+  }
+
+  const weekStart = getMondayDateString();
+
+  const { data: row, error: fetchError } = await supabase
+    .from("weekly_plans")
+    .select("id, idea_ratings")
+    .eq("artist_id", activeArtistId)
+    .eq("week_start", weekStart)
+    .maybeSingle();
+
+  if (fetchError) {
+    return NextResponse.json(
+      { error: "Failed to load plan", details: fetchError.message },
+      { status: 500 }
+    );
+  }
+
+  if (!row?.id) {
+    return NextResponse.json(
+      { error: "No weekly plan for this week yet." },
+      { status: 404 }
+    );
+  }
+
+  const prev = isRecord(row.idea_ratings) ? row.idea_ratings : {};
+  const next = { ...prev, [hook]: rating } as Record<string, string>;
+
+  const { error: updateError } = await supabase
+    .from("weekly_plans")
+    .update({ idea_ratings: next })
+    .eq("id", row.id);
+
+  if (updateError) {
+    return NextResponse.json(
+      { error: "Failed to save rating", details: updateError.message },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ success: true });
+}

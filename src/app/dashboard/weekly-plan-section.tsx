@@ -61,9 +61,17 @@ function buildCopyText(idea: ContentIdea): string {
   ].join("\n");
 }
 
-function IdeaCard({ idea }: { idea: ContentIdea }) {
+function IdeaCard({
+  idea,
+  onRate,
+  initialRating = null,
+}: {
+  idea: ContentIdea;
+  onRate: (hook: string, rating: "up" | "down") => void;
+  initialRating?: "up" | "down" | null;
+}) {
   const [copied, setCopied] = useState(false);
-  const [rating, setRating] = useState<null | "up" | "down">(null);
+  const [rating, setRating] = useState<null | "up" | "down">(initialRating ?? null);
   const accent = useMemo(() => getAccent(idea.format), [idea.format]);
 
   async function handleCopy() {
@@ -134,7 +142,10 @@ function IdeaCard({ idea }: { idea: ContentIdea }) {
           type="button"
           aria-pressed={rating === "up"}
           aria-label="Thumbs up"
-          onClick={() => setRating("up")}
+          onClick={() => {
+            setRating("up");
+            onRate(idea.hook, "up");
+          }}
           className={[
             "inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-lg transition-colors hover:border-brand sm:flex-initial sm:min-w-[5rem]",
             rating === "up" ? "text-emerald-400" : "text-foreground",
@@ -146,7 +157,10 @@ function IdeaCard({ idea }: { idea: ContentIdea }) {
           type="button"
           aria-pressed={rating === "down"}
           aria-label="Thumbs down"
-          onClick={() => setRating("down")}
+          onClick={() => {
+            setRating("down");
+            onRate(idea.hook, "down");
+          }}
           className={[
             "inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-lg transition-colors hover:border-brand sm:flex-initial sm:min-w-[5rem]",
             rating === "down" ? "text-red-400" : "text-foreground",
@@ -196,6 +210,7 @@ function IdeaCardSkeleton() {
 
 type WeeklyPlanSectionProps = {
   initialIdeas: ContentIdea[] | null;
+  initialIdeaRatings?: Record<string, "up" | "down">;
   upcomingEventsCount: number;
   lastGeneratedAt: string | null;
   upcomingThisWeek: EventRow[];
@@ -219,6 +234,7 @@ type PlanAnswers = {
 
 export function WeeklyPlanSection({
   initialIdeas,
+  initialIdeaRatings = {},
   upcomingEventsCount,
   lastGeneratedAt,
   upcomingThisWeek,
@@ -294,6 +310,23 @@ export function WeeklyPlanSection({
       setError("Network error. Try again.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleRate(hook: string, rating: "up" | "down") {
+    try {
+      const res = await fetch("/api/generate-plan", {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hook, rating }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(data.error ?? "Could not save rating.");
+      }
+    } catch {
+      setError("Network error. Try again.");
     }
   }
 
@@ -374,7 +407,11 @@ export function WeeklyPlanSection({
         <ul className="mt-6 flex flex-col gap-5">
           {ideas.map((idea, i) => (
             <li key={`${idea.hook}-${i}`}>
-              <IdeaCard idea={idea} />
+              <IdeaCard
+                idea={idea}
+                onRate={handleRate}
+                initialRating={initialIdeaRatings[idea.hook] ?? null}
+              />
             </li>
           ))}
         </ul>

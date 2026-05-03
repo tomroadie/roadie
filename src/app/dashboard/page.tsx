@@ -26,6 +26,15 @@ function addDaysISO(isoDate: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+function parseIdeaRatingsFromDb(raw: unknown): Record<string, "up" | "down"> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, "up" | "down"> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (v === "up" || v === "down") out[k] = v;
+  }
+  return out;
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {
@@ -68,13 +77,14 @@ export default async function DashboardPage() {
 
   const { data: weeklyPlan } = await supabase
     .from("weekly_plans")
-    .select("ideas, created_at, week_start")
+    .select("ideas, created_at, week_start, idea_ratings")
     .eq("artist_id", activeArtistId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   const initialIdeas = normalizeIdeasFromDb(weeklyPlan?.ideas ?? null);
+  const initialIdeaRatings = parseIdeaRatingsFromDb(weeklyPlan?.idea_ratings);
   const lastGeneratedAt = (weeklyPlan?.created_at as string | undefined) ?? null;
   const planWeekStart = (weeklyPlan?.week_start as string | undefined) ?? null;
 
@@ -171,6 +181,7 @@ export default async function DashboardPage() {
 
       <WeeklyPlanSection
         initialIdeas={initialIdeas}
+        initialIdeaRatings={initialIdeaRatings}
         upcomingEventsCount={upcomingEventsCount}
         lastGeneratedAt={lastGeneratedAt}
         upcomingThisWeek={upcomingThisWeek}

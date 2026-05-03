@@ -80,27 +80,36 @@ function mediaMetric(
 
 function normalizeInstagramLivePayload(payload: {
   media?: unknown;
-  insights?: unknown;
+  insights?: unknown | null;
 }): {
   insights: InstagramLiveInsightRow[];
   media: InstagramLiveMediaRow[];
 } {
-  const impressions = sumInstagramAccountMetric(payload.insights, "impressions");
-  const reach = sumInstagramAccountMetric(payload.insights, "reach");
-  const profileViews = sumInstagramAccountMetric(
-    payload.insights,
-    "profile_views"
-  );
+  const insightsPayload = payload.insights;
 
-  const insights: InstagramLiveInsightRow[] = [
-    { key: "impressions", label: "Impressions", value: impressions },
-    { key: "reach", label: "Reach", value: reach },
-    {
-      key: "profile_views",
-      label: "Profile views",
-      value: profileViews,
-    },
-  ];
+  const insights: InstagramLiveInsightRow[] =
+    insightsPayload === null || insightsPayload === undefined
+      ? []
+      : [
+          {
+            key: "impressions",
+            label: "Impressions",
+            value: sumInstagramAccountMetric(insightsPayload, "impressions"),
+          },
+          {
+            key: "reach",
+            label: "Reach",
+            value: sumInstagramAccountMetric(insightsPayload, "reach"),
+          },
+          {
+            key: "profile_views",
+            label: "Profile views",
+            value: sumInstagramAccountMetric(
+              insightsPayload,
+              "profile_views"
+            ),
+          },
+        ];
 
   const rawMedia = payload.media;
   const list =

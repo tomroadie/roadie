@@ -29,28 +29,43 @@ export function LiveStatsSection({
   insights: InstagramLiveInsightRow[];
   media: InstagramLiveMediaRow[];
 }) {
+  const showStatsCards = insights.length > 0;
+
   return (
     <div className="space-y-8">
-      <div className="grid gap-3 sm:grid-cols-3">
-        {insights.map((row) => (
-          <div
-            key={row.key}
-            className="rounded-xl border border-card-border bg-input p-5"
-          >
-            <p className="text-xs font-bold uppercase tracking-widest text-brand">
-              {row.label}
-            </p>
-            <p className="mt-2 text-3xl font-black tracking-tight text-foreground">
-              {row.value.toLocaleString()}
-            </p>
-            <p className="mt-1 text-xs text-muted">Last 7 days</p>
-          </div>
-        ))}
-      </div>
+      {showStatsCards ? (
+        <div className="grid gap-3 sm:grid-cols-3">
+          {insights.map((row) => (
+            <div
+              key={row.key}
+              className="rounded-xl border border-card-border bg-input p-5"
+            >
+              <p className="text-xs font-bold uppercase tracking-widest text-brand">
+                {row.label}
+              </p>
+              <p className="mt-2 text-3xl font-black tracking-tight text-foreground">
+                {row.value.toLocaleString()}
+              </p>
+              <p className="mt-1 text-xs text-muted">Last 7 days</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {media.length > 0 ? (
         <div>
-          <h3 className="text-sm font-bold uppercase tracking-tight text-foreground">
+          {!showStatsCards ? (
+            <p className="text-sm leading-relaxed text-muted">
+              Impressions and reach data coming soon — requires additional
+              permissions.
+            </p>
+          ) : null}
+          <h3
+            className={[
+              "text-sm font-bold uppercase tracking-tight text-foreground",
+              !showStatsCards ? "mt-5" : "",
+            ].join(" ")}
+          >
             Recent posts
           </h3>
           <ul className="mt-4 space-y-3">

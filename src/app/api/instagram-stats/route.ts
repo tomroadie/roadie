@@ -96,13 +96,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "not_connected" }, { status: 400 });
   }
 
-  const todayUtc = new Date();
-  todayUtc.setUTCHours(0, 0, 0, 0);
-  const until = Math.floor(todayUtc.getTime() / 1000);
-  const sinceDate = new Date(todayUtc);
-  sinceDate.setUTCDate(sinceDate.getUTCDate() - 7);
-  const since = Math.floor(sinceDate.getTime() / 1000);
-
   const mediaUrl = new URL(
     `https://graph.facebook.com/${GRAPH_VERSION}/${instagramUserId}/media`
   );
@@ -118,39 +111,20 @@ export async function GET(request: Request) {
       "media_url",
       "like_count",
       "comments_count",
-      "insights.metric(impressions,reach)",
     ].join(",")
   );
   mediaUrl.searchParams.set("access_token", accessToken);
   mediaUrl.searchParams.set("limit", "10");
 
-  const insightsUrl = new URL(
-    `https://graph.facebook.com/${GRAPH_VERSION}/${instagramUserId}/insights`
-  );
-  insightsUrl.searchParams.set(
-    "metric",
-    "impressions,reach,profile_views"
-  );
-  insightsUrl.searchParams.set("period", "day");
-  insightsUrl.searchParams.set("since", String(since));
-  insightsUrl.searchParams.set("until", String(until));
-  insightsUrl.searchParams.set("access_token", accessToken);
-
   let media: unknown;
-  let insights: unknown;
 
   try {
-    const [mediaRes, insightsRes] = await Promise.all([
-      fetch(mediaUrl.toString()),
-      fetch(insightsUrl.toString()),
-    ]);
-
+    const mediaRes = await fetch(mediaUrl.toString());
     media = await mediaRes.json();
-    insights = await insightsRes.json();
 
-    if (!mediaRes.ok || !insightsRes.ok) {
+    if (!mediaRes.ok) {
       return NextResponse.json(
-        { error: "instagram_api_error", media, insights },
+        { error: "instagram_api_error", media, insights: null },
         { status: 502 }
       );
     }
@@ -159,5 +133,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: message }, { status: 502 });
   }
 
-  return NextResponse.json({ media, insights });
+  return NextResponse.json({ media, insights: null });
 }

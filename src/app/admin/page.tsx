@@ -191,7 +191,7 @@ export default async function AdminPage() {
     await adminSupabase
       .from("content_reviews")
       .select(
-        "id, artist_id, owner_user_id, idea_hook, idea_format, idea_caption, notes, status, feedback, created_at"
+        "id, artist_id, owner_user_id, idea_hook, idea_format, idea_caption, idea_why, idea_timing, notes, status, feedback, created_at, file_urls"
       )
       .order("created_at", { ascending: false })
       .limit(20);
@@ -211,6 +211,8 @@ export default async function AdminPage() {
     idea_hook: String(r.idea_hook ?? ""),
     idea_format: String(r.idea_format ?? ""),
     idea_caption: String(r.idea_caption ?? ""),
+    idea_why: typeof r.idea_why === "string" ? r.idea_why : null,
+    idea_timing: typeof r.idea_timing === "string" ? r.idea_timing : null,
     notes: String(r.notes ?? ""),
     status: String(r.status ?? "pending"),
     feedback: String(r.feedback ?? ""),
@@ -220,6 +222,12 @@ export default async function AdminPage() {
         : r.created_at != null
           ? String(r.created_at)
           : "",
+    file_urls: Array.isArray(r.file_urls)
+      ? (r.file_urls
+          .map((v) => (typeof v === "string" ? v : ""))
+          .map((v) => v.trim())
+          .filter(Boolean) as string[])
+      : null,
   }));
 
   const uniqueArtistIds = Array.from(

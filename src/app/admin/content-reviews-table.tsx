@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 export type ContentReviewQueueRow = {
   id: string;
@@ -9,13 +9,13 @@ export type ContentReviewQueueRow = {
   idea_hook: string;
   idea_format: string;
   idea_caption: string;
-  idea_why?: string | null;
-  idea_timing?: string | null;
+  idea_why: string | null;
+  idea_timing: string | null;
   notes: string;
   status: string;
   feedback: string;
   created_at: string;
-  file_urls?: string[] | null;
+  file_urls: string[] | null;
 };
 
 function formatSubmittedLabel(iso: string): string {
@@ -55,17 +55,24 @@ function filenameFromUrl(url: string): string {
   }
 }
 
-function isHttpUrl(value: string): boolean {
-  return /^https?:\/\//i.test(value);
-}
-
-function filenameFromPath(path: string): string {
-  const last = (path || "").split("/").filter(Boolean).pop() ?? "";
-  try {
-    return decodeURIComponent(last) || path;
-  } catch {
-    return last || path;
+function parseSubmittedFiles(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((v) => String(v ?? "").trim()).filter(Boolean);
   }
+  if (typeof value === "string") {
+    const raw = value.trim();
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.map((v) => String(v ?? "").trim()).filter(Boolean);
+      }
+    } catch {
+      // treat as a single URL
+    }
+    return [raw];
+  }
+  return [];
 }
 
 export function ContentReviewsTable({
@@ -80,50 +87,12 @@ export function ContentReviewsTable({
   const [draftById, setDraftById] = useState<Record<string, string>>({});
   const [sendingId, setSendingId] = useState<null | string>(null);
   const [error, setError] = useState<string | null>(null);
-  const [signedUrlsByPath, setSignedUrlsByPath] = useState<Record<string, string>>({});
 
   const sorted = useMemo(() => localReviews, [localReviews]);
   const expandedRow = useMemo(
     () => (expandedId ? localReviews.find((r) => r.id === expandedId) ?? null : null),
     [expandedId, localReviews]
   );
-
-  useEffect(() => {
-    if (!expandedRow) return;
-
-    const paths = Array.isArray(expandedRow.file_urls)
-      ? expandedRow.file_urls.map((v) => String(v ?? "").trim()).filter(Boolean)
-      : [];
-
-    const controller = new AbortController();
-
-    async function fetchSignedUrls() {
-      const toFetch = paths.filter((p) => !isHttpUrl(p) && !signedUrlsByPath[p]);
-      if (!toFetch.length) return;
-
-      await Promise.all(
-        toFetch.map(async (path) => {
-          try {
-            const res = await fetch(
-              `/api/admin/signed-url?path=${encodeURIComponent(path)}`,
-              { signal: controller.signal, credentials: "same-origin" }
-            );
-            if (!res.ok) return;
-            const data = (await res.json().catch(() => ({}))) as { url?: string };
-            const url = typeof data.url === "string" ? data.url.trim() : "";
-            if (!url) return;
-            setSignedUrlsByPath((prev) => (prev[path] ? prev : { ...prev, [path]: url }));
-          } catch {
-            // ignore
-          }
-        })
-      );
-    }
-
-    void fetchSignedUrls();
-
-    return () => controller.abort();
-  }, [expandedRow, signedUrlsByPath]);
 
   async function sendFeedback(id: string) {
     setError(null);
@@ -190,9 +159,7 @@ export function ContentReviewsTable({
               const isExpanded = expandedId === r.id;
               const isReviewed = r.status === "reviewed";
               const busy = sendingId === r.id;
-              const fileUrls = Array.isArray(r.file_urls)
-                ? r.file_urls.map((u) => String(u ?? "").trim()).filter(Boolean)
-                : [];
+              const fileUrls = parseSubmittedFiles(r.file_urls as unknown);
               return (
                 <>
                   <tr
@@ -258,8 +225,8 @@ export function ContentReviewsTable({
                                 ["Format", r.idea_format],
                                 ["Hook", r.idea_hook],
                                 ["Caption", r.idea_caption],
-                                ["Why", r.idea_why ?? "—"],
-                                ["Timing", r.idea_timing ?? "—"],
+                                ["Why", r.idea_why],
+                                ["Timing", r.idea_timing],
                               ].map(([label, value]) => (
                                 <div
                                   key={label}
@@ -290,72 +257,47 @@ export function ContentReviewsTable({
                           {fileUrls.length ? (
                             <div>
                               <div className="text-xs font-bold uppercase tracking-widest text-muted">
-                                Submitted files
+                                SUBMITTED FILES
                               </div>
                               <div className="mt-2 grid gap-3">
                                 {fileUrls.map((value) => {
-                                  const url = isHttpUrl(value) ? value : signedUrlsByPath[value];
-                                  const label = isHttpUrl(value)
-                                    ? filenameFromUrl(value)
-                                    : filenameFromPath(value);
+                                  const url = String(value ?? "").trim();
+                                  const label = filenameFromUrl(url);
 
-                                  if (!url) {
-                                    return (
-                                      <div
-                                        key={value}
-                                        className="inline-flex items-center justify-between rounded-lg border border-card-border bg-card/40 px-3 py-2 text-sm font-semibold text-muted"
-                                        title={label}
-                                      >
-                                        <span className="truncate">{label}</span>
-                                        <span className="ml-3 text-xs font-black uppercase tracking-wide text-muted">
-                                          Loading…
-                                        </span>
-                                      </div>
-                                    );
-                                  }
+                                  if (!url) return null;
 
-                                  if (isVideoUrl(url) || /video/i.test(label)) {
+                                  if (/\.(mp4)(\?.*)?$/i.test(url) || /video/i.test(url)) {
                                     return (
                                       <video
                                         key={value}
                                         controls
                                         src={url}
-                                        className="mt-2 w-full rounded-lg border border-card-border bg-black/20"
+                                        className="w-full max-h-64 rounded-lg mt-2"
                                       />
                                     );
                                   }
-                                  if (isImageUrl(url)) {
+
+                                  if (/\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i.test(url)) {
                                     return (
-                                      <a
+                                      <img
                                         key={value}
-                                        href={url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="block"
-                                        title={label}
-                                      >
-                                        <img
-                                          src={url}
-                                          alt={label}
-                                          className="mt-2 w-full max-w-[720px] rounded-lg border border-card-border object-contain"
-                                          loading="lazy"
-                                        />
-                                      </a>
+                                        src={url}
+                                        className="max-h-64 rounded-lg mt-2"
+                                        alt={label}
+                                        loading="lazy"
+                                      />
                                     );
                                   }
+
                                   return (
                                     <a
                                       key={value}
                                       href={url}
                                       target="_blank"
                                       rel="noreferrer"
-                                      className="inline-flex items-center justify-between rounded-lg border border-card-border bg-card/40 px-3 py-2 text-sm font-semibold text-foreground hover:border-brand"
-                                      title={label}
+                                      className="text-brand underline"
                                     >
-                                      <span className="truncate">{label}</span>
-                                      <span className="ml-3 text-xs font-black uppercase tracking-wide text-muted">
-                                        Download
-                                      </span>
+                                      Download file
                                     </a>
                                   );
                                 })}

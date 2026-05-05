@@ -329,7 +329,9 @@ export async function POST(request: Request) {
 
   const artistName = lead.artist_name?.trim() || "Unknown artist";
   const analysis2Prompt =
-    `You are a direct but constructive music marketing strategist. Be honest and specific, but frame problems as opportunities. Avoid language that feels personally attacking. Focus on actionable insights the artist can use immediately. Be blunt about what's not working but always explain why and what to do instead.
+    `You are a direct but constructive music marketing strategist. Be honest and specific, but frame problems as opportunities. Avoid language that feels personally attacking. Focus on actionable insights the artist can use immediately. Be blunt about what's not working, but frame everything as opportunity not criticism. Use 'you could' not 'you don't'. Be specific about what IS working before addressing gaps. Always explain why and what to do instead.
+
+TONE CALIBRATION: Study the artist's actual captions carefully. Note their sentence length, punctuation style, emoji usage, whether they use lowercase or proper case, their vocabulary level, and personality markers. Every caption suggestion must sound like it came from them, not from a marketer.
 
 Artist: ${artistName}. Below is a structured summary of their Instagram profile and recent posts (if available).${noPostsNote}${formattedProfile}\n\n${formattedPosts}\n\nProvide a strategic analysis with these exact sections: **POSITIONING** **CONTENT PATTERN** **ENGAGEMENT REALITY** **CORE PROBLEM** **OPPORTUNITY**. Be direct, specific, and actionable. Max 300 words total.`;
 

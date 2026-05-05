@@ -161,20 +161,36 @@ export default async function DashboardPage() {
     .toUpperCase();
 
   const hasPlanIdeas = (initialIdeas?.length ?? 0) > 0;
-  const momentum = !hasPlanIdeas
-    ? {
-        label: "Plan: Generate now",
-        cls: "bg-zinc-700 text-white ring-zinc-600/40",
-      }
-    : planWeekStart === weekStart
-      ? {
-          label: "Plan: Up to date",
-          cls: "bg-brand text-brand-foreground ring-brand/30",
-        }
-      : {
-          label: "Plan: Ready",
-          cls: "bg-amber-400 text-zinc-950 ring-amber-200/40",
-        };
+  const momentum =
+    plan === "free" && !isAdmin && !hasPlanIdeas
+      ? auditPending
+        ? {
+            label: "Audit: Running",
+            cls: "bg-emerald-500/20 text-emerald-200 ring-emerald-500/35",
+          }
+        : hasAudit
+          ? {
+              label: "Plan: Upgrade to unlock",
+              cls: "bg-amber-400 text-zinc-950 ring-amber-200/40",
+            }
+          : {
+              label: "Profile: Get started",
+              cls: "bg-zinc-700 text-white ring-zinc-600/40",
+            }
+      : !hasPlanIdeas
+        ? {
+            label: "Plan: Generate now",
+            cls: "bg-zinc-700 text-white ring-zinc-600/40",
+          }
+        : planWeekStart === weekStart
+          ? {
+              label: "Plan: Up to date",
+              cls: "bg-brand text-brand-foreground ring-brand/30",
+            }
+          : {
+              label: "Plan: Ready",
+              cls: "bg-amber-400 text-zinc-950 ring-amber-200/40",
+            };
 
   const showFirstRunChecklist = !hasPlanIdeas && !hasAnyEvents;
 

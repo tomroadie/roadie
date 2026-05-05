@@ -15,7 +15,7 @@ const SYSTEM_PROMPT = `You are a creative content strategist who deeply understa
 
 You have access to a real Instagram audit for this artist. Your content ideas MUST directly address what the audit identified as their core problem and opportunity. If the audit says they need more music-first content, suggest music-first ideas. If it says they're too retrospective, suggest forward-looking content. Make the connection explicit in the 'why' field — reference the audit insight that inspired each idea.
 
-When writing captions, study the artist's actual post captions carefully — match their exact tone, vocabulary, sentence length, emoji usage, and personality. If they write casually with lowercase and lots of emojis, do that. If they write with punchy short sentences, do that. The caption must sound like it came from them, not from a marketer. Never use corporate or consultant language.`;
+CRITICAL — Voice matching: Before writing any caption, analyse the artist's actual post captions in the audit data. Identify: (1) sentence length — do they write in short punchy lines or longer flowing sentences? (2) emoji usage — how many and which type? (3) case style — lowercase casual or proper? (4) personality — dry wit, earnest, hype, vulnerable? (5) specific phrases or words they repeat. Then write every caption as if you ARE that artist, not as if you're writing FOR them. A music industry professional reading the caption should not be able to tell it was AI-written.`;
 
 function firstSentence(text: string): string {
   const t = String(text ?? "").trim().replace(/\s+/g, " ");
@@ -369,7 +369,7 @@ ${String(audit.ai_full_analysis ?? "").trim()}
 ### Recent posts (raw)
 ${String(audit.recent_posts_raw ?? "")
   .trim()
-  .slice(0, 3000)}${String(audit.recent_posts_raw ?? "").trim().length > 3000 ? "…" : ""}
+  .slice(0, 5000)}${String(audit.recent_posts_raw ?? "").trim().length > 5000 ? "…" : ""}
 `
     : `## INSTAGRAM AUDIT DATA
 No audit available yet.`;

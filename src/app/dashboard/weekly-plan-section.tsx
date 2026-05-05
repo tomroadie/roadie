@@ -328,6 +328,7 @@ export function WeeklyPlanSection({
   const canGenerate = canDo(normalizedPlan, "canGeneratePlan", isAdmin);
   const supabase = useMemo(() => createClient(), []);
   const hasPlanIdeas = (ideas?.length ?? 0) > 0;
+  const freePlanNoIdeasYet = !canGenerate && !hasPlanIdeas;
 
   useEffect(() => {
     if (!auditPending || hasAudit) return;
@@ -539,6 +540,29 @@ export function WeeklyPlanSection({
                 ? "Regenerate plan"
                 : "Generate my weekly plan"}
           </button>
+        ) : freePlanNoIdeasYet ? (
+          auditPending ? (
+            <Link
+              href="/pricing"
+              className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-card px-5 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
+            >
+              Upgrade
+            </Link>
+          ) : hasAudit ? (
+            <Link
+              href="/pricing"
+              className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
+            >
+              Upgrade
+            </Link>
+          ) : (
+            <Link
+              href="/settings"
+              className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-card px-5 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
+            >
+              Go to settings
+            </Link>
+          )
         ) : (
           <Link
             href="/pricing"
@@ -600,12 +624,42 @@ export function WeeklyPlanSection({
       ) : !loading ? (
         <div className="mt-6 rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
           <p className="text-sm leading-relaxed text-muted">
-            {!auditPending && !hasAudit && !hasPlanIdeas
-              ? "Add your Instagram handle in Settings to get a personalised audit, then generate your first plan."
-              : "No plan for this week yet. Generate tailored ideas from your profile, dates, and Instagram audit."}
+            {freePlanNoIdeasYet ? (
+              auditPending ? (
+                "Your audit is running — upgrade to get your personalised plan when it's ready."
+              ) : hasAudit ? (
+                "Your audit is ready! Upgrade to generate your personalised content plan."
+              ) : (
+                "Complete your profile to get started."
+              )
+            ) : !auditPending && !hasAudit && !hasPlanIdeas ? (
+              "Add your Instagram handle in Settings to get a personalised audit, then generate your first plan."
+            ) : (
+              "No plan for this week yet. Generate tailored ideas from your profile, dates, and Instagram audit."
+            )}
           </p>
           <div className="mt-6 flex justify-center">
-            {canGenerate ? (
+            {freePlanNoIdeasYet ? (
+              auditPending || hasAudit ? (
+                <Link
+                  href="/pricing"
+                  className={
+                    hasAudit
+                      ? "inline-flex h-11 min-w-[200px] items-center justify-center rounded-lg bg-brand px-8 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
+                      : "inline-flex h-11 min-w-[200px] items-center justify-center rounded-lg border border-card-border bg-card px-8 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
+                  }
+                >
+                  Upgrade
+                </Link>
+              ) : (
+                <Link
+                  href="/settings"
+                  className="inline-flex h-11 min-w-[200px] items-center justify-center rounded-lg border border-card-border bg-card px-8 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
+                >
+                  Go to settings
+                </Link>
+              )
+            ) : canGenerate ? (
               <button
                 type="button"
                 onClick={requestGenerate}

@@ -44,10 +44,12 @@ export function PostingGoalForm({
 }: {
   initialPostingFrequency: "weekly" | "regular" | "active" | null;
 }) {
-  const initial =
-    initialPostingFrequency && (["weekly", "regular", "active"] as const).includes(initialPostingFrequency)
-      ? initialPostingFrequency
-      : "regular";
+  const initialAllowed = ["weekly", "regular", "active"] as const;
+  const initial = initialAllowed.includes(
+    (initialPostingFrequency ?? "regular") as (typeof initialAllowed)[number]
+  )
+    ? ((initialPostingFrequency ?? "regular") as (typeof initialAllowed)[number])
+    : "regular";
 
   const [postingFrequency, setPostingFrequency] = useState<
     "weekly" | "regular" | "active"

@@ -331,10 +331,7 @@ export function WeeklyPlanSection({
       });
     if (uploadError) throw new Error(uploadError.message);
 
-    const { data } = supabase.storage.from("content-reviews").getPublicUrl(path);
-    const url = data?.publicUrl?.trim();
-    if (!url) throw new Error("Upload succeeded but could not build file URL.");
-    return url;
+    return path;
   }
 
   async function handleSubmitReview(idea: ContentIdea, file: File | null) {

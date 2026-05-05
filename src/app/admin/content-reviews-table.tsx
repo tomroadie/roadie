@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export type ContentReviewQueueRow = {
   id: string;
@@ -9,6 +9,8 @@ export type ContentReviewQueueRow = {
   idea_hook: string;
   idea_format: string;
   idea_caption: string;
+  idea_why?: string | null;
+  idea_timing?: string | null;
   notes: string;
   status: string;
   feedback: string;
@@ -53,6 +55,19 @@ function filenameFromUrl(url: string): string {
   }
 }
 
+function isHttpUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value);
+}
+
+function filenameFromPath(path: string): string {
+  const last = (path || "").split("/").filter(Boolean).pop() ?? "";
+  try {
+    return decodeURIComponent(last) || path;
+  } catch {
+    return last || path;
+  }
+}
+
 export function ContentReviewsTable({
   reviews,
   artistNames,
@@ -60,13 +75,55 @@ export function ContentReviewsTable({
   reviews: ContentReviewQueueRow[];
   artistNames: Record<string, string>;
 }) {
-  const [expanded, setExpanded] = useState<null | string>(null);
+  const [expandedId, setExpandedId] = useState<null | string>(null);
+  const [localReviews, setLocalReviews] = useState<ContentReviewQueueRow[]>(() => reviews);
   const [draftById, setDraftById] = useState<Record<string, string>>({});
   const [sendingId, setSendingId] = useState<null | string>(null);
   const [error, setError] = useState<string | null>(null);
-  const [reviewedIds, setReviewedIds] = useState<Set<string>>(() => new Set());
+  const [signedUrlsByPath, setSignedUrlsByPath] = useState<Record<string, string>>({});
 
-  const sorted = useMemo(() => reviews, [reviews]);
+  const sorted = useMemo(() => localReviews, [localReviews]);
+  const expandedRow = useMemo(
+    () => (expandedId ? localReviews.find((r) => r.id === expandedId) ?? null : null),
+    [expandedId, localReviews]
+  );
+
+  useEffect(() => {
+    if (!expandedRow) return;
+
+    const paths = Array.isArray(expandedRow.file_urls)
+      ? expandedRow.file_urls.map((v) => String(v ?? "").trim()).filter(Boolean)
+      : [];
+
+    const controller = new AbortController();
+
+    async function fetchSignedUrls() {
+      const toFetch = paths.filter((p) => !isHttpUrl(p) && !signedUrlsByPath[p]);
+      if (!toFetch.length) return;
+
+      await Promise.all(
+        toFetch.map(async (path) => {
+          try {
+            const res = await fetch(
+              `/api/admin/signed-url?path=${encodeURIComponent(path)}`,
+              { signal: controller.signal, credentials: "same-origin" }
+            );
+            if (!res.ok) return;
+            const data = (await res.json().catch(() => ({}))) as { url?: string };
+            const url = typeof data.url === "string" ? data.url.trim() : "";
+            if (!url) return;
+            setSignedUrlsByPath((prev) => (prev[path] ? prev : { ...prev, [path]: url }));
+          } catch {
+            // ignore
+          }
+        })
+      );
+    }
+
+    void fetchSignedUrls();
+
+    return () => controller.abort();
+  }, [expandedRow, signedUrlsByPath]);
 
   async function sendFeedback(id: string) {
     setError(null);
@@ -95,12 +152,10 @@ export function ContentReviewsTable({
         );
         return;
       }
-      setReviewedIds((prev) => {
-        const next = new Set(prev);
-        next.add(id);
-        return next;
-      });
-      setExpanded(null);
+      setLocalReviews((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: "reviewed", feedback } : r))
+      );
+      setExpandedId(null);
     } catch {
       setError("Network error. Try again.");
     } finally {
@@ -127,138 +182,228 @@ export function ContentReviewsTable({
               <th className="border-b border-card-border px-3 py-3">Idea</th>
               <th className="border-b border-card-border px-3 py-3">Submitted</th>
               <th className="border-b border-card-border px-3 py-3">Status</th>
-              <th className="border-b border-card-border px-3 py-3" />
+              <th className="border-b border-card-border px-3 py-3 text-right"> </th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((r) => {
-              const isExpanded = expanded === r.id;
-              const isReviewed = reviewedIds.has(r.id) || r.status === "reviewed";
+              const isExpanded = expandedId === r.id;
+              const isReviewed = r.status === "reviewed";
               const busy = sendingId === r.id;
               const fileUrls = Array.isArray(r.file_urls)
                 ? r.file_urls.map((u) => String(u ?? "").trim()).filter(Boolean)
                 : [];
               return (
-                <tr key={r.id} className="align-top">
-                  <td className="border-b border-card-border px-3 py-4 text-sm font-semibold text-foreground">
-                    {artistNames[r.artist_id] ?? "Unknown artist"}
-                  </td>
-                  <td className="border-b border-card-border px-3 py-4 text-sm text-muted-strong">
-                    <div className="font-semibold text-foreground">
-                      {truncate(r.idea_hook, 90)}
-                    </div>
-                    <div className="mt-1 text-xs text-muted">
-                      {truncate(r.idea_caption, 120)}
-                    </div>
-                    {fileUrls.length ? (
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        {fileUrls.map((url) => {
-                          if (isVideoUrl(url) || /video/i.test(url)) {
-                            return (
-                              <a
-                                key={url}
-                                href={url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex h-7 items-center rounded-md bg-brand px-2.5 text-xs font-black uppercase tracking-wide text-brand-foreground hover:opacity-90"
-                                title={filenameFromUrl(url)}
-                              >
-                                ▶ Watch video
-                              </a>
-                            );
-                          }
-
-                          if (isImageUrl(url)) {
-                            return (
-                              <a
-                                key={url}
-                                href={url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="group relative inline-flex h-12 w-12 overflow-hidden rounded-lg border border-card-border bg-black/20"
-                                title={filenameFromUrl(url)}
-                              >
-                                <img
-                                  src={url}
-                                  alt={filenameFromUrl(url)}
-                                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                                  loading="lazy"
-                                />
-                              </a>
-                            );
-                          }
-
-                          return (
-                            <a
-                              key={url}
-                              href={url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex h-7 items-center rounded-md border border-card-border bg-transparent px-2.5 text-xs font-semibold text-foreground hover:border-brand"
-                              title={filenameFromUrl(url)}
-                            >
-                              View file
-                            </a>
-                          );
-                        })}
-                      </div>
-                    ) : null}
-                    {isExpanded ? (
-                      <div className="mt-3">
-                        <textarea
-                          value={draftById[r.id] ?? ""}
-                          onChange={(e) =>
-                            setDraftById((prev) => ({ ...prev, [r.id]: e.target.value }))
-                          }
-                          placeholder="Write feedback…"
-                          className="min-h-[96px] w-full resize-y rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted"
-                        />
-                        <div className="mt-2 flex items-center justify-between gap-3">
-                          <button
-                            type="button"
-                            onClick={() => void sendFeedback(r.id)}
-                            disabled={busy}
-                            className="inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-xs font-black uppercase tracking-wide text-brand-foreground disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {busy ? "Sending…" : "Send feedback"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setExpanded(null)}
-                            className="text-xs font-semibold uppercase tracking-wide text-muted hover:text-foreground"
-                          >
-                            Cancel
-                          </button>
+                <>
+                  <tr
+                    key={r.id}
+                    className={[
+                      "align-top transition-colors",
+                      isExpanded ? "bg-white/2" : "hover:bg-white/2",
+                      isReviewed ? "cursor-default" : "cursor-pointer",
+                    ].join(" ")}
+                    onClick={() =>
+                      setExpandedId((prev) => (prev === r.id ? null : r.id))
+                    }
+                  >
+                    <td className="border-b border-card-border px-3 py-4 text-sm font-semibold text-foreground">
+                      {artistNames[r.artist_id] ?? "Unknown artist"}
+                    </td>
+                    <td className="border-b border-card-border px-3 py-4 text-sm text-muted-strong">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-foreground">
+                            {truncate(r.idea_hook, 90)}
+                          </div>
+                          <div className="mt-1 text-xs text-muted">
+                            {truncate(r.idea_caption, 120)}
+                          </div>
                         </div>
                       </div>
-                    ) : null}
-                  </td>
-                  <td className="border-b border-card-border px-3 py-4 text-sm text-muted">
-                    {formatSubmittedLabel(r.created_at)}
-                  </td>
-                  <td className="border-b border-card-border px-3 py-4 text-sm">
-                    <span
-                      className={[
-                        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide ring-1 ring-inset",
-                        isReviewed
-                          ? "bg-emerald-500/10 text-emerald-300 ring-emerald-400/20"
-                          : "bg-amber-500/10 text-amber-200 ring-amber-400/20",
-                      ].join(" ")}
-                    >
-                      {isReviewed ? "Reviewed" : (r.status || "Pending")}
-                    </span>
-                  </td>
-                  <td className="border-b border-card-border px-3 py-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setExpanded((prev) => (prev === r.id ? null : r.id))}
-                      disabled={isReviewed}
-                      className="inline-flex h-9 items-center justify-center rounded-lg border border-card-border bg-transparent px-3 text-xs font-bold uppercase tracking-wide text-foreground transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Give feedback
-                    </button>
-                  </td>
-                </tr>
+                    </td>
+                    <td className="border-b border-card-border px-3 py-4 text-sm text-muted">
+                      {formatSubmittedLabel(r.created_at)}
+                    </td>
+                    <td className="border-b border-card-border px-3 py-4 text-sm">
+                      <span
+                        className={[
+                          "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide ring-1 ring-inset",
+                          isReviewed
+                            ? "bg-emerald-500/10 text-emerald-300 ring-emerald-400/20"
+                            : "bg-amber-500/10 text-amber-200 ring-amber-400/20",
+                        ].join(" ")}
+                      >
+                        {isReviewed ? "Reviewed" : "Pending"}
+                      </span>
+                    </td>
+                    <td className="border-b border-card-border px-3 py-4 text-right text-sm text-muted">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-card-border bg-transparent text-foreground">
+                        {isExpanded ? "▲" : "▼"}
+                      </span>
+                    </td>
+                  </tr>
+                  {isExpanded ? (
+                    <tr className="align-top">
+                      <td
+                        className="border-b border-card-border px-3 py-4"
+                        colSpan={5}
+                      >
+                        <div className="grid gap-4 rounded-xl border border-card-border bg-input/30 p-4">
+                          <div>
+                            <div className="text-xs font-bold uppercase tracking-widest text-muted">
+                              Full idea details
+                            </div>
+                            <div className="mt-3 grid gap-2 text-sm">
+                              {[
+                                ["Format", r.idea_format],
+                                ["Hook", r.idea_hook],
+                                ["Caption", r.idea_caption],
+                                ["Why", r.idea_why ?? "—"],
+                                ["Timing", r.idea_timing ?? "—"],
+                              ].map(([label, value]) => (
+                                <div
+                                  key={label}
+                                  className="grid gap-1 rounded-lg border border-card-border bg-card/40 p-3 md:grid-cols-[140px_1fr]"
+                                >
+                                  <div className="text-xs font-bold uppercase tracking-widest text-muted">
+                                    {label}
+                                  </div>
+                                  <div className="whitespace-pre-wrap text-foreground">
+                                    {String(value ?? "—").trim() || "—"}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {String(r.notes ?? "").trim() ? (
+                            <div>
+                              <div className="text-xs font-bold uppercase tracking-widest text-muted">
+                                Artist notes
+                              </div>
+                              <div className="mt-2 whitespace-pre-wrap rounded-lg border border-card-border bg-card/40 p-3 text-sm text-foreground">
+                                {r.notes}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {fileUrls.length ? (
+                            <div>
+                              <div className="text-xs font-bold uppercase tracking-widest text-muted">
+                                Submitted files
+                              </div>
+                              <div className="mt-2 grid gap-3">
+                                {fileUrls.map((value) => {
+                                  const url = isHttpUrl(value) ? value : signedUrlsByPath[value];
+                                  const label = isHttpUrl(value)
+                                    ? filenameFromUrl(value)
+                                    : filenameFromPath(value);
+
+                                  if (!url) {
+                                    return (
+                                      <div
+                                        key={value}
+                                        className="inline-flex items-center justify-between rounded-lg border border-card-border bg-card/40 px-3 py-2 text-sm font-semibold text-muted"
+                                        title={label}
+                                      >
+                                        <span className="truncate">{label}</span>
+                                        <span className="ml-3 text-xs font-black uppercase tracking-wide text-muted">
+                                          Loading…
+                                        </span>
+                                      </div>
+                                    );
+                                  }
+
+                                  if (isVideoUrl(url) || /video/i.test(label)) {
+                                    return (
+                                      <video
+                                        key={value}
+                                        controls
+                                        src={url}
+                                        className="mt-2 w-full rounded-lg border border-card-border bg-black/20"
+                                      />
+                                    );
+                                  }
+                                  if (isImageUrl(url)) {
+                                    return (
+                                      <a
+                                        key={value}
+                                        href={url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="block"
+                                        title={label}
+                                      >
+                                        <img
+                                          src={url}
+                                          alt={label}
+                                          className="mt-2 w-full max-w-[720px] rounded-lg border border-card-border object-contain"
+                                          loading="lazy"
+                                        />
+                                      </a>
+                                    );
+                                  }
+                                  return (
+                                    <a
+                                      key={value}
+                                      href={url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex items-center justify-between rounded-lg border border-card-border bg-card/40 px-3 py-2 text-sm font-semibold text-foreground hover:border-brand"
+                                      title={label}
+                                    >
+                                      <span className="truncate">{label}</span>
+                                      <span className="ml-3 text-xs font-black uppercase tracking-wide text-muted">
+                                        Download
+                                      </span>
+                                    </a>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          <div>
+                            <div className="text-xs font-bold uppercase tracking-widest text-muted">
+                              Feedback
+                            </div>
+                            <textarea
+                              value={draftById[r.id] ?? ""}
+                              onChange={(e) =>
+                                setDraftById((prev) => ({ ...prev, [r.id]: e.target.value }))
+                              }
+                              placeholder="Write feedback…"
+                              className="mt-2 min-h-[110px] w-full resize-y rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted"
+                            />
+                            <div className="mt-3 flex items-center justify-between gap-3">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void sendFeedback(r.id);
+                                }}
+                                disabled={busy}
+                                className="inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-xs font-black uppercase tracking-wide text-brand-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {busy ? "Sending…" : "Send feedback"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedId(null);
+                                }}
+                                className="text-xs font-semibold uppercase tracking-wide text-muted hover:text-foreground"
+                              >
+                                Close
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </>
               );
             })}
           </tbody>

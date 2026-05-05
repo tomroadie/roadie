@@ -57,10 +57,25 @@ function parseIdeaFields(body: Record<string, unknown>): {
 function parseFileUrls(body: Record<string, unknown>): string[] {
   const raw = body.file_urls;
   if (!Array.isArray(raw)) return [];
-  const urls = raw
-    .map((v) => asTrimmedString(v))
-    .filter((v) => !!v);
-  return urls;
+  const values = raw.map((v) => asTrimmedString(v)).filter((v) => !!v);
+  return values
+    .map((v) => {
+      // Accept both legacy full URLs and new storage paths; always persist paths.
+      if (/^https?:\/\//i.test(v)) {
+        try {
+          const u = new URL(v);
+          const marker = "/content-reviews/";
+          const idx = u.pathname.indexOf(marker);
+          if (idx !== -1) {
+            return decodeURIComponent(u.pathname.slice(idx + marker.length)).trim();
+          }
+        } catch {
+          // fall through
+        }
+      }
+      return v.replace(/^\/+/, "").trim();
+    })
+    .filter(Boolean);
 }
 
 export async function POST(request: Request) {

@@ -67,7 +67,7 @@ export default async function DashboardPage() {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("artist_name, plan")
+    .select("artist_name, plan, posting_frequency")
     .eq("id", activeArtistId)
     .maybeSingle();
 
@@ -81,6 +81,8 @@ export default async function DashboardPage() {
   }
 
   const plan = normalizePlan(profile?.plan);
+  const postingFrequency =
+    typeof profile?.posting_frequency === "string" ? profile.posting_frequency : null;
   const canReview = canDo(plan, "canReview", isAdmin);
   const canRefineIdeas = canDo(plan, "canRefineIdeas", isAdmin);
   const canSaveIdeas = canDo(plan, "canSaveIdeas", isAdmin);
@@ -209,6 +211,7 @@ export default async function DashboardPage() {
         lastGeneratedAt={lastGeneratedAt}
         upcomingThisWeek={upcomingThisWeek}
         plan={plan}
+        postingFrequency={postingFrequency}
         isAdmin={isAdmin}
         canReview={canReview}
         canRefineIdeas={canRefineIdeas}

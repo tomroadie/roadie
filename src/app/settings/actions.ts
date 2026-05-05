@@ -22,6 +22,8 @@ export type InstagramDisconnectState = { error?: string } | null;
 
 export type VoiceDescriptionState = { error?: string } | null;
 
+export type PostingFrequencyState = { error?: string } | null;
+
 export async function updateVoiceDescription(
   _prev: VoiceDescriptionState,
   formData: FormData
@@ -54,6 +56,50 @@ export async function updateVoiceDescription(
   const { error } = await supabase
     .from("profiles")
     .update({ voice_description: normalized })
+    .eq("id", activeArtistId)
+    .eq("owner_user_id", user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/settings");
+  return null;
+}
+
+export async function updatePostingFrequency(
+  _prev: PostingFrequencyState,
+  formData: FormData
+): Promise<PostingFrequencyState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const raw = String(formData.get("posting_frequency") ?? "").trim();
+  const allowed = ["weekly", "regular", "active"] as const;
+  const postingFrequency = allowed.includes(raw as (typeof allowed)[number])
+    ? (raw as (typeof allowed)[number])
+    : "regular";
+
+  const cookieStore = await cookies();
+  const activeArtistId = await getActiveArtistIdForUser(
+    supabase,
+    user.id,
+    cookieStore
+  );
+
+  if (!activeArtistId) {
+    return { error: "No active artist selected." };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ posting_frequency: postingFrequency })
     .eq("id", activeArtistId)
     .eq("owner_user_id", user.id);
 

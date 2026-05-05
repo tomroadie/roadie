@@ -44,6 +44,9 @@ export function OnboardingForm() {
   const [soundDescription, setSoundDescription] = useState("");
   const [similarArtists, setSimilarArtists] = useState("");
   const [voiceDescription, setVoiceDescription] = useState("");
+  const [postingFrequency, setPostingFrequency] = useState<
+    "weekly" | "regular" | "active"
+  >("regular");
   const [instagramHandle, setInstagramHandle] = useState("");
 
   const step1Valid = Boolean(artistName.trim() && genre);
@@ -72,7 +75,10 @@ export function OnboardingForm() {
         </>
       ) : null}
       {step !== 3 ? (
-        <input type="hidden" name="instagram_handle" value={instagramHandle} />
+        <>
+          <input type="hidden" name="posting_frequency" value={postingFrequency} />
+          <input type="hidden" name="instagram_handle" value={instagramHandle} />
+        </>
       ) : null}
 
       {step === 1 ? (
@@ -220,6 +226,78 @@ export function OnboardingForm() {
       {step === 3 ? (
         <div className="space-y-4">
           <h2 className="text-base font-semibold text-foreground">Connect your Instagram</h2>
+          <div>
+            <p className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand">
+              How often do you want to post?
+            </p>
+            <div role="radiogroup" className="grid gap-2">
+              {(
+                [
+                  {
+                    value: "weekly",
+                    label: "Weekly (1-2x per week)",
+                    description: "quality over quantity",
+                  },
+                  {
+                    value: "regular",
+                    label: "Regular (3-4x per week)",
+                    description: "consistent presence",
+                  },
+                  {
+                    value: "active",
+                    label: "Active (5+ per week)",
+                    description: "maximum growth mode",
+                  },
+                ] as const
+              ).map((opt) => {
+                const selected = postingFrequency === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setPostingFrequency(opt.value)}
+                    className={[
+                      "flex w-full items-start gap-3 rounded-xl border bg-input p-4 text-left transition-colors",
+                      selected
+                        ? "border-brand ring-2 ring-brand/20"
+                        : "border-card-border hover:border-brand",
+                    ].join(" ")}
+                    aria-pressed={selected}
+                  >
+                    <span
+                      className={[
+                        "mt-0.5 inline-flex h-5 w-5 flex-none items-center justify-center rounded-full border",
+                        selected ? "border-brand" : "border-card-border",
+                      ].join(" ")}
+                      aria-hidden="true"
+                    >
+                      <span
+                        className={[
+                          "h-2.5 w-2.5 rounded-full",
+                          selected ? "bg-brand" : "bg-transparent",
+                        ].join(" ")}
+                      />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-foreground">
+                        {opt.label}{" "}
+                        <span className="font-normal text-muted">— {opt.description}</span>
+                      </span>
+                      <input
+                        type="radio"
+                        name="posting_frequency"
+                        value={opt.value}
+                        checked={selected}
+                        onChange={() => setPostingFrequency(opt.value)}
+                        className="sr-only"
+                      />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div>
             <label
               htmlFor="instagram_handle"

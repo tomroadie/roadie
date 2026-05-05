@@ -37,6 +37,12 @@ function optionalBodyString(value: unknown): string {
   return value.trim();
 }
 
+function getPostingSchedule(frequency: string): string {
+  if (frequency === "weekly") return "Mon, Thu";
+  if (frequency === "active") return "Mon, Tue, Wed, Thu, Fri, Sat, Sun";
+  return "Mon, Wed, Fri, Sat"; // regular default
+}
+
 function truncateForPlanCaption(text: string, max: number): string {
   const t = String(text ?? "")
     .trim()
@@ -179,7 +185,7 @@ export async function POST(request: Request) {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, genre, sound_description, similar_artists, voice_description, instagram_access_token, instagram_user_id"
+      "artist_name, genre, sound_description, similar_artists, voice_description, instagram_access_token, instagram_user_id, posting_frequency"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -293,6 +299,9 @@ export async function POST(request: Request) {
       : "No dates saved yet — suggest ideas that still feel grounded in their voice and world.";
 
   const artistName = profile.artist_name.trim();
+  const frequency = String(profile.posting_frequency ?? "regular")
+    .trim()
+    .toLowerCase();
 
   const coreProblemFromAudit = audit?.ai_pattern_analysis
     ? firstSentence(String(audit.ai_pattern_analysis))
@@ -349,6 +358,10 @@ ${instagramLiveSection}
 - CORE PROBLEM from audit: ${coreProblemFromAudit || "—"}
 - OPPORTUNITY from audit: ${opportunityFromAudit || "—"}
 
+## Posting schedule
+This artist wants to post ${frequency === "weekly" ? "1-2x" : frequency === "active" ? "5+x" : "3-4x"} per week.
+Suggested posting days this week: ${getPostingSchedule(frequency)}
+
 ## Their calendar (all saved dates, earliest first)
 ${eventsSummary}
 
@@ -366,7 +379,7 @@ Respond with **ONLY** valid JSON: a JSON array of exactly 5 objects. Each object
 - **hook** — sharp, specific angle (not generic)
 - **caption** — short draft caption or voice-note script; must include "${artistName}" or unmistakable personal context as above
 - **why** — one or two sentences on why this fits *this* artist right now
-- **timing** — when to post or how it ties to a date or momentum moment
+- **timing** — include a specific suggested posting day from the schedule above (e.g. "Post Monday evening — [reason]") and space the 5 ideas across the week according to that schedule
 
 No markdown fences, no commentary outside the JSON array.`;
 

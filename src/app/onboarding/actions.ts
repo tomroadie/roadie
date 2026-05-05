@@ -31,6 +31,14 @@ export async function completeOnboarding(
   const voiceDescription = String(formData.get("voice_description") ?? "").trim();
   const instagramRaw = String(formData.get("instagram_handle") ?? "").trim();
   const instagramHandle = instagramRaw.replace(/^@+/, "") || null;
+  const postingFrequencyRaw = String(
+    formData.get("posting_frequency") ?? ""
+  ).trim();
+  const postingFrequency = (
+    ["weekly", "regular", "active"] as const
+  ).includes(postingFrequencyRaw as (typeof ["weekly", "regular", "active"])[number])
+    ? (postingFrequencyRaw as "weekly" | "regular" | "active")
+    : "regular";
 
   if (!artistName || !genre) {
     return { error: "Artist name and genre are required." };
@@ -105,6 +113,7 @@ export async function completeOnboarding(
       similar_artists: similarArtists || null,
       instagram_handle: instagramHandle,
       voice_description: voiceDescription || null,
+      posting_frequency: postingFrequency,
     },
     { onConflict: "id" }
   );

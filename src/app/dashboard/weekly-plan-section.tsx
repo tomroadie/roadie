@@ -512,6 +512,7 @@ type WeeklyPlanSectionProps = {
   lastGeneratedAt: string | null;
   upcomingThisWeek: EventRow[];
   plan: string;
+  postingFrequency: string | null;
   isAdmin?: boolean;
   canReview: boolean;
   canRefineIdeas: boolean;
@@ -541,6 +542,7 @@ export function WeeklyPlanSection({
   lastGeneratedAt,
   upcomingThisWeek,
   plan,
+  postingFrequency,
   isAdmin = false,
   canReview,
   canRefineIdeas,
@@ -562,6 +564,14 @@ export function WeeklyPlanSection({
   const normalizedPlan = normalizePlan(plan);
   const canGenerate = canDo(normalizedPlan, "canGeneratePlan", isAdmin);
   const supabase = useMemo(() => createClient(), []);
+  const postingGoalLabel = useMemo(() => {
+    const raw = (postingFrequency ?? "").trim().toLowerCase();
+    if (!raw) return null;
+    if (raw.includes("regular")) return "Regular — 3-4x per week";
+    if (raw.includes("active")) return "Active — 5+ per week";
+    if (raw.includes("weekly")) return "Weekly — 1-2x per week";
+    return null;
+  }, [postingFrequency]);
 
   async function handleAddToCalendar(idea: ContentIdea, date: string) {
     const title = idea.hook.trim().slice(0, 100);
@@ -782,40 +792,65 @@ export function WeeklyPlanSection({
       </div>
 
       {ideas?.length ? (
-        <ul className="mt-6 flex flex-col gap-5">
-          {ideas.map((idea, i) => (
-            <li key={`${idea.hook}-${i}`}>
-              {(() => {
-                const review = reviews.find((r) => r.idea_hook === idea.hook) ?? null;
-                return (
-              <IdeaCard
-                idea={idea}
-                onRate={handleRate}
-                initialRating={initialIdeaRatings[idea.hook] ?? null}
-                feedback={review?.feedback ?? null}
-                onAddToCalendar={handleAddToCalendar}
-                canRefineIdeas={canRefineIdeas}
-                canSaveIdeas={canSaveIdeas}
-                onSubmitReview={
-                  canReview
-                    ? async (ideaParam, file) => {
-                        try {
-                          await handleSubmitReview(ideaParam, file);
-                        } catch (e) {
-                          const msg =
-                            e instanceof Error ? e.message : "Could not submit for review.";
-                          setError(msg);
-                          throw e;
-                        }
+        <>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full bg-input px-3 py-1 text-xs text-muted">
+              <span>
+                Your posting goal:{" "}
+                {postingGoalLabel ? (
+                  <span className="font-medium text-foreground">{postingGoalLabel}</span>
+                ) : (
+                  <span className="font-medium text-foreground">
+                    Regular — 3-4x per week · Active — 5+ per week · Weekly — 1-2x per week
+                  </span>
+                )}
+              </span>
+              <Link
+                href="/settings"
+                className="font-semibold text-foreground underline underline-offset-4 hover:text-brand hover:no-underline"
+              >
+                Change
+              </Link>
+            </span>
+          </div>
+
+          <ul className="mt-6 flex flex-col gap-5">
+            {ideas.map((idea, i) => (
+              <li key={`${idea.hook}-${i}`}>
+                {(() => {
+                  const review = reviews.find((r) => r.idea_hook === idea.hook) ?? null;
+                  return (
+                    <IdeaCard
+                      idea={idea}
+                      onRate={handleRate}
+                      initialRating={initialIdeaRatings[idea.hook] ?? null}
+                      feedback={review?.feedback ?? null}
+                      onAddToCalendar={handleAddToCalendar}
+                      canRefineIdeas={canRefineIdeas}
+                      canSaveIdeas={canSaveIdeas}
+                      onSubmitReview={
+                        canReview
+                          ? async (ideaParam, file) => {
+                              try {
+                                await handleSubmitReview(ideaParam, file);
+                              } catch (e) {
+                                const msg =
+                                  e instanceof Error
+                                    ? e.message
+                                    : "Could not submit for review.";
+                                setError(msg);
+                                throw e;
+                              }
+                            }
+                          : undefined
                       }
-                    : undefined
-                }
-              />
-                );
-              })()}
-            </li>
-          ))}
-        </ul>
+                    />
+                  );
+                })()}
+              </li>
+            ))}
+          </ul>
+        </>
       ) : !loading ? (
         <div className="mt-6 rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
           <p className="text-sm leading-relaxed text-muted">

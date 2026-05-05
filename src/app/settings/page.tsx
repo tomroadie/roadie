@@ -7,6 +7,7 @@ import { AddArtistForm } from "./add-artist-form";
 import { InstagramHandleForm } from "./instagram-handle-form";
 import { InstagramConnectSection } from "./instagram-connect-section";
 import { VoiceForm } from "./voice-form";
+import { PostingGoalForm } from "./posting-goal-form";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 
 export default async function SettingsPage() {
@@ -33,7 +34,7 @@ export default async function SettingsPage() {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, instagram_handle, instagram_user_id, voice_description"
+      "artist_name, instagram_handle, instagram_user_id, voice_description, posting_frequency"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -69,6 +70,13 @@ export default async function SettingsPage() {
       />
 
       <VoiceForm initialVoice={profile.voice_description ?? null} />
+
+      <PostingGoalForm
+        initialPostingFrequency={
+          (profile.posting_frequency as "weekly" | "regular" | "active" | null) ??
+          null
+        }
+      />
 
       <AddArtistForm />
     </div>

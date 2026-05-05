@@ -3,7 +3,11 @@ import { timingSafeEqual } from "crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { trackUsage } from "@/lib/track-usage";
-import { generateAuditEmail } from "@/lib/emails/generate-audit-email";
+import {
+  generateAuditEmail,
+  generateAuditEmailPlainText,
+  getAuditEmailSubject,
+} from "@/lib/emails/generate-audit-email";
 
 function verifyWebhookSecret(headerValue: string | null, secret: string): boolean {
   if (!headerValue || !secret) return false;
@@ -452,20 +456,15 @@ Artist: ${artistName}. Below is a structured summary of their Instagram profile 
 
   const teaser = firstSentence(ai_pattern_analysis);
   const insightsUrl = "https://app.roadie.media/insights";
-  const footer =
-    "Your audit includes positioning analysis, content pattern insights, engagement reality, and your top opportunities.";
 
-  const emailText = [
-    `Your Instagram audit is ready, ${artistName}`,
-    "",
-    teaser || "Your audit is ready inside Roadie.",
-    "",
-    `Followers: ${followers ?? "—"} • Following: ${following ?? "—"} • Posts: ${post_count ?? "—"}`,
-    "",
-    `Read your full audit → ${insightsUrl}`,
-    "",
-    footer,
-  ].join("\n");
+  const emailText = generateAuditEmailPlainText({
+    artist_name: artistName,
+    followers: followers ?? "—",
+    following: following ?? "—",
+    post_count: post_count ?? "—",
+    teaser,
+    cta_url: insightsUrl,
+  });
 
   const emailHtml = generateAuditEmail({
     artist_name: artistName,
@@ -479,7 +478,7 @@ Artist: ${artistName}. Below is a structured summary of their Instagram profile 
   const emailSend = await sendResendEmail({
     apiKey: resendKey,
     to: lead.email.trim().toLowerCase(),
-    subject: "Your Instagram audit is ready",
+    subject: getAuditEmailSubject(artistName),
     text: emailText,
     html: emailHtml,
   });

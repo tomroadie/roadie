@@ -7,6 +7,52 @@ export type GenerateAuditEmailInput = {
   cta_url: string;
 };
 
+const AUDIT_CONTENT_FOOTER =
+  "Your audit includes positioning analysis, content pattern insights, engagement reality, and your top opportunities.";
+
+const DELIVERABILITY_FOOTER_HTML = `<p style="font-size:12px;color:#666;margin-top:40px;text-align:center;">You're receiving this because you signed up at app.roadie.media</p>`;
+
+const DELIVERABILITY_FOOTER_TEXT =
+  "You're receiving this because you signed up at app.roadie.media";
+
+export function getAuditEmailSubject(artistName: string): string {
+  const name = (artistName || "there").trim();
+  return `${name}, your Roadie analysis is here`;
+}
+
+function toDisplayNumber(n: number | string | null): string {
+  if (typeof n === "number" && Number.isFinite(n)) return n.toLocaleString();
+  if (typeof n === "string" && n.trim()) return n.trim();
+  return "—";
+}
+
+export function generateAuditEmailPlainText(
+  input: GenerateAuditEmailInput
+): string {
+  const artistName = (input.artist_name || "there").trim();
+  const followers = toDisplayNumber(input.followers);
+  const following = toDisplayNumber(input.following);
+  const posts = toDisplayNumber(input.post_count);
+  const teaser = (input.teaser || "").trim();
+  const ctaUrl = (input.cta_url || "").trim();
+
+  const headline = getAuditEmailSubject(artistName);
+
+  return [
+    headline,
+    "",
+    teaser || "We found a clear pattern you can use immediately.",
+    "",
+    `Followers: ${followers} • Following: ${following} • Posts: ${posts}`,
+    "",
+    `Read your full audit → ${ctaUrl}`,
+    "",
+    AUDIT_CONTENT_FOOTER,
+    "",
+    DELIVERABILITY_FOOTER_TEXT,
+  ].join("\n");
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -20,12 +66,6 @@ function nl2br(s: string): string {
   return escapeHtml(s).replace(/\n/g, "<br />");
 }
 
-function toDisplayNumber(n: number | string | null): string {
-  if (typeof n === "number" && Number.isFinite(n)) return n.toLocaleString();
-  if (typeof n === "string" && n.trim()) return n.trim();
-  return "—";
-}
-
 export function generateAuditEmail(input: GenerateAuditEmailInput): string {
   const artistName = (input.artist_name || "there").trim();
   const followers = toDisplayNumber(input.followers);
@@ -33,8 +73,7 @@ export function generateAuditEmail(input: GenerateAuditEmailInput): string {
   const posts = toDisplayNumber(input.post_count);
   const teaser = (input.teaser || "").trim();
   const ctaUrl = (input.cta_url || "").trim();
-  const footer =
-    "Your audit includes positioning analysis, content pattern insights, engagement reality, and your top opportunities.";
+  const headline = getAuditEmailSubject(artistName);
 
   const html = `
   <!doctype html>
@@ -42,11 +81,11 @@ export function generateAuditEmail(input: GenerateAuditEmailInput): string {
     <head>
       <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Roadie Instagram Audit</title>
+      <title>Roadie analysis</title>
     </head>
     <body style="margin:0;padding:0;background:#0A0A0F;font-family:Arial, sans-serif;">
       <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
-        Your Instagram audit is ready.
+        ${escapeHtml(headline)}
       </div>
 
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0A0A0F;">
@@ -65,7 +104,7 @@ export function generateAuditEmail(input: GenerateAuditEmailInput): string {
               <tr>
                 <td style="background:#111111;padding:28px 32px 18px 32px;">
                   <div style="color:#ffffff;font-weight:900;font-size:24px;line-height:1.25;margin:0 0 10px 0;">
-                    ${escapeHtml(`Your Instagram audit is ready, ${artistName}`)}
+                    ${escapeHtml(headline)}
                   </div>
                   <div style="color:#A1A1AA;font-size:14px;line-height:1.7;margin:0;">
                     ${escapeHtml(teaser || "We found a clear pattern you can use immediately.")}
@@ -104,8 +143,9 @@ export function generateAuditEmail(input: GenerateAuditEmailInput): string {
               <tr>
                 <td style="background:#0A0A0F;padding:18px 32px 28px 32px;text-align:left;">
                   <div style="color:#71717A;font-size:12px;line-height:1.6;margin:0;">
-                    ${nl2br(footer)}
+                    ${nl2br(AUDIT_CONTENT_FOOTER)}
                   </div>
+                  ${DELIVERABILITY_FOOTER_HTML}
                 </td>
               </tr>
             </table>

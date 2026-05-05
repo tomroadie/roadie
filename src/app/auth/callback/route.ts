@@ -6,19 +6,29 @@ async function sendWelcomeEmail(args: {
   to: string;
   onboardingUrl: string;
 }): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
-  const text =
-    "Welcome to Roadie. You're one step away from your first AI content plan. Complete your profile to get started.\n\n" +
-    args.onboardingUrl;
+  const bodyCopy =
+    "Welcome to Roadie. You're one step away from your first AI content plan. Complete your profile to get started.";
+  const footerCopy =
+    "You're receiving this because you signed up at app.roadie.media";
+
+  const text = [
+    bodyCopy,
+    "",
+    args.onboardingUrl,
+    "",
+    footerCopy,
+  ].join("\n");
 
   const html = `<!DOCTYPE html>
 <html>
 <body style="margin:0;font-family:system-ui,-apple-system,sans-serif;line-height:1.5;color:#111;background:#f6f6f6;padding:24px;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e5e5;">
     <tr><td style="padding:28px 24px;">
-      <p style="margin:0 0 16px;font-size:16px;">Welcome to Roadie. You're one step away from your first AI content plan. Complete your profile to get started.</p>
+      <p style="margin:0 0 16px;font-size:16px;">${bodyCopy}</p>
       <p style="margin:0;">
         <a href="${args.onboardingUrl}" style="display:inline-block;background:#00FF87;color:#0A0A0F;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">Complete your profile</a>
       </p>
+      <p style="font-size:12px;color:#666;margin-top:40px;text-align:center;">${footerCopy}</p>
     </td></tr>
   </table>
 </body>
@@ -33,7 +43,7 @@ async function sendWelcomeEmail(args: {
     body: JSON.stringify({
       from: "Roadie <hello@roadie.media>",
       to: [args.to],
-      subject: "Welcome to Roadie 🎵",
+      subject: "You're in — here's what happens next",
       text,
       html,
     }),

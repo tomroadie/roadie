@@ -148,15 +148,33 @@ export async function POST(request: Request) {
     );
   }
 
-  const emailText = [
+  const emailLines: string[] = [
     "New content review request",
     "",
     `Artist: ${artistName}`,
     "",
     `Hook: ${idea_hook}`,
     "",
+    `Format: ${idea_format}`,
+    "",
+    `Why: ${idea_why}`,
+    "",
+    `Timing: ${idea_timing}`,
+    "",
     `Caption: ${idea_caption}`,
-  ].join("\n");
+  ];
+
+  if (notes) {
+    emailLines.push("", `Notes: ${notes}`);
+  }
+
+  if (file_urls.length) {
+    emailLines.push("", "Submitted files:", ...file_urls.map((u) => `- ${u}`));
+  }
+
+  emailLines.push("", "Review in admin: https://app.roadie.media/admin");
+
+  const emailText = emailLines.join("\n");
 
   const emailSend = await sendResendEmail({
     apiKey: resendKey,

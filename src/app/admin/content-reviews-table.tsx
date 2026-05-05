@@ -147,9 +147,27 @@ export function ContentReviewsTable({
                     <div className="font-semibold text-foreground">
                       {truncate(r.idea_hook, 90)}
                     </div>
+                    <div className="mt-1 text-xs text-muted">
+                      {truncate(r.idea_caption, 120)}
+                    </div>
                     {fileUrls.length ? (
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         {fileUrls.map((url) => {
+                          if (isVideoUrl(url) || /video/i.test(url)) {
+                            return (
+                              <a
+                                key={url}
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex h-7 items-center rounded-md bg-brand px-2.5 text-xs font-black uppercase tracking-wide text-brand-foreground hover:opacity-90"
+                                title={filenameFromUrl(url)}
+                              >
+                                ▶ Watch video
+                              </a>
+                            );
+                          }
+
                           if (isImageUrl(url)) {
                             return (
                               <a
@@ -170,28 +188,21 @@ export function ContentReviewsTable({
                             );
                           }
 
-                          const label = isVideoUrl(url)
-                            ? `Download video (${filenameFromUrl(url)})`
-                            : filenameFromUrl(url);
-
                           return (
                             <a
                               key={url}
                               href={url}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center rounded-md border border-card-border bg-transparent px-2 py-1 text-xs font-semibold text-foreground hover:border-brand"
-                              title={url}
+                              className="inline-flex h-7 items-center rounded-md border border-card-border bg-transparent px-2.5 text-xs font-semibold text-foreground hover:border-brand"
+                              title={filenameFromUrl(url)}
                             >
-                              {label}
+                              View file
                             </a>
                           );
                         })}
                       </div>
                     ) : null}
-                    <div className="mt-1 text-xs text-muted">
-                      {truncate(r.idea_caption, 120)}
-                    </div>
                     {isExpanded ? (
                       <div className="mt-3">
                         <textarea

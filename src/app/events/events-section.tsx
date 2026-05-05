@@ -140,6 +140,7 @@ function EventList({
 
 export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
   const [events, setEvents] = useState<EventRow[]>(initialEvents);
+  const [formOpen, setFormOpen] = useState(initialEvents.length === 0);
   const [title, setTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [eventType, setEventType] = useState<EventType>(EVENT_TYPES[0]);
@@ -170,6 +171,7 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
     setEventDate(ev.event_date);
     setEventType(ev.event_type as EventType);
     setNotes(ev.notes ?? "");
+    setFormOpen(true);
     // Keep scroll behavior simple; user requested visual polish only elsewhere.
   }
 
@@ -218,6 +220,7 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
         setEvents((prev) => [...prev, data as EventRow].sort(sortByDateAsc));
       }
       resetForm();
+      if (!isEditing) setFormOpen(false);
     }
     setSubmitting(false);
   }
@@ -261,125 +264,8 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
     return { thisWeek, next30, further, past };
   }, [events, in30, today, weekEnd]);
 
-  function quickAdd(type: EventType) {
-    setEventType(type);
-    setTitle(
-      type === "Show"
-        ? "Show"
-        : type === "Release"
-          ? "Release"
-          : type === "Studio session"
-            ? "Studio session"
-            : ""
-    );
-  }
-
   return (
     <div className="space-y-10">
-      <form onSubmit={handleAdd} className="space-y-6">
-        <div className="flex flex-col gap-6">
-          <div className="mt-6">
-            <label
-              htmlFor="event-title"
-              className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
-            >
-              Title
-            </label>
-            <input
-              id="event-title"
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Show at Scala, Single release, Studio session"
-              className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="event-date"
-              className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
-            >
-              Date
-            </label>
-            <input
-              id="event-date"
-              type="date"
-              required
-              value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
-              className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-brand focus:ring-2 focus:ring-brand/20"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="event-type"
-              className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
-            >
-              Type
-            </label>
-            <select
-              id="event-type"
-              value={eventType}
-              onChange={(e) => setEventType(e.target.value as EventType)}
-              className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-brand focus:ring-2 focus:ring-brand/20"
-            >
-              {EVENT_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label
-              htmlFor="event-notes"
-              className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
-            >
-              Content notes{" "}
-              <span className="font-normal text-muted">(optional)</span>
-            </label>
-            <textarea
-              id="event-notes"
-              rows={5}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="What do you want people to know about this? Any ideas already?"
-              className="w-full resize-y rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
-            />
-          </div>
-        </div>
-
-        {formError ? (
-          <p className="text-sm text-red-400" role="alert">
-            {formError}
-          </p>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {submitting
-            ? editingId
-              ? "Saving…"
-              : "Adding…"
-            : editingId
-              ? "Save changes"
-              : "Add date"}
-        </button>
-        {editingId ? (
-          <button
-            type="button"
-            onClick={resetForm}
-            className="ml-3 inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
-          >
-            Cancel
-          </button>
-        ) : null}
-      </form>
-
       <section>
         <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
           All dates
@@ -387,32 +273,8 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
         {events.length === 0 ? (
           <div className="mt-6 rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
             <p className="text-sm leading-relaxed text-muted">
-              No dates yet. Add a few real-world moments so your weekly plan can
-              get specific.
+              No dates yet — add your next show, release or session so your plan knows what's coming.
             </p>
-            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => quickAdd("Show")}
-                className="inline-flex h-10 items-center justify-center rounded-full border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
-              >
-                + Add a show
-              </button>
-              <button
-                type="button"
-                onClick={() => quickAdd("Release")}
-                className="inline-flex h-10 items-center justify-center rounded-full border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
-              >
-                + Add a release
-              </button>
-              <button
-                type="button"
-                onClick={() => quickAdd("Studio session")}
-                className="inline-flex h-10 items-center justify-center rounded-full border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
-              >
-                + Add a studio session
-              </button>
-            </div>
           </div>
         ) : (
           <>
@@ -447,6 +309,133 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
           </>
         )}
       </section>
+
+      <div className="space-y-4">
+        <button
+          type="button"
+          onClick={() => {
+            setFormError(null);
+            setFormOpen((v) => !v);
+          }}
+          className="inline-flex h-10 items-center justify-center rounded-full bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
+        >
+          + Add a date
+        </button>
+
+        {formOpen ? (
+          <div className="rounded-xl border border-card-border bg-card p-6">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">
+              Add a date
+            </h2>
+
+            <form onSubmit={handleAdd} className="mt-4 space-y-6">
+              <div className="flex flex-col gap-6">
+                <div>
+                  <label
+                    htmlFor="event-title"
+                    className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
+                  >
+                    Title
+                  </label>
+                  <input
+                    id="event-title"
+                    type="text"
+                    required
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g. Show at Scala, Single release, Studio session"
+                    className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="event-date"
+                    className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
+                  >
+                    Date
+                  </label>
+                  <input
+                    id="event-date"
+                    type="date"
+                    required
+                    value={eventDate}
+                    onChange={(e) => setEventDate(e.target.value)}
+                    className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="event-type"
+                    className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
+                  >
+                    Type
+                  </label>
+                  <select
+                    id="event-type"
+                    value={eventType}
+                    onChange={(e) => setEventType(e.target.value as EventType)}
+                    className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  >
+                    {EVENT_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="event-notes"
+                    className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
+                  >
+                    Content notes{" "}
+                    <span className="font-normal text-muted">(optional)</span>
+                  </label>
+                  <textarea
+                    id="event-notes"
+                    rows={5}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="What do you want people to know about this? Any ideas already?"
+                    className="w-full resize-y rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  />
+                </div>
+              </div>
+
+              {formError ? (
+                <p className="text-sm text-red-400" role="alert">
+                  {formError}
+                </p>
+              ) : null}
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {submitting
+                    ? editingId
+                      ? "Saving…"
+                      : "Adding…"
+                    : editingId
+                      ? "Save changes"
+                      : "Add date"}
+                </button>
+                {editingId ? (
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
+                  >
+                    Cancel
+                  </button>
+                ) : null}
+              </div>
+            </form>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

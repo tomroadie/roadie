@@ -62,23 +62,13 @@ export default async function EventsPage() {
             Your dates
           </h1>
           <p className="mt-2 text-muted">
-            Shows, releases, rehearsals — these shape your weekly content plan
+            Add shows, releases and studio sessions — the more context you give, the more specific your weekly plan becomes
           </p>
         </div>
         <LogoutButton />
       </header>
 
       <AppNavWrapper />
-
-      <div className="mt-6 rounded-xl border-l-4 border-brand bg-card p-6">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">
-          Why dates matter
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
-          Your dates shape your weekly content plan. The more specific you are,
-          the better your ideas.
-        </p>
-      </div>
 
       <EventsSection initialEvents={initialEvents} artistId={activeArtistId} />
     </div>

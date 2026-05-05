@@ -5,7 +5,6 @@ import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "./logout-button";
 import { WeeklyPlanSection } from "./weekly-plan-section";
 import { FirstRunChecklist } from "./first-run-checklist";
-import { SavedIdeasSection } from "./saved-ideas-section";
 import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { getMondayDateString } from "@/lib/week";
@@ -67,7 +66,7 @@ export default async function DashboardPage() {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("artist_name, plan, posting_frequency, instagram_handle")
+    .select("artist_name, plan, instagram_handle")
     .eq("id", activeArtistId)
     .maybeSingle();
 
@@ -81,11 +80,7 @@ export default async function DashboardPage() {
   }
 
   const plan = normalizePlan(profile?.plan);
-  const postingFrequency =
-    typeof profile?.posting_frequency === "string" ? profile.posting_frequency : null;
   const canReview = canDo(plan, "canReview", isAdmin);
-  const canRefineIdeas = canDo(plan, "canRefineIdeas", isAdmin);
-  const canSaveIdeas = canDo(plan, "canSaveIdeas", isAdmin);
 
   const { data: weeklyPlan } = await supabase
     .from("weekly_plans")
@@ -231,18 +226,13 @@ export default async function DashboardPage() {
         lastGeneratedAt={lastGeneratedAt}
         upcomingThisWeek={upcomingThisWeek}
         plan={plan}
-        postingFrequency={postingFrequency}
         auditPending={auditPending}
         hasAudit={hasAudit}
         isAdmin={isAdmin}
         canReview={canReview}
-        canRefineIdeas={canRefineIdeas}
-        canSaveIdeas={canSaveIdeas}
         reviews={reviews}
         artistId={activeArtistId}
       />
-
-      <SavedIdeasSection artistId={activeArtistId} />
     </div>
   );
 }

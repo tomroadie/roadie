@@ -141,14 +141,24 @@ export default function LoginClient() {
           </button>
         </p>
 
-        <p className="text-center">
-          <Link
-            href="/"
-            className="text-sm text-muted underline-offset-4 hover:text-brand hover:underline"
-          >
-            Back to home
-          </Link>
-        </p>
+        <footer className="space-y-4 border-t border-card-border pt-8">
+          <p className="text-center">
+            <Link
+              href="/"
+              className="text-sm text-muted underline-offset-4 hover:text-brand hover:underline"
+            >
+              Back to home
+            </Link>
+          </p>
+          <p className="text-center">
+            <Link
+              href="/terms"
+              className="text-sm text-muted underline-offset-4 hover:text-brand hover:underline"
+            >
+              Terms of Service
+            </Link>
+          </p>
+        </footer>
       </div>
     </div>
   );

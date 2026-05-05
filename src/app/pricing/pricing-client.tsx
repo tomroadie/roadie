@@ -237,14 +237,25 @@ export default function PricingClient({
         </p>
       ) : null}
 
-      <div className="mt-10 text-sm text-muted">
-        <Link
-          href="/dashboard"
-          className="underline underline-offset-4 hover:text-brand hover:no-underline"
-        >
-          Back to dashboard
-        </Link>
-      </div>
+      <footer className="mt-16 border-t border-card-border pt-8">
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-muted">
+          <Link
+            href="/dashboard"
+            className="underline underline-offset-4 hover:text-brand hover:no-underline"
+          >
+            Back to dashboard
+          </Link>
+          <span aria-hidden className="text-card-border">
+            ·
+          </span>
+          <Link
+            href="/terms"
+            className="underline underline-offset-4 hover:text-brand hover:no-underline"
+          >
+            Terms of Service
+          </Link>
+        </div>
+      </footer>
     </div>
   );
 }

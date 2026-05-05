@@ -34,10 +34,9 @@ export async function completeOnboarding(
   const postingFrequencyRaw = String(
     formData.get("posting_frequency") ?? ""
   ).trim();
-  const postingFrequency = (
-    ["weekly", "regular", "active"] as const
-  ).includes(postingFrequencyRaw as (typeof ["weekly", "regular", "active"])[number])
-    ? (postingFrequencyRaw as "weekly" | "regular" | "active")
+  const validFrequencies = ["weekly", "regular", "active"];
+  const postingFrequency = validFrequencies.includes(postingFrequencyRaw)
+    ? postingFrequencyRaw
     : "regular";
 
   if (!artistName || !genre) {

@@ -67,7 +67,7 @@ export default async function DashboardPage() {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("artist_name, plan, posting_frequency")
+    .select("artist_name, plan, posting_frequency, instagram_handle")
     .eq("id", activeArtistId)
     .maybeSingle();
 
@@ -94,6 +94,26 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  const { data: pendingAudit } = await supabase
+    .from("pending_leads")
+    .select("id, created_at")
+    .eq("instagram_handle", profile?.instagram_handle ?? "")
+    .eq("status", "processing")
+    .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    .limit(1)
+    .maybeSingle();
+
+  const auditPending = !!pendingAudit;
+
+  const { data: existingAudit } = await supabase
+    .from("audits")
+    .select("id")
+    .eq("artist_id", activeArtistId)
+    .limit(1)
+    .maybeSingle();
+
+  const hasAudit = !!existingAudit;
 
   const { data: reviewsData, error: reviewsError } = await supabase
     .from("content_reviews")
@@ -212,6 +232,8 @@ export default async function DashboardPage() {
         upcomingThisWeek={upcomingThisWeek}
         plan={plan}
         postingFrequency={postingFrequency}
+        auditPending={auditPending}
+        hasAudit={hasAudit}
         isAdmin={isAdmin}
         canReview={canReview}
         canRefineIdeas={canRefineIdeas}

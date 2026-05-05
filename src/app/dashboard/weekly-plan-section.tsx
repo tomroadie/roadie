@@ -513,6 +513,8 @@ type WeeklyPlanSectionProps = {
   upcomingThisWeek: EventRow[];
   plan: string;
   postingFrequency: string | null;
+  auditPending: boolean;
+  hasAudit: boolean;
   isAdmin?: boolean;
   canReview: boolean;
   canRefineIdeas: boolean;
@@ -543,6 +545,8 @@ export function WeeklyPlanSection({
   upcomingThisWeek,
   plan,
   postingFrequency,
+  auditPending,
+  hasAudit,
   isAdmin = false,
   canReview,
   canRefineIdeas,
@@ -550,6 +554,7 @@ export function WeeklyPlanSection({
   reviews,
   artistId,
 }: WeeklyPlanSectionProps) {
+  const router = useRouter();
   const [ideas, setIdeas] = useState<ContentIdea[] | null>(initialIdeas);
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState<string | null>(null);
@@ -564,6 +569,7 @@ export function WeeklyPlanSection({
   const normalizedPlan = normalizePlan(plan);
   const canGenerate = canDo(normalizedPlan, "canGeneratePlan", isAdmin);
   const supabase = useMemo(() => createClient(), []);
+  const hasPlanIdeas = (ideas?.length ?? 0) > 0;
   const postingGoalLabel = useMemo(() => {
     const raw = (postingFrequency ?? "").trim().toLowerCase();
     if (!raw) return null;
@@ -572,6 +578,16 @@ export function WeeklyPlanSection({
     if (raw.includes("weekly")) return "Weekly — 1-2x per week";
     return null;
   }, [postingFrequency]);
+
+  useEffect(() => {
+    if (!auditPending || hasAudit) return;
+    const id = window.setInterval(() => {
+      router.refresh();
+    }, 30_000);
+    return () => {
+      window.clearInterval(id);
+    };
+  }, [auditPending, hasAudit, router]);
 
   async function handleAddToCalendar(idea: ContentIdea, date: string) {
     const title = idea.hook.trim().slice(0, 100);
@@ -739,6 +755,30 @@ export function WeeklyPlanSection({
 
   return (
     <section className="mt-12">
+      {auditPending && !hasAudit ? (
+        <div className="mb-6 rounded-xl border border-card-border bg-card p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="mt-1 inline-flex h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" />
+              <p className="text-sm leading-relaxed text-muted">
+                <span className="font-semibold text-foreground">
+                  Your Instagram audit is running
+                </span>{" "}
+                — we&apos;re analysing your profile and recent posts. Your first
+                personalised plan will be ready in about 5 minutes.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.refresh()}
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-card-border bg-transparent px-3 text-xs font-semibold uppercase tracking-wide text-muted transition-colors hover:border-brand hover:text-foreground"
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
@@ -854,8 +894,9 @@ export function WeeklyPlanSection({
       ) : !loading ? (
         <div className="mt-6 rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
           <p className="text-sm leading-relaxed text-muted">
-            No plan for this week yet. Generate tailored ideas from your profile,
-            dates, and Instagram audit.
+            {!auditPending && !hasAudit && !hasPlanIdeas
+              ? "Add your Instagram handle in Settings to get a personalised audit, then generate your first plan."
+              : "No plan for this week yet. Generate tailored ideas from your profile, dates, and Instagram audit."}
           </p>
           <div className="mt-6 flex justify-center">
             {canGenerate ? (

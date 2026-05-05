@@ -8,6 +8,7 @@ import {
   UsageAnalytics,
   type UsageAnalyticsRecentEvent,
 } from "./usage-analytics";
+import { ContentReviewsTable, type ContentReviewQueueRow } from "./content-reviews-table";
 import {
   AdminArtistsTable,
   type AdminArtistDirectoryRow,
@@ -186,6 +187,36 @@ export default async function AdminPage() {
     artist_id: String(r.artist_id ?? ""),
   }));
 
+  const { data: contentReviewsRows, error: contentReviewsError } = await adminSupabase
+    .from("content_reviews")
+    .select("id, created_at, status, idea_hook, idea_caption, profiles:profiles(artist_name)")
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (contentReviewsError) {
+    return (
+      <AdminPageError
+        message={`Could not load content reviews: ${contentReviewsError.message}`}
+      />
+    );
+  }
+
+  const contentReviewRows: ContentReviewQueueRow[] = (contentReviewsRows ?? []).map(
+    (r) => ({
+      id: String(r.id ?? ""),
+      createdAt:
+        typeof r.created_at === "string"
+          ? r.created_at
+          : r.created_at != null
+            ? String(r.created_at)
+            : "",
+      status: String(r.status ?? "pending"),
+      ideaHook: String(r.idea_hook ?? ""),
+      ideaCaption: String(r.idea_caption ?? ""),
+      artistName: String((r as unknown as { profiles?: { artist_name?: unknown } }).profiles?.artist_name ?? ""),
+    })
+  );
+
   return (
     <div className="mx-auto flex min-h-full w-full max-w-6xl flex-1 flex-col px-4 py-10 sm:px-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -206,6 +237,8 @@ export default async function AdminPage() {
       <AppNavWrapper />
 
       <UsageAnalytics totalCounts={totalCounts} recentEvents={recentEvents} />
+
+      <ContentReviewsTable rows={contentReviewRows} />
 
       <AdminCreateClientArtistForm />
 

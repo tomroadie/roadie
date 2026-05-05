@@ -20,12 +20,12 @@ const PLANS: Array<{
   {
     key: "starter",
     name: "Starter",
-    price: "£29/month",
+    price: "£19/month",
     blurb: "Everything you need to show up consistently as an independent artist.",
     features: [
       "Weekly content plan",
-      "Events calendar",
       "Instagram audit",
+      "Events calendar",
       "Weekly focus questions",
       "1 artist",
     ],
@@ -33,14 +33,14 @@ const PLANS: Array<{
   {
     key: "pro",
     name: "Pro",
-    price: "£59/month",
-    blurb:
-      "Full audit insights, monthly refresh, and room for a small roster.",
+    price: "£49/month",
+    blurb: "Live data, expert eyes on your content, and room to grow.",
     highlight: "Most popular",
     features: [
       "Everything in Starter",
-      "Audit refresh (monthly)",
-      "Live social performance data",
+      "Live Instagram stats",
+      "Monthly audit refresh",
+      "2 content reviews per month",
       "Up to 3 artists",
     ],
   },
@@ -48,13 +48,13 @@ const PLANS: Array<{
     key: "label",
     name: "Label",
     price: "£149/month",
-    blurb: "Pro capabilities for teams managing multiple artists.",
+    blurb: "Full-service strategy for serious artists and small rosters.",
     features: [
       "Everything in Pro",
+      "Monthly strategy call",
+      "8 content reviews per month",
       "Up to 10 artists",
-      "Weekly audit refresh",
       "Priority support",
-      "Team roster management",
     ],
   },
 ];
@@ -153,7 +153,7 @@ export default function PricingClient({
 
       <p className="mt-10 text-center text-sm leading-relaxed text-muted">
         Start free — no card required. Your first{" "}
-        <span className="font-semibold text-brand">21 days are on us</span>.
+        <span className="font-semibold text-brand">14 days are on us</span>.
       </p>
 
       <div className="mt-10 grid gap-5 md:grid-cols-3">
@@ -216,7 +216,7 @@ export default function PricingClient({
                 </button>
                 {!isCurrent ? (
                   <p className="mt-2 text-center text-xs text-muted">
-                    21-day trial · No card required
+                    14-day trial · No card required
                   </p>
                 ) : null}
               </div>
@@ -226,7 +226,7 @@ export default function PricingClient({
       </div>
 
       <p className="mt-10 text-center text-sm leading-relaxed text-muted">
-        All plans start with a 21-day free trial. No card required.
+        All plans start with a 14-day free trial. No card required.
         <br />
         Cancel anytime — your data is always yours.
       </p>

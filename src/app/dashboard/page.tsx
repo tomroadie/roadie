@@ -10,7 +10,7 @@ import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { getMondayDateString } from "@/lib/week";
 import type { EventRow } from "@/types/event";
 import Link from "next/link";
-import { normalizePlan } from "@/lib/plan-limits";
+import { canDo, normalizePlan } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 import { DashboardTracking } from "./dashboard-tracking";
 
@@ -74,6 +74,7 @@ export default async function DashboardPage() {
   }
 
   const plan = normalizePlan(profile?.plan);
+  const canReview = canDo(plan, "canReview", isAdmin);
 
   const { data: weeklyPlan } = await supabase
     .from("weekly_plans")
@@ -187,6 +188,7 @@ export default async function DashboardPage() {
         upcomingThisWeek={upcomingThisWeek}
         plan={plan}
         isAdmin={isAdmin}
+        canReview={canReview}
       />
     </div>
   );

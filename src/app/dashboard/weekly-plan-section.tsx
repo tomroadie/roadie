@@ -65,13 +65,17 @@ function IdeaCard({
   idea,
   onRate,
   initialRating = null,
+  onSubmitReview,
 }: {
   idea: ContentIdea;
   onRate: (hook: string, rating: "up" | "down") => void;
   initialRating?: "up" | "down" | null;
+  onSubmitReview?: (idea: ContentIdea) => Promise<void>;
 }) {
   const [copied, setCopied] = useState(false);
   const [rating, setRating] = useState<null | "up" | "down">(initialRating ?? null);
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const accent = useMemo(() => getAccent(idea.format), [idea.format]);
 
   async function handleCopy() {
@@ -81,6 +85,18 @@ function IdeaCard({
       window.setTimeout(() => setCopied(false), 1200);
     } catch {
       // ignore
+    }
+  }
+
+  async function handleSubmitReview() {
+    if (!onSubmitReview) return;
+    if (reviewSubmitting || reviewSubmitted) return;
+    setReviewSubmitting(true);
+    try {
+      await onSubmitReview(idea);
+      setReviewSubmitted(true);
+    } finally {
+      setReviewSubmitting(false);
     }
   }
 
@@ -170,6 +186,23 @@ function IdeaCard({
         </button>
       </div>
 
+      {onSubmitReview ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => void handleSubmitReview()}
+            disabled={reviewSubmitting || reviewSubmitted}
+            className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {reviewSubmitted
+              ? "Submitted ✓"
+              : reviewSubmitting
+                ? "Submitting..."
+                : "Submit for review"}
+          </button>
+        </div>
+      ) : null}
+
       {rating !== null ? (
         <p className="mt-2 text-xs text-muted">Thanks for the feedback</p>
       ) : null}
@@ -216,6 +249,7 @@ type WeeklyPlanSectionProps = {
   upcomingThisWeek: EventRow[];
   plan: string;
   isAdmin?: boolean;
+  canReview: boolean;
 };
 
 function hoursSince(iso: string): number {
@@ -240,6 +274,7 @@ export function WeeklyPlanSection({
   upcomingThisWeek,
   plan,
   isAdmin = false,
+  canReview,
 }: WeeklyPlanSectionProps) {
   const [ideas, setIdeas] = useState<ContentIdea[] | null>(initialIdeas);
   const [loading, setLoading] = useState(false);
@@ -254,6 +289,28 @@ export function WeeklyPlanSection({
   });
   const normalizedPlan = normalizePlan(plan);
   const canGenerate = canDo(normalizedPlan, "canGeneratePlan", isAdmin);
+
+  async function handleSubmitReview(idea: ContentIdea) {
+    setError(null);
+    const res = await fetch("/api/content-reviews", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(idea),
+    });
+
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        details?: string;
+      };
+      throw new Error(
+        data.details
+          ? `${data.error ?? "Request failed"}: ${data.details}`
+          : (data.error ?? "Could not submit for review.")
+      );
+    }
+  }
 
   useEffect(() => {
     if (!loading) {
@@ -411,6 +468,20 @@ export function WeeklyPlanSection({
                 idea={idea}
                 onRate={handleRate}
                 initialRating={initialIdeaRatings[idea.hook] ?? null}
+                onSubmitReview={
+                  canReview
+                    ? async (ideaParam) => {
+                        try {
+                          await handleSubmitReview(ideaParam);
+                        } catch (e) {
+                          const msg =
+                            e instanceof Error ? e.message : "Could not submit for review.";
+                          setError(msg);
+                          throw e;
+                        }
+                      }
+                    : undefined
+                }
               />
             </li>
           ))}

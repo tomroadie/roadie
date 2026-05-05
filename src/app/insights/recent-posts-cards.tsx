@@ -139,6 +139,7 @@ function Caption({ text }: { text: string }) {
 
 export function RecentPostsCards({ raw }: { raw: string }) {
   const posts = useMemo(() => parseRecentPosts(raw), [raw]);
+  const [showAll, setShowAll] = useState(false);
 
   const validPosts = posts.filter((p) => {
     const hasAny =
@@ -153,19 +154,19 @@ export function RecentPostsCards({ raw }: { raw: string }) {
 
   if (validPosts.length === 0) return null;
 
+  const previewCount = 5;
+  const visiblePosts = showAll ? validPosts : validPosts.slice(0, previewCount);
+
   return (
     <section className="rounded-xl border border-card-border bg-card p-7">
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
           Recent posts
         </h2>
-        <p className="text-sm text-muted">
-          Last {validPosts.length} posts scraped from Instagram
-        </p>
       </div>
 
       <div className="mt-5">
-        {validPosts.map((p, idx) => (
+        {visiblePosts.map((p, idx) => (
           <article
             key={`${p.type ?? "post"}-${p.date?.toISOString() ?? "unknown"}-${idx}`}
             className="mb-3 rounded-xl border border-card-border bg-input p-4"
@@ -193,6 +194,15 @@ export function RecentPostsCards({ raw }: { raw: string }) {
             {p.caption?.trim() ? <Caption text={p.caption.trim()} /> : null}
           </article>
         ))}
+        {!showAll && validPosts.length > previewCount ? (
+          <button
+            type="button"
+            onClick={() => setShowAll(true)}
+            className="mt-2 text-xs font-bold uppercase tracking-widest text-brand hover:underline"
+          >
+            Show all posts
+          </button>
+        ) : null}
       </div>
     </section>
   );

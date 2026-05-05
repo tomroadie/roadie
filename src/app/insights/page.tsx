@@ -401,11 +401,7 @@ export default async function InsightsPage() {
               </div>
             </section>
 
-            {audit.recent_posts_raw?.trim() ? (
-              <RecentPostsCards raw={sortRecentPostsRawByDateDesc(audit.recent_posts_raw)} />
-            ) : null}
-
-            <section className="mt-10 rounded-xl border border-card-border bg-card p-7">
+            <section className="rounded-xl border border-card-border bg-card p-7">
               <Link
                 href="/dashboard"
                 className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 sm:w-auto"
@@ -416,6 +412,10 @@ export default async function InsightsPage() {
                 Your content plan uses this audit to shape every idea.
               </p>
             </section>
+
+            {audit.recent_posts_raw?.trim() && !liveSocialStats ? (
+              <RecentPostsCards raw={sortRecentPostsRawByDateDesc(audit.recent_posts_raw)} />
+            ) : null}
           </div>
         )}
       </div>
@@ -445,22 +445,34 @@ export default async function InsightsPage() {
               followers={audit?.followers ?? 0}
               timestamps={liveSocialStats.media.map((m) => m.timestamp)}
             />
+          ) : canViewLiveSocialData ? (
+            <div className="rounded-xl border border-card-border bg-input p-6">
+              <p className="text-sm font-semibold leading-relaxed text-foreground">
+                Connect your Instagram account to see real-time performance data
+              </p>
+              <div className="mt-5">
+                <Link
+                  href="/api/auth/instagram"
+                  className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
+                >
+                  Connect Instagram →
+                </Link>
+              </div>
+            </div>
           ) : (
             <>
               <p className="text-sm leading-relaxed text-muted">
                 Connect your Instagram, TikTok and Facebook to see real-time performance data,
                 post analytics, and what&apos;s driving growth.
               </p>
-              {!canViewLiveSocialData ? (
-                <div className="mt-5">
-                  <Link
-                    href="/pricing"
-                    className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
-                  >
-                    Upgrade to Pro
-                  </Link>
-                </div>
-              ) : null}
+              <div className="mt-5">
+                <Link
+                  href="/pricing"
+                  className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
+                >
+                  Upgrade to Pro
+                </Link>
+              </div>
             </>
           )}
         </div>

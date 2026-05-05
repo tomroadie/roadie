@@ -48,10 +48,21 @@ export async function completeOnboarding(
     return { error: "Please select a valid genre." };
   }
 
-  const cookieStore = await cookies();
-  let activeArtistId = cookieStore.get(ACTIVE_ARTIST_COOKIE)?.value ?? null;
+  const { data: existingArtist, error: findArtistErr } = await supabase
+    .from("artists")
+    .select("id")
+    .eq("owner_user_id", user.id)
+    .limit(1)
+    .maybeSingle();
 
-  if (!activeArtistId) {
+  if (findArtistErr) {
+    return { error: findArtistErr.message };
+  }
+
+  let activeArtistId: string;
+  if (existingArtist?.id) {
+    activeArtistId = existingArtist.id;
+  } else {
     activeArtistId = crypto.randomUUID();
     const { error: createArtistErr } = await supabase.from("artists").insert({
       id: activeArtistId,
@@ -60,13 +71,15 @@ export async function completeOnboarding(
     if (createArtistErr) {
       return { error: createArtistErr.message };
     }
-    cookieStore.set(ACTIVE_ARTIST_COOKIE, activeArtistId, {
-      path: "/",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 400,
-      httpOnly: false,
-    });
   }
+
+  const cookieStore = await cookies();
+  cookieStore.set(ACTIVE_ARTIST_COOKIE, activeArtistId, {
+    path: "/",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 400,
+    httpOnly: false,
+  });
 
   const isAdmin = await userIsAdmin(supabase, user.id);
 

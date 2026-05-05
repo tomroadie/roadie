@@ -8,7 +8,7 @@ import {
   UsageAnalytics,
   type UsageAnalyticsRecentEvent,
 } from "./usage-analytics";
-import { ContentReviewsTable, type ContentReviewQueueRow } from "./content-reviews-table";
+import { ContentReviewsTable } from "./content-reviews-table";
 import {
   AdminArtistsTable,
   type AdminArtistDirectoryRow,
@@ -187,11 +187,14 @@ export default async function AdminPage() {
     artist_id: String(r.artist_id ?? ""),
   }));
 
-  const { data: contentReviewsRows, error: contentReviewsError } = await adminSupabase
-    .from("content_reviews")
-    .select("id, created_at, status, idea_hook, idea_caption, profiles:profiles(artist_name)")
-    .order("created_at", { ascending: false })
-    .limit(20);
+  const { data: contentReviewsRows, error: contentReviewsError } =
+    await adminSupabase
+      .from("content_reviews")
+      .select(
+        "id, artist_id, owner_user_id, idea_hook, idea_format, idea_caption, notes, status, feedback, created_at"
+      )
+      .order("created_at", { ascending: false })
+      .limit(20);
 
   if (contentReviewsError) {
     return (
@@ -201,21 +204,49 @@ export default async function AdminPage() {
     );
   }
 
-  const contentReviewRows: ContentReviewQueueRow[] = (contentReviewsRows ?? []).map(
-    (r) => ({
-      id: String(r.id ?? ""),
-      createdAt:
-        typeof r.created_at === "string"
-          ? r.created_at
-          : r.created_at != null
-            ? String(r.created_at)
-            : "",
-      status: String(r.status ?? "pending"),
-      ideaHook: String(r.idea_hook ?? ""),
-      ideaCaption: String(r.idea_caption ?? ""),
-      artistName: String((r as unknown as { profiles?: { artist_name?: unknown } }).profiles?.artist_name ?? ""),
-    })
+  const contentReviewRows = (contentReviewsRows ?? []).map((r) => ({
+    id: String(r.id ?? ""),
+    artist_id: String(r.artist_id ?? ""),
+    owner_user_id: String(r.owner_user_id ?? ""),
+    idea_hook: String(r.idea_hook ?? ""),
+    idea_format: String(r.idea_format ?? ""),
+    idea_caption: String(r.idea_caption ?? ""),
+    notes: String(r.notes ?? ""),
+    status: String(r.status ?? "pending"),
+    feedback: String(r.feedback ?? ""),
+    created_at:
+      typeof r.created_at === "string"
+        ? r.created_at
+        : r.created_at != null
+          ? String(r.created_at)
+          : "",
+  }));
+
+  const uniqueArtistIds = Array.from(
+    new Set(contentReviewRows.map((r) => r.artist_id).filter(Boolean))
   );
+
+  const artistNames: Record<string, string> = {};
+  if (uniqueArtistIds.length) {
+    const { data: artistRows, error: artistNamesError } = await adminSupabase
+      .from("profiles")
+      .select("id, artist_name")
+      .in("id", uniqueArtistIds);
+
+    if (artistNamesError) {
+      return (
+        <AdminPageError
+          message={`Could not load artist names: ${artistNamesError.message}`}
+        />
+      );
+    }
+
+    for (const row of artistRows ?? []) {
+      const id = String(row.id ?? "");
+      if (!id) continue;
+      artistNames[id] = String(row.artist_name ?? "");
+    }
+  }
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-6xl flex-1 flex-col px-4 py-10 sm:px-6">
@@ -238,7 +269,7 @@ export default async function AdminPage() {
 
       <UsageAnalytics totalCounts={totalCounts} recentEvents={recentEvents} />
 
-      <ContentReviewsTable rows={contentReviewRows} />
+      <ContentReviewsTable reviews={contentReviewRows} artistNames={artistNames} />
 
       <AdminCreateClientArtistForm />
 

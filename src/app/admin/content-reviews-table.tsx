@@ -4,11 +4,15 @@ import { useMemo, useState } from "react";
 
 export type ContentReviewQueueRow = {
   id: string;
-  artistName: string;
-  ideaHook: string;
-  ideaCaption: string;
-  createdAt: string;
+  artist_id: string;
+  owner_user_id: string;
+  idea_hook: string;
+  idea_format: string;
+  idea_caption: string;
+  notes: string;
   status: string;
+  feedback: string;
+  created_at: string;
 };
 
 function formatSubmittedLabel(iso: string): string {
@@ -29,14 +33,20 @@ function truncate(text: string, max: number): string {
   return `${t.slice(0, max).trimEnd()}…`;
 }
 
-export function ContentReviewsTable({ rows }: { rows: ContentReviewQueueRow[] }) {
+export function ContentReviewsTable({
+  reviews,
+  artistNames,
+}: {
+  reviews: ContentReviewQueueRow[];
+  artistNames: Record<string, string>;
+}) {
   const [expanded, setExpanded] = useState<null | string>(null);
   const [draftById, setDraftById] = useState<Record<string, string>>({});
   const [sendingId, setSendingId] = useState<null | string>(null);
   const [error, setError] = useState<string | null>(null);
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(() => new Set());
 
-  const sorted = useMemo(() => rows, [rows]);
+  const sorted = useMemo(() => reviews, [reviews]);
 
   async function sendFeedback(id: string) {
     setError(null);
@@ -108,14 +118,14 @@ export function ContentReviewsTable({ rows }: { rows: ContentReviewQueueRow[] })
               return (
                 <tr key={r.id} className="align-top">
                   <td className="border-b border-card-border px-3 py-4 text-sm font-semibold text-foreground">
-                    {r.artistName || "—"}
+                    {artistNames[r.artist_id] ?? "Unknown artist"}
                   </td>
                   <td className="border-b border-card-border px-3 py-4 text-sm text-muted-strong">
                     <div className="font-semibold text-foreground">
-                      {truncate(r.ideaHook, 90)}
+                      {truncate(r.idea_hook, 90)}
                     </div>
                     <div className="mt-1 text-xs text-muted">
-                      {truncate(r.ideaCaption, 120)}
+                      {truncate(r.idea_caption, 120)}
                     </div>
                     {isExpanded ? (
                       <div className="mt-3">
@@ -148,7 +158,7 @@ export function ContentReviewsTable({ rows }: { rows: ContentReviewQueueRow[] })
                     ) : null}
                   </td>
                   <td className="border-b border-card-border px-3 py-4 text-sm text-muted">
-                    {formatSubmittedLabel(r.createdAt)}
+                    {formatSubmittedLabel(r.created_at)}
                   </td>
                   <td className="border-b border-card-border px-3 py-4 text-sm">
                     <span

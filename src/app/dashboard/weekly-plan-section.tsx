@@ -67,11 +67,13 @@ function IdeaCard({
   onRate,
   initialRating = null,
   onSubmitReview,
+  feedback = null,
 }: {
   idea: ContentIdea;
   onRate: (hook: string, rating: "up" | "down") => void;
   initialRating?: "up" | "down" | null;
   onSubmitReview?: (idea: ContentIdea, file: File | null) => Promise<void>;
+  feedback?: string | null;
 }) {
   const [copied, setCopied] = useState(false);
   const [rating, setRating] = useState<null | "up" | "down">(initialRating ?? null);
@@ -154,6 +156,15 @@ function IdeaCard({
           {copied ? "Copied" : "Copy idea"}
         </button>
       </div>
+
+      {feedback ? (
+        <div className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
+            Expert feedback:
+          </p>
+          <p className="mt-2 text-sm leading-6 text-muted">{feedback}</p>
+        </div>
+      ) : null}
 
       <div className="mt-3 flex gap-2">
         <button
@@ -266,6 +277,7 @@ type WeeklyPlanSectionProps = {
   plan: string;
   isAdmin?: boolean;
   canReview: boolean;
+  reviews: Array<{ idea_hook: string; feedback: string; reviewed_at: string }>;
 };
 
 function hoursSince(iso: string): number {
@@ -291,6 +303,7 @@ export function WeeklyPlanSection({
   plan,
   isAdmin = false,
   canReview,
+  reviews,
 }: WeeklyPlanSectionProps) {
   const [ideas, setIdeas] = useState<ContentIdea[] | null>(initialIdeas);
   const [loading, setLoading] = useState(false);
@@ -509,10 +522,14 @@ export function WeeklyPlanSection({
         <ul className="mt-6 flex flex-col gap-5">
           {ideas.map((idea, i) => (
             <li key={`${idea.hook}-${i}`}>
+              {(() => {
+                const review = reviews.find((r) => r.idea_hook === idea.hook) ?? null;
+                return (
               <IdeaCard
                 idea={idea}
                 onRate={handleRate}
                 initialRating={initialIdeaRatings[idea.hook] ?? null}
+                feedback={review?.feedback ?? null}
                 onSubmitReview={
                   canReview
                     ? async (ideaParam, file) => {
@@ -528,6 +545,8 @@ export function WeeklyPlanSection({
                     : undefined
                 }
               />
+                );
+              })()}
             </li>
           ))}
         </ul>

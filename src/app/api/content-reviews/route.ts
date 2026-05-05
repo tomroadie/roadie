@@ -14,6 +14,7 @@ async function sendResendEmail(args: {
   to: string;
   subject: string;
   text: string;
+  html?: string;
 }): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -26,6 +27,7 @@ async function sendResendEmail(args: {
       to: [args.to],
       subject: args.subject,
       text: args.text,
+      html: args.html,
     }),
   });
 
@@ -345,11 +347,64 @@ export async function PATCH(request: Request) {
     `Caption: ${asTrimmedString(row.idea_caption)}`,
   ].join("\n");
 
+  const safeArtistName = asTrimmedString(artistName) || "Your artist profile";
+  const safeHook = asTrimmedString(row.idea_hook) || "—";
+  const safeCaption = asTrimmedString(row.idea_caption) || "—";
+  const safeFeedback = feedback || "—";
+
+  const emailHtml = `<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#0a0a0a;color:#ffffff;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;">
+    <div style="width:100%;background:#0a0a0a;padding:32px 16px;">
+      <div style="max-width:640px;margin:0 auto;border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;background:#0a0a0a;">
+        <div style="padding:28px 24px;border-bottom:1px solid rgba(255,255,255,0.08);">
+          <div style="font-size:24px;line-height:1.2;font-weight:800;color:#ffffff;">
+            Your content review is ready
+          </div>
+          <div style="margin-top:10px;font-size:12px;letter-spacing:0.12em;font-weight:800;text-transform:uppercase;color:#00ff87;">
+            ${safeArtistName}
+          </div>
+        </div>
+
+        <div style="padding:24px;">
+          <div style="font-size:12px;letter-spacing:0.14em;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,0.65);">
+            THE IDEA
+          </div>
+          <div style="margin-top:10px;font-size:20px;line-height:1.35;font-weight:800;color:#ffffff;">
+            ${safeHook}
+          </div>
+
+          <div style="margin-top:20px;font-size:12px;letter-spacing:0.14em;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,0.65);">
+            CAPTION
+          </div>
+          <div style="margin-top:10px;padding:14px 16px;border-radius:12px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.92);white-space:pre-wrap;line-height:1.5;">
+            ${safeCaption}
+          </div>
+
+          <div style="margin-top:20px;font-size:12px;letter-spacing:0.14em;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,0.65);">
+            FEEDBACK
+          </div>
+          <div style="margin-top:10px;padding:14px 16px;border-left:4px solid #00ff87;border-radius:12px;background:rgba(255,255,255,0.02);color:#ffffff;white-space:pre-wrap;line-height:1.55;">
+            ${safeFeedback}
+          </div>
+        </div>
+
+        <div style="padding:18px 24px;border-top:1px solid rgba(255,255,255,0.08);">
+          <div style="font-size:13px;line-height:1.5;color:rgba(255,255,255,0.8);">
+            View your dashboard → <a href="https://app.roadie.media/dashboard" style="color:#00ff87;text-decoration:underline;">https://app.roadie.media/dashboard</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>`;
+
   const emailSend = await sendResendEmail({
     apiKey: resendKey,
     to: toEmail,
     subject: "Your content review feedback",
     text: emailText,
+    html: emailHtml,
   });
 
   if (!emailSend.ok) {

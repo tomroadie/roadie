@@ -14,6 +14,12 @@ import { canDo, normalizePlan } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 import { DashboardTracking } from "./dashboard-tracking";
 
+type ContentReviewRow = {
+  idea_hook: string;
+  feedback: string;
+  reviewed_at: string;
+};
+
 function isoToday(): string {
   const d = new Date();
   const local = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -84,10 +90,23 @@ export default async function DashboardPage() {
     .limit(1)
     .maybeSingle();
 
+  const { data: reviewsData, error: reviewsError } = await supabase
+    .from("content_reviews")
+    .select("idea_hook, feedback, reviewed_at")
+    .eq("artist_id", activeArtistId)
+    .eq("status", "reviewed")
+    .order("reviewed_at", { ascending: false })
+    .limit(10);
+
+  if (reviewsError) {
+    throw new Error(reviewsError.message);
+  }
+
   const initialIdeas = normalizeIdeasFromDb(weeklyPlan?.ideas ?? null);
   const initialIdeaRatings = parseIdeaRatingsFromDb(weeklyPlan?.idea_ratings);
   const lastGeneratedAt = (weeklyPlan?.created_at as string | undefined) ?? null;
   const planWeekStart = (weeklyPlan?.week_start as string | undefined) ?? null;
+  const reviews = (reviewsData ?? []) as ContentReviewRow[];
 
   const today = isoToday();
   const in7 = addDaysISO(today, 7);
@@ -189,6 +208,7 @@ export default async function DashboardPage() {
         plan={plan}
         isAdmin={isAdmin}
         canReview={canReview}
+        reviews={reviews}
       />
     </div>
   );

@@ -55,6 +55,13 @@ type ApifyActorRun = {
   };
 };
 
+function firstSentence(text: string): string {
+  const t = String(text ?? "").trim().replace(/\s+/g, " ");
+  if (!t) return "";
+  const match = t.match(/^(.+?[.!?])(\s|$)/);
+  return (match?.[1] ?? t).trim();
+}
+
 async function fetchApifyDatasetItems<T>(
   url: string,
   init?: RequestInit
@@ -440,23 +447,30 @@ Artist: ${artistName}. Below is a structured summary of their Instagram profile 
     }
   }
 
-  const emailText =
-    `Your Roadie Instagram audit is ready.\n\n` +
-    `${ai_pattern_analysis}\n\n` +
-    `${ai_full_analysis}\n\n` +
-    `---\n\n` +
-    `${formattedProfile}\n\n` +
-    `${formattedPosts}`;
+  const teaser = firstSentence(ai_pattern_analysis);
+  const insightsUrl = "https://app.roadie.media/insights";
+  const footer =
+    "Your audit includes positioning analysis, content pattern insights, engagement reality, and your top opportunities.";
+
+  const emailText = [
+    `Your Instagram audit is ready, ${artistName}`,
+    "",
+    teaser || "Your audit is ready inside Roadie.",
+    "",
+    `Followers: ${followers ?? "—"} • Following: ${following ?? "—"} • Posts: ${post_count ?? "—"}`,
+    "",
+    `Read your full audit → ${insightsUrl}`,
+    "",
+    footer,
+  ].join("\n");
 
   const emailHtml = generateAuditEmail({
     artist_name: artistName,
-    instagram_handle: lead.instagram_handle.trim(),
     followers: followers ?? "—",
     following: following ?? "—",
     post_count: post_count ?? "—",
-    bio,
-    ai_pattern_analysis,
-    ai_full_analysis,
+    teaser,
+    cta_url: insightsUrl,
   });
 
   const emailSend = await sendResendEmail({

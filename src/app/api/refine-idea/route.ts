@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { NextResponse } from "next/server";
+import { trackUsage } from "@/lib/track-usage";
 
 function optionalBodyString(value: unknown): string {
   if (typeof value !== "string") return "";
@@ -23,11 +24,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!hook || !caption || !instruction) {
+  if (!hook || !caption) {
     return NextResponse.json(
-      { error: "Expected hook, caption, and instruction" },
+      { error: "Expected hook and caption" },
       { status: 400 }
     );
+  }
+
+  if (instruction.length > 200) {
+    instruction = instruction.slice(0, 200);
   }
 
   const supabase = await createClient();
@@ -37,6 +42,28 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count: refineCount, error: refineCountError } = await supabase
+    .from("usage_events")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("event_type", "idea_refined")
+    .gte("created_at", sinceIso);
+
+  if (refineCountError) {
+    return NextResponse.json(
+      { error: "Failed to check usage limits", details: refineCountError.message },
+      { status: 500 }
+    );
+  }
+
+  if ((refineCount ?? 0) > 10) {
+    return NextResponse.json(
+      { error: "Daily refinement limit reached" },
+      { status: 429 }
+    );
   }
 
   const cookieStore = await cookies();
@@ -101,7 +128,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const prompt = `You are rewriting a social media caption for ${artistName}.
+  const promptBoundary =
+    "You are a caption rewriter for a music artist social media tool. You ONLY rewrite captions. You do not answer questions, write recipes, provide information, or do anything other than rewrite the provided caption according to the instruction. If the instruction is not about rewriting the caption, respond with: 'I can only help rewrite captions for your content ideas.'";
+
+  const prompt = `${promptBoundary}
+
+You are rewriting a social media caption for ${artistName}.
 
 Their voice: ${voiceDescription}
 Genre: ${genre}
@@ -136,6 +168,13 @@ Rewrite the caption only. Keep it authentic to their voice. Return just the new 
       { status: 502 }
     );
   }
+
+  await trackUsage({
+    supabase,
+    userId: user.id,
+    artistId: activeArtistId,
+    eventType: "idea_refined",
+  });
 
   return NextResponse.json({ refinedCaption });
 }

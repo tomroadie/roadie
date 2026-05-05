@@ -4,6 +4,7 @@ import type { ContentIdea } from "@/types/content-plan";
 import { useEffect, useMemo, useState } from "react";
 import type { EventRow } from "@/types/event";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { canDo, normalizePlan } from "@/lib/plan-limits";
 import { createClient } from "@/utils/supabase/client";
 
@@ -93,6 +94,7 @@ function IdeaCard({
   canRefineIdeas: boolean;
   canSaveIdeas: boolean;
 }) {
+  const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [rating, setRating] = useState<null | "up" | "down">(initialRating ?? null);
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
@@ -184,6 +186,7 @@ function IdeaCard({
       });
       if (!res.ok) return;
       setSaved(true);
+      router.refresh();
     } finally {
       setSaving(false);
     }
@@ -562,12 +565,20 @@ export function WeeklyPlanSection({
 
   async function handleAddToCalendar(idea: ContentIdea, date: string) {
     const title = idea.hook.trim().slice(0, 100);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError) throw new Error(userError.message);
+    if (!user) throw new Error("Unauthorized");
+
     const { error } = await supabase.from("events").insert({
       title: title || "(Idea)",
       event_date: date,
       event_type: "Content",
       notes: idea.caption,
       artist_id: artistId,
+      user_id: user.id,
     });
     if (error) throw new Error(error.message);
   }

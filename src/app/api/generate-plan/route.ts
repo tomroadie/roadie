@@ -24,6 +24,12 @@ function firstSentence(text: string): string {
   return (match?.[1] ?? t).trim();
 }
 
+function addDaysISO(isoDate: string, days: number): string {
+  const d = new Date(isoDate + "T12:00:00");
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 function extractOpportunitySection(fullAnalysis: string): string {
   const text = String(fullAnalysis ?? "").trim();
   if (!text) return "";
@@ -320,15 +326,41 @@ export async function POST(request: Request) {
     );
   }
 
-  const eventsSummary =
-    events && events.length > 0
-      ? events
+  const today = new Date().toISOString().slice(0, 10);
+  const in7Days = addDaysISO(today, 7);
+  const in14Days = addDaysISO(today, 14);
+
+  const urgentEvents =
+    events?.filter(
+      (e) => e.event_date >= today && e.event_date <= in7Days
+    ) ?? [];
+  const upcomingEvents =
+    events?.filter(
+      (e) => e.event_date > in7Days && e.event_date <= in14Days
+    ) ?? [];
+
+  const urgentLines =
+    urgentEvents.length > 0
+      ? urgentEvents
           .map(
             (e) =>
-              `- ${e.event_date}: ${e.title}${e.event_type ? ` (${e.event_type})` : ""}${e.notes ? ` — Notes: ${e.notes}` : ""}`
+              `- ${e.event_date}: ${e.title}${e.event_type ? ` (${e.event_type})` : ""}${e.notes ? ` — ${e.notes}` : ""}`
           )
           .join("\n")
-      : "No dates saved yet — suggest ideas that still feel grounded in their voice and world.";
+      : "None";
+
+  const upcomingLines =
+    upcomingEvents.length > 0
+      ? upcomingEvents
+          .map((e) => `- ${e.event_date}: ${e.title}`)
+          .join("\n")
+      : "None";
+
+  const eventsCalendarSection = `## URGENT — Events in the next 7 days
+${urgentLines}
+
+## Coming up — Next 7-14 days  
+${upcomingLines}`;
 
   const artistName = profile.artist_name.trim();
   const frequency = String(profile.posting_frequency ?? "regular")
@@ -394,10 +426,11 @@ ${instagramLiveSection}
 This artist wants to post ${frequency === "weekly" ? "1-2x" : frequency === "active" ? "5+x" : "3-4x"} per week.
 Suggested posting days this week: ${getPostingSchedule(frequency)}
 
-## Their calendar (all saved dates, earliest first)
-${eventsSummary}
+${eventsCalendarSection}
 
-${artistInputSection}## What you must produce
+${artistInputSection}CRITICAL PRIORITY RULE: If there are any URGENT events (within 7 days), at least 3 of the 5 ideas MUST directly serve those events — building hype, driving ticket sales, creating anticipation, or capturing behind-the-scenes content. Do not suggest content about unrelated songs or past work when there is an imminent event. The imminent event IS the content opportunity this week.
+
+## What you must produce
 Give **exactly 5** content ideas that feel personal, specific, and tied to what is actually happening in this artist's world — their sound, references, the dates above, and the Instagram audit data (if present). No filler, no one-size-fits-all tips.
 
 Each idea's **caption** must naturally mention **${artistName}** by name **or** clearly reference something specific to them (a release, show, collaboration, or detail from their profile/dates) so it could not be swapped onto another act.

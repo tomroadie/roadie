@@ -216,7 +216,11 @@ export default async function DashboardPage() {
       <AppNavWrapper />
 
       {showFirstRunChecklist ? (
-        <FirstRunChecklist hasEvents={hasAnyEvents} hasPlan={hasPlanIdeas} />
+        <FirstRunChecklist
+          hasEvents={hasAnyEvents}
+          hasPlan={hasPlanIdeas}
+          instagramHandle={profile?.instagram_handle ?? null}
+        />
       ) : null}
 
       <WeeklyPlanSection

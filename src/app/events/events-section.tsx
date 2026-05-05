@@ -192,6 +192,10 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
       notes: notes.trim() || null,
     };
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     const { data, error } = isEditing
       ? await supabase
           .from("events")
@@ -201,7 +205,7 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
           .single()
       : await supabase
           .from("events")
-          .insert({ artist_id: artistId, ...payload })
+          .insert({ artist_id: artistId, user_id: user?.id, ...payload })
           .select("id, title, event_date, event_type, notes")
           .single();
 

@@ -1,14 +1,33 @@
+ "use client";
+
 import Link from "next/link";
 
 type Props = {
   hasEvents: boolean;
   hasPlan: boolean;
+  instagramHandle: string | null;
+  onGeneratePlan?: () => void;
 };
 
-export function FirstRunChecklist({ hasEvents, hasPlan }: Props) {
+export function FirstRunChecklist({
+  hasEvents,
+  hasPlan,
+  instagramHandle,
+  onGeneratePlan,
+}: Props) {
   const step1Done = true;
   const step2Done = hasEvents;
   const step3Done = hasPlan;
+  const step4Done = Boolean(instagramHandle?.trim());
+
+  function defaultGeneratePlan() {
+    const el = document.getElementById("dashboard-generate-plan");
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => {
+      (el as HTMLElement).click?.();
+    }, 250);
+  }
 
   return (
     <section
@@ -56,14 +75,28 @@ export function FirstRunChecklist({ hasEvents, hasPlan }: Props) {
           {step3Done ? (
             <span className="text-muted-strong">Generate your first plan</span>
           ) : (
-            <a
-              href="#dashboard-generate-plan"
+            <button
+              type="button"
+              onClick={() => (onGeneratePlan ? onGeneratePlan() : defaultGeneratePlan())}
               className="font-medium text-foreground underline-offset-4 hover:text-brand hover:underline"
             >
               Generate your first plan
-            </a>
+            </button>
           )}
         </li>
+        {!step4Done ? (
+          <li className="flex items-start gap-3">
+            <span className="mt-0.5 shrink-0 text-muted" aria-hidden>
+              +
+            </span>
+            <Link
+              href="/settings"
+              className="font-medium text-foreground underline-offset-4 hover:text-brand hover:underline"
+            >
+              Connect Instagram for a personalised audit
+            </Link>
+          </li>
+        ) : null}
       </ul>
     </section>
   );

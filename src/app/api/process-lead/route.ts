@@ -413,6 +413,33 @@ Artist: ${artistName}. Below is a structured summary of their Instagram profile 
     );
   }
 
+  // Auto-generate first plan if none exists
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  const planWebhookSecret = process.env.WEBHOOK_SECRET;
+  if (appUrl && profileLookup?.id && planWebhookSecret) {
+    try {
+      const { data: existingPlan } = await supabase
+        .from("weekly_plans")
+        .select("id")
+        .eq("artist_id", profileLookup.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (!existingPlan) {
+        await fetch(`${appUrl}/api/generate-plan`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-internal-artist-id": profileLookup.id,
+            "x-webhook-secret": planWebhookSecret,
+          },
+        });
+      }
+    } catch {
+      // Don't block if plan generation fails
+    }
+  }
+
   const emailText =
     `Your Roadie Instagram audit is ready.\n\n` +
     `${ai_pattern_analysis}\n\n` +

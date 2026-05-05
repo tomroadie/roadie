@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { timingSafeEqual } from "crypto";
 import { createClient } from "@/utils/supabase/server";
+import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { cookies } from "next/headers";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { getMondayDateString } from "@/lib/week";
@@ -36,6 +38,17 @@ function optionalBodyString(value: unknown): string {
   if (typeof value !== "string") return "";
   return value.trim();
 }
+
+function verifyWebhookSecret(headerValue: string | null, secret: string): boolean {
+  if (!headerValue || !secret) return false;
+  const a = Buffer.from(headerValue, "utf8");
+  const b = Buffer.from(secret, "utf8");
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+const ARTIST_ID_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function getPostingSchedule(frequency: string): string {
   if (frequency === "weekly") return "Mon, Thu";
@@ -135,45 +148,64 @@ export async function POST(request: Request) {
     /* no JSON body or invalid JSON — optional inputs stay empty */
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const internalArtistIdRaw = request.headers.get("x-internal-artist-id")?.trim() ?? "";
+  const internalSecretHeader = request.headers.get("x-webhook-secret");
+  const webhookSecretEnv = process.env.WEBHOOK_SECRET ?? "";
+  const isInternalPlan =
+    internalArtistIdRaw.length > 0 &&
+    webhookSecretEnv.length > 0 &&
+    verifyWebhookSecret(internalSecretHeader, webhookSecretEnv);
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (isInternalPlan && !ARTIST_ID_UUID_RE.test(internalArtistIdRaw)) {
+    return NextResponse.json({ error: "Invalid artist id" }, { status: 400 });
   }
 
-  const isAdmin = await userIsAdmin(supabase, user.id);
+  const supabase = isInternalPlan
+    ? createServiceRoleClient()
+    : await createClient();
 
-  const { data: planRow, error: planError } = await supabase
-    .from("profiles")
-    .select("plan")
-    .eq("owner_user_id", user.id)
-    .limit(1)
-    .maybeSingle();
+  let sessionUserId: string | null = null;
+  let activeArtistId: string | null = null;
 
-  if (planError) {
-    return NextResponse.json(
-      { error: "Failed to load plan", details: planError.message },
-      { status: 500 }
-    );
+  if (isInternalPlan) {
+    activeArtistId = internalArtistIdRaw;
+  } else {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    sessionUserId = user.id;
+    const isAdmin = await userIsAdmin(supabase, user.id);
+
+    const { data: planRow, error: planError } = await supabase
+      .from("profiles")
+      .select("plan")
+      .eq("owner_user_id", user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (planError) {
+      return NextResponse.json(
+        { error: "Failed to load plan", details: planError.message },
+        { status: 500 }
+      );
+    }
+
+    const plan = normalizePlan(planRow?.plan);
+    if (!canDo(plan, "canGeneratePlan", isAdmin)) {
+      return NextResponse.json(
+        { error: "Upgrade required", details: "Upgrade to generate your weekly plan." },
+        { status: 403 }
+      );
+    }
+
+    const cookieStore = await cookies();
+    activeArtistId = await getActiveArtistIdForUser(supabase, user.id, cookieStore);
   }
-
-  const plan = normalizePlan(planRow?.plan);
-  if (!canDo(plan, "canGeneratePlan", isAdmin)) {
-    return NextResponse.json(
-      { error: "Upgrade required", details: "Upgrade to generate your weekly plan." },
-      { status: 403 }
-    );
-  }
-
-  const cookieStore = await cookies();
-  const activeArtistId = await getActiveArtistIdForUser(
-    supabase,
-    user.id,
-    cookieStore
-  );
 
   if (!activeArtistId) {
     return NextResponse.json(
@@ -185,7 +217,7 @@ export async function POST(request: Request) {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, genre, sound_description, similar_artists, voice_description, instagram_access_token, instagram_user_id, posting_frequency"
+      "artist_name, genre, sound_description, similar_artists, voice_description, instagram_access_token, instagram_user_id, posting_frequency, owner_user_id"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -447,17 +479,24 @@ No markdown fences, no commentary outside the JSON array.`;
     }
   }
 
-  await trackUsage({
-    supabase,
-    userId: user.id,
-    artistId: activeArtistId,
-    eventType: "plan_generated",
-    metadata: {
-      week_start: weekStart,
-      has_audit: !!audit,
-      upcoming_events_count: events?.length ?? 0,
-    },
-  });
+  const usageUserId =
+    sessionUserId ??
+    (typeof profile.owner_user_id === "string" && profile.owner_user_id.trim()
+      ? profile.owner_user_id.trim()
+      : null);
+  if (usageUserId) {
+    await trackUsage({
+      supabase,
+      userId: usageUserId,
+      artistId: activeArtistId,
+      eventType: "plan_generated",
+      metadata: {
+        week_start: weekStart,
+        has_audit: !!audit,
+        upcoming_events_count: events?.length ?? 0,
+      },
+    });
+  }
 
   return NextResponse.json({ ideas });
 }

@@ -54,6 +54,15 @@ function parseIdeaFields(body: Record<string, unknown>): {
   return { idea_hook, idea_format, idea_caption, idea_why, idea_timing, notes };
 }
 
+function parseFileUrls(body: Record<string, unknown>): string[] {
+  const raw = body.file_urls;
+  if (!Array.isArray(raw)) return [];
+  const urls = raw
+    .map((v) => asTrimmedString(v))
+    .filter((v) => !!v);
+  return urls;
+}
+
 export async function POST(request: Request) {
   const resendKey = process.env.RESEND_API_KEY;
   if (!resendKey) {
@@ -73,8 +82,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Expected JSON object body" }, { status: 400 });
   }
 
+  const ideaBody = body as Record<string, unknown>;
   const { idea_hook, idea_format, idea_caption, idea_why, idea_timing, notes } =
-    parseIdeaFields(body as Record<string, unknown>);
+    parseIdeaFields(ideaBody);
+  const file_urls = parseFileUrls(ideaBody);
 
   if (!idea_hook || !idea_format || !idea_caption || !idea_why || !idea_timing) {
     return NextResponse.json(
@@ -118,7 +129,7 @@ export async function POST(request: Request) {
   const artistName = asTrimmedString(profile?.artist_name) || "Unknown artist";
 
   const { error: insertError } = await supabase.from("content_reviews").insert({
-    user_id: user.id,
+    owner_user_id: user.id,
     artist_id: activeArtistId,
     idea_hook,
     idea_format,
@@ -127,6 +138,7 @@ export async function POST(request: Request) {
     idea_timing,
     notes: notes || null,
     status: "pending",
+    file_urls: file_urls.length ? file_urls : [],
   });
 
   if (insertError) {

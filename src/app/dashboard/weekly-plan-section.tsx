@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { EventRow } from "@/types/event";
 import Link from "next/link";
 import { canDo, normalizePlan } from "@/lib/plan-limits";
+import { createClient } from "@/utils/supabase/client";
 
 type Accent = {
   border: string;
@@ -70,12 +71,13 @@ function IdeaCard({
   idea: ContentIdea;
   onRate: (hook: string, rating: "up" | "down") => void;
   initialRating?: "up" | "down" | null;
-  onSubmitReview?: (idea: ContentIdea) => Promise<void>;
+  onSubmitReview?: (idea: ContentIdea, file: File | null) => Promise<void>;
 }) {
   const [copied, setCopied] = useState(false);
   const [rating, setRating] = useState<null | "up" | "down">(initialRating ?? null);
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [reviewFile, setReviewFile] = useState<File | null>(null);
   const accent = useMemo(() => getAccent(idea.format), [idea.format]);
 
   async function handleCopy() {
@@ -93,7 +95,7 @@ function IdeaCard({
     if (reviewSubmitting || reviewSubmitted) return;
     setReviewSubmitting(true);
     try {
-      await onSubmitReview(idea);
+      await onSubmitReview(idea, reviewFile);
       setReviewSubmitted(true);
     } finally {
       setReviewSubmitting(false);
@@ -188,11 +190,25 @@ function IdeaCard({
 
       {onSubmitReview ? (
         <div className="mt-3">
+          <label className="block">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Optional attachment
+            </span>
+            <input
+              type="file"
+              disabled={reviewSubmitting || reviewSubmitted}
+              onChange={(e) => {
+                const f = e.currentTarget.files?.[0] ?? null;
+                setReviewFile(f);
+              }}
+              className="mt-1.5 block w-full cursor-pointer rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:tracking-wide file:text-brand-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            />
+          </label>
           <button
             type="button"
             onClick={() => void handleSubmitReview()}
             disabled={reviewSubmitting || reviewSubmitted}
-            className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
           >
             {reviewSubmitted
               ? "Submitted ✓"
@@ -289,14 +305,46 @@ export function WeeklyPlanSection({
   });
   const normalizedPlan = normalizePlan(plan);
   const canGenerate = canDo(normalizedPlan, "canGeneratePlan", isAdmin);
+  const supabase = useMemo(() => createClient(), []);
 
-  async function handleSubmitReview(idea: ContentIdea) {
+  function sanitizeStorageFilename(name: string): string {
+    const base = (name || "file").trim();
+    const cleaned = base.replace(/[^a-zA-Z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
+    return cleaned || "file";
+  }
+
+  async function uploadReviewFile(file: File): Promise<string> {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError) throw new Error(userError.message);
+    if (!user) throw new Error("You must be signed in to upload.");
+
+    const filename = sanitizeStorageFilename(file.name);
+    const path = `reviews/${user.id}/${Date.now()}-${crypto.randomUUID()}-${filename}`;
+    const { error: uploadError } = await supabase.storage
+      .from("content-reviews")
+      .upload(path, file, {
+        upsert: false,
+        contentType: file.type || undefined,
+      });
+    if (uploadError) throw new Error(uploadError.message);
+
+    const { data } = supabase.storage.from("content-reviews").getPublicUrl(path);
+    const url = data?.publicUrl?.trim();
+    if (!url) throw new Error("Upload succeeded but could not build file URL.");
+    return url;
+  }
+
+  async function handleSubmitReview(idea: ContentIdea, file: File | null) {
     setError(null);
+    const file_urls = file ? [await uploadReviewFile(file)] : [];
     const res = await fetch("/api/content-reviews", {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(idea),
+      body: JSON.stringify({ ...idea, file_urls }),
     });
 
     if (!res.ok) {
@@ -470,9 +518,9 @@ export function WeeklyPlanSection({
                 initialRating={initialIdeaRatings[idea.hook] ?? null}
                 onSubmitReview={
                   canReview
-                    ? async (ideaParam) => {
+                    ? async (ideaParam, file) => {
                         try {
-                          await handleSubmitReview(ideaParam);
+                          await handleSubmitReview(ideaParam, file);
                         } catch (e) {
                           const msg =
                             e instanceof Error ? e.message : "Could not submit for review.";

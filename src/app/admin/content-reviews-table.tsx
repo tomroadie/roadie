@@ -13,6 +13,7 @@ export type ContentReviewQueueRow = {
   status: string;
   feedback: string;
   created_at: string;
+  file_urls?: string[] | null;
 };
 
 function formatSubmittedLabel(iso: string): string {
@@ -31,6 +32,25 @@ function truncate(text: string, max: number): string {
   if (!t) return "—";
   if (t.length <= max) return t;
   return `${t.slice(0, max).trimEnd()}…`;
+}
+
+function isImageUrl(url: string): boolean {
+  return /\.(png|jpe?g|gif|webp|avif)(\?.*)?$/i.test(url);
+}
+
+function isVideoUrl(url: string): boolean {
+  return /\.(mp4|mov|webm|m4v|mkv)(\?.*)?$/i.test(url);
+}
+
+function filenameFromUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const last = u.pathname.split("/").filter(Boolean).pop() ?? "";
+    return decodeURIComponent(last) || url;
+  } catch {
+    const last = url.split("?")[0]?.split("#")[0]?.split("/").filter(Boolean).pop() ?? "";
+    return last || url;
+  }
 }
 
 export function ContentReviewsTable({
@@ -115,6 +135,9 @@ export function ContentReviewsTable({
               const isExpanded = expanded === r.id;
               const isReviewed = reviewedIds.has(r.id) || r.status === "reviewed";
               const busy = sendingId === r.id;
+              const fileUrls = Array.isArray(r.file_urls)
+                ? r.file_urls.map((u) => String(u ?? "").trim()).filter(Boolean)
+                : [];
               return (
                 <tr key={r.id} className="align-top">
                   <td className="border-b border-card-border px-3 py-4 text-sm font-semibold text-foreground">
@@ -124,6 +147,48 @@ export function ContentReviewsTable({
                     <div className="font-semibold text-foreground">
                       {truncate(r.idea_hook, 90)}
                     </div>
+                    {fileUrls.length ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        {fileUrls.map((url) => {
+                          if (isImageUrl(url)) {
+                            return (
+                              <a
+                                key={url}
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="group relative inline-flex h-12 w-12 overflow-hidden rounded-lg border border-card-border bg-black/20"
+                                title={filenameFromUrl(url)}
+                              >
+                                <img
+                                  src={url}
+                                  alt={filenameFromUrl(url)}
+                                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                                  loading="lazy"
+                                />
+                              </a>
+                            );
+                          }
+
+                          const label = isVideoUrl(url)
+                            ? `Download video (${filenameFromUrl(url)})`
+                            : filenameFromUrl(url);
+
+                          return (
+                            <a
+                              key={url}
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center rounded-md border border-card-border bg-transparent px-2 py-1 text-xs font-semibold text-foreground hover:border-brand"
+                              title={url}
+                            >
+                              {label}
+                            </a>
+                          );
+                        })}
+                      </div>
+                    ) : null}
                     <div className="mt-1 text-xs text-muted">
                       {truncate(r.idea_caption, 120)}
                     </div>

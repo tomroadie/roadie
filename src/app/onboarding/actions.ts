@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { ACTIVE_ARTIST_COOKIE } from "@/lib/active-artist";
+import { enqueueNewLead } from "@/lib/new-lead-pipeline";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { GENRES } from "./genres";
@@ -119,6 +120,18 @@ export async function completeOnboarding(
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (instagramHandle && artistName && user.email) {
+    try {
+      await enqueueNewLead({
+        email: user.email,
+        artist_name: artistName,
+        instagram_input: instagramHandle,
+      });
+    } catch {
+      // Don't block onboarding if audit fails to start
+    }
   }
 
   redirect("/dashboard?registered=true");

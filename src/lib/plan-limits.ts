@@ -6,6 +6,8 @@ export type PlanFeature =
   | "canViewLiveSocialData"
   | "canRefreshAudit"
   | "canReview"
+  | "canRefineIdeas"
+  | "canSaveIdeas"
   | "maxArtists";
 
 export const PLAN_LIMITS: Record<
@@ -17,6 +19,8 @@ export const PLAN_LIMITS: Record<
     canViewLiveSocialData: boolean;
     canRefreshAudit: boolean;
     canReview: boolean;
+    canRefineIdeas: boolean;
+    canSaveIdeas: boolean;
   }
 > = {
   free: {
@@ -26,6 +30,8 @@ export const PLAN_LIMITS: Record<
     canViewLiveSocialData: false,
     canRefreshAudit: false,
     canReview: false,
+    canRefineIdeas: false,
+    canSaveIdeas: false,
   },
   starter: {
     maxArtists: 1,
@@ -34,6 +40,8 @@ export const PLAN_LIMITS: Record<
     canViewLiveSocialData: false,
     canRefreshAudit: false,
     canReview: false,
+    canRefineIdeas: false,
+    canSaveIdeas: true,
   },
   pro: {
     maxArtists: 3,
@@ -42,6 +50,8 @@ export const PLAN_LIMITS: Record<
     canViewLiveSocialData: true,
     canRefreshAudit: true,
     canReview: true,
+    canRefineIdeas: true,
+    canSaveIdeas: true,
   },
   label: {
     maxArtists: 10,
@@ -50,6 +60,8 @@ export const PLAN_LIMITS: Record<
     canViewLiveSocialData: true,
     canRefreshAudit: true,
     canReview: true,
+    canRefineIdeas: true,
+    canSaveIdeas: true,
   },
 };
 

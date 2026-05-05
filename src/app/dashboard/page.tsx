@@ -5,6 +5,7 @@ import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "./logout-button";
 import { WeeklyPlanSection } from "./weekly-plan-section";
 import { FirstRunChecklist } from "./first-run-checklist";
+import { SavedIdeasSection } from "./saved-ideas-section";
 import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { getMondayDateString } from "@/lib/week";
@@ -81,6 +82,8 @@ export default async function DashboardPage() {
 
   const plan = normalizePlan(profile?.plan);
   const canReview = canDo(plan, "canReview", isAdmin);
+  const canRefineIdeas = canDo(plan, "canRefineIdeas", isAdmin);
+  const canSaveIdeas = canDo(plan, "canSaveIdeas", isAdmin);
 
   const { data: weeklyPlan } = await supabase
     .from("weekly_plans")
@@ -208,8 +211,13 @@ export default async function DashboardPage() {
         plan={plan}
         isAdmin={isAdmin}
         canReview={canReview}
+        canRefineIdeas={canRefineIdeas}
+        canSaveIdeas={canSaveIdeas}
         reviews={reviews}
+        artistId={activeArtistId}
       />
+
+      <SavedIdeasSection artistId={activeArtistId} />
     </div>
   );
 }

@@ -62,33 +62,95 @@ function buildCopyText(idea: ContentIdea): string {
   ].join("\n");
 }
 
+function buildCopyTextWithCaption(idea: ContentIdea, caption: string): string {
+  return [
+    `Format: ${idea.format}`,
+    `Hook: ${idea.hook}`,
+    "",
+    caption,
+    "",
+    `Why: ${idea.why}`,
+    `Timing: ${idea.timing}`,
+  ].join("\n");
+}
+
 function IdeaCard({
   idea,
   onRate,
   initialRating = null,
   onSubmitReview,
   feedback = null,
+  onAddToCalendar,
+  canRefineIdeas,
+  canSaveIdeas,
 }: {
   idea: ContentIdea;
   onRate: (hook: string, rating: "up" | "down") => void;
   initialRating?: "up" | "down" | null;
   onSubmitReview?: (idea: ContentIdea, file: File | null) => Promise<void>;
   feedback?: string | null;
+  onAddToCalendar?: (idea: ContentIdea, date: string) => Promise<void>;
+  canRefineIdeas: boolean;
+  canSaveIdeas: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const [rating, setRating] = useState<null | "up" | "down">(initialRating ?? null);
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [reviewFile, setReviewFile] = useState<File | null>(null);
+  const [showRefinePanel, setShowRefinePanel] = useState(false);
+  const [refineInput, setRefineInput] = useState("");
+  const [refineLoading, setRefineLoading] = useState(false);
+  const [refinedCaption, setRefinedCaption] = useState<string | null>(null);
+  const [caption, setCaption] = useState(idea.caption);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [showCalendarPicker, setShowCalendarPicker] = useState(false);
+  const [calendarDate, setCalendarDate] = useState("");
+  const [addingToCalendar, setAddingToCalendar] = useState(false);
+  const [addedToCalendar, setAddedToCalendar] = useState(false);
   const accent = useMemo(() => getAccent(idea.format), [idea.format]);
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(buildCopyText(idea));
+      await navigator.clipboard.writeText(buildCopyTextWithCaption(idea, caption));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1200);
     } catch {
       // ignore
+    }
+  }
+
+  async function handleRefine() {
+    const instruction = refineInput.trim();
+    if (!instruction) return;
+    if (refineLoading) return;
+    setRefineLoading(true);
+    try {
+      const res = await fetch("/api/refine-idea", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hook: idea.hook,
+          caption: refinedCaption ?? caption,
+          instruction,
+        }),
+      });
+
+      const data = (await res.json().catch(() => ({}))) as {
+        caption?: string;
+        refinedCaption?: string;
+        error?: string;
+      };
+
+      if (!res.ok) return;
+      const next =
+        (typeof data.refinedCaption === "string" ? data.refinedCaption : null) ??
+        (typeof data.caption === "string" ? data.caption : null);
+      if (next) setRefinedCaption(next);
+    } finally {
+      setRefineLoading(false);
     }
   }
 
@@ -104,136 +166,308 @@ function IdeaCard({
     }
   }
 
+  async function handleSaveIdea() {
+    if (saved || saving) return;
+    setSaving(true);
+    try {
+      const refinedCaptionToSave =
+        refinedCaption ?? (caption !== idea.caption ? caption : null);
+      const res = await fetch("/api/saved-ideas", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...idea,
+          caption,
+          refinedCaption: refinedCaptionToSave,
+        }),
+      });
+      if (!res.ok) return;
+      setSaved(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleConfirmAddToCalendar() {
+    if (!onAddToCalendar) return;
+    const date = calendarDate.trim();
+    if (!date) return;
+    if (addingToCalendar || addedToCalendar) return;
+    setAddingToCalendar(true);
+    try {
+      const notesCaption =
+        refinedCaption && refinedCaption.trim() ? refinedCaption.trim() : idea.caption;
+      await onAddToCalendar({ ...idea, caption: notesCaption }, date);
+      setAddedToCalendar(true);
+      setShowCalendarPicker(false);
+    } finally {
+      setAddingToCalendar(false);
+    }
+  }
+
   return (
-    <article
-      className={[
-        "relative overflow-hidden rounded-xl border border-card-border bg-card p-6 transition-all duration-150",
-        "hover:-translate-y-[1px] hover:shadow-[0_0_0_1px_rgba(0,255,135,0.20),0_18px_60px_rgba(0,0,0,0.45)]",
-        `${accent.border} border-l-4`,
-      ].join(" ")}
-    >
-      <div className="flex min-w-0 items-start justify-between gap-4">
-        <span
-          className={`inline-flex h-6 max-w-full items-center rounded-full px-2.5 text-[11px] font-black uppercase tracking-wide ring-1 ring-inset ring-brand/30 ${accent.pill} overflow-hidden text-ellipsis whitespace-nowrap`}
-        >
-          {idea.format}
-        </span>
-      </div>
-
-      <h3 className="mt-4 text-xl font-bold leading-snug text-foreground">
-        {idea.hook}
-      </h3>
-
-      <p className="mt-3 text-sm leading-7 text-muted-strong">
-        {idea.caption}
-      </p>
-
-      <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
-        <div>
-          <dt
-            className={`text-xs font-semibold uppercase tracking-widest ${accent.label}`}
+    <div className="flex flex-col">
+      <article
+        className={[
+          "relative overflow-hidden rounded-xl border border-card-border bg-card p-6 transition-all duration-150",
+          "hover:-translate-y-[1px] hover:shadow-[0_0_0_1px_rgba(0,255,135,0.20),0_18px_60px_rgba(0,0,0,0.45)]",
+          `${accent.border} border-l-4`,
+        ].join(" ")}
+      >
+        <div className="flex min-w-0 items-start justify-between gap-4">
+          <span
+            className={`inline-flex h-6 max-w-full items-center rounded-full px-2.5 text-[11px] font-black uppercase tracking-wide ring-1 ring-inset ring-brand/30 ${accent.pill} overflow-hidden text-ellipsis whitespace-nowrap`}
           >
-            Why
-          </dt>
-          <dd className="mt-1 text-muted">{idea.why}</dd>
+            {idea.format}
+          </span>
         </div>
-        <div>
-          <dt
-            className={`text-xs font-semibold uppercase tracking-widest ${accent.label}`}
-          >
-            Timing
-          </dt>
-          <dd className="mt-1 text-muted">{idea.timing}</dd>
-        </div>
-      </dl>
 
-      <div className="mt-6">
-        <button
-          type="button"
-          onClick={() => void handleCopy()}
-          className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand sm:w-auto"
-        >
-          {copied ? "Copied" : "Copy idea"}
-        </button>
-      </div>
+        <h3 className="mt-4 text-xl font-bold leading-snug text-foreground">
+          {idea.hook}
+        </h3>
 
-      {feedback ? (
-        <div className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
-            Expert feedback:
-          </p>
-          <p className="mt-2 text-sm leading-6 text-muted">{feedback}</p>
-        </div>
-      ) : null}
+        <p className="mt-3 text-sm leading-7 text-muted-strong">{caption}</p>
 
-      <div className="mt-3 flex gap-2">
-        <button
-          type="button"
-          aria-pressed={rating === "up"}
-          aria-label="Thumbs up"
-          onClick={() => {
-            setRating("up");
-            onRate(idea.hook, "up");
-          }}
-          className={[
-            "inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-lg transition-colors hover:border-brand sm:flex-initial sm:min-w-[5rem]",
-            rating === "up" ? "text-emerald-400" : "text-foreground",
-          ].join(" ")}
-        >
-          👍
-        </button>
-        <button
-          type="button"
-          aria-pressed={rating === "down"}
-          aria-label="Thumbs down"
-          onClick={() => {
-            setRating("down");
-            onRate(idea.hook, "down");
-          }}
-          className={[
-            "inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-lg transition-colors hover:border-brand sm:flex-initial sm:min-w-[5rem]",
-            rating === "down" ? "text-red-400" : "text-foreground",
-          ].join(" ")}
-        >
-          👎
-        </button>
-      </div>
+        <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+          <div>
+            <dt
+              className={`text-xs font-semibold uppercase tracking-widest ${accent.label}`}
+            >
+              Why
+            </dt>
+            <dd className="mt-1 text-muted">{idea.why}</dd>
+          </div>
+          <div>
+            <dt
+              className={`text-xs font-semibold uppercase tracking-widest ${accent.label}`}
+            >
+              Timing
+            </dt>
+            <dd className="mt-1 text-muted">{idea.timing}</dd>
+          </div>
+        </dl>
 
-      {onSubmitReview ? (
-        <div className="mt-3">
-          <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Optional attachment
-            </span>
-            <input
-              type="file"
-              disabled={reviewSubmitting || reviewSubmitted}
-              onChange={(e) => {
-                const f = e.currentTarget.files?.[0] ?? null;
-                setReviewFile(f);
-              }}
-              className="mt-1.5 block w-full cursor-pointer rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:tracking-wide file:text-brand-foreground disabled:cursor-not-allowed disabled:opacity-60"
-            />
-          </label>
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center">
           <button
             type="button"
-            onClick={() => void handleSubmitReview()}
-            disabled={reviewSubmitting || reviewSubmitted}
-            className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => void handleCopy()}
+            className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand sm:w-auto"
           >
-            {reviewSubmitted
-              ? "Submitted ✓"
-              : reviewSubmitting
-                ? "Submitting..."
-                : "Submit for review"}
+            {copied ? "Copied" : "Copy idea"}
+          </button>
+          {canRefineIdeas ? (
+            <button
+              type="button"
+              onClick={() => setShowRefinePanel((v) => !v)}
+              className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand sm:w-auto"
+            >
+              Refine this idea
+            </button>
+          ) : (
+            <Link
+              href="/pricing"
+              className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-card-border bg-card px-4 text-sm font-semibold uppercase tracking-wide text-muted transition-colors hover:border-brand hover:text-foreground sm:w-auto"
+            >
+              Refine this idea 🔒
+            </Link>
+          )}
+
+          {canSaveIdeas ? (
+            <button
+              type="button"
+              onClick={() => void handleSaveIdea()}
+              disabled={saved || saving}
+              className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            >
+              {saved ? "Saved ✓" : saving ? "Saving…" : "Save idea"}
+            </button>
+          ) : (
+            <Link
+              href="/pricing"
+              className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-card-border bg-card px-4 text-sm font-semibold uppercase tracking-wide text-muted transition-colors hover:border-brand hover:text-foreground sm:w-auto"
+            >
+              Save idea 🔒
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowCalendarPicker((v) => !v)}
+            disabled={addedToCalendar}
+            className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+          >
+            {addedToCalendar ? "Added to calendar ✓" : "Add to calendar"}
           </button>
         </div>
-      ) : null}
 
-      {rating !== null ? (
-        <p className="mt-2 text-xs text-muted">Thanks for the feedback</p>
+        {showCalendarPicker ? (
+          <div className="mt-3 flex flex-col gap-2 rounded-lg bg-input p-3 sm:flex-row sm:items-end">
+            <label className="flex-1">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Pick a date
+              </span>
+              <input
+                type="date"
+                value={calendarDate}
+                onChange={(e) => setCalendarDate(e.target.value)}
+                className="mt-1.5 h-10 w-full rounded-lg border border-card-border bg-card px-3 text-sm text-foreground"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => void handleConfirmAddToCalendar()}
+              disabled={!calendarDate || addingToCalendar}
+              className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+            >
+              {addingToCalendar ? "Adding…" : "Confirm"}
+            </button>
+          </div>
+        ) : null}
+
+        {feedback ? (
+          <div className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
+              Expert feedback:
+            </p>
+            <p className="mt-2 text-sm leading-6 text-muted">{feedback}</p>
+          </div>
+        ) : null}
+
+        <div className="mt-3 flex gap-2">
+          <button
+            type="button"
+            aria-pressed={rating === "up"}
+            aria-label="Thumbs up"
+            onClick={() => {
+              setRating("up");
+              onRate(idea.hook, "up");
+            }}
+            className={[
+              "inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-lg transition-colors hover:border-brand sm:flex-initial sm:min-w-[5rem]",
+              rating === "up" ? "text-emerald-400" : "text-foreground",
+            ].join(" ")}
+          >
+            👍
+          </button>
+          <button
+            type="button"
+            aria-pressed={rating === "down"}
+            aria-label="Thumbs down"
+            onClick={() => {
+              setRating("down");
+              onRate(idea.hook, "down");
+            }}
+            className={[
+              "inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-lg transition-colors hover:border-brand sm:flex-initial sm:min-w-[5rem]",
+              rating === "down" ? "text-red-400" : "text-foreground",
+            ].join(" ")}
+          >
+            👎
+          </button>
+        </div>
+
+        {onSubmitReview ? (
+          <div className="mt-3">
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Optional attachment
+              </span>
+              <input
+                type="file"
+                disabled={reviewSubmitting || reviewSubmitted}
+                onChange={(e) => {
+                  const f = e.currentTarget.files?.[0] ?? null;
+                  setReviewFile(f);
+                }}
+                className="mt-1.5 block w-full cursor-pointer rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:tracking-wide file:text-brand-foreground disabled:cursor-not-allowed disabled:opacity-60"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => void handleSubmitReview()}
+              disabled={reviewSubmitting || reviewSubmitted}
+              className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {reviewSubmitted
+                ? "Submitted ✓"
+                : reviewSubmitting
+                  ? "Submitting..."
+                  : "Submit for review"}
+            </button>
+          </div>
+        ) : null}
+
+        {rating !== null ? (
+          <p className="mt-2 text-xs text-muted">Thanks for the feedback</p>
+        ) : null}
+      </article>
+
+      {showRefinePanel ? (
+        <div className="mt-3 rounded-lg bg-input p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+            Current caption
+          </p>
+          <div className="mt-2 rounded-lg bg-zinc-900/40 p-3 text-sm leading-6 text-muted-strong">
+            {caption}
+          </div>
+
+          {refinedCaption ? (
+            <div className="mt-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
+                  Refined caption
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCaption(refinedCaption);
+                  }}
+                  className="inline-flex h-9 items-center justify-center rounded-lg bg-brand px-3 text-xs font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
+                >
+                  Use this
+                </button>
+              </div>
+              <div className="mt-2 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3 text-sm leading-6 text-muted-strong">
+                {refinedCaption}
+              </div>
+            </div>
+          ) : null}
+
+          <label className="mt-4 block">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+              How should I change this?
+            </span>
+            <input
+              type="text"
+              value={refineInput}
+              onChange={(e) => setRefineInput(e.target.value)}
+              placeholder="e.g. Make it shorter, more casual, add more personality..."
+              className="mt-1.5 w-full rounded-lg border border-card-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted"
+            />
+          </label>
+
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={() => void handleRefine()}
+              disabled={refineLoading || !refineInput.trim()}
+              className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+            >
+              {refineLoading ? "Refining…" : "Refine"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowRefinePanel(false);
+              }}
+              className="text-left text-xs font-semibold text-muted underline underline-offset-4 hover:text-foreground sm:text-right"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       ) : null}
-    </article>
+    </div>
   );
 }
 
@@ -277,7 +511,10 @@ type WeeklyPlanSectionProps = {
   plan: string;
   isAdmin?: boolean;
   canReview: boolean;
+  canRefineIdeas: boolean;
+  canSaveIdeas: boolean;
   reviews: Array<{ idea_hook: string; feedback: string; reviewed_at: string }>;
+  artistId: string;
 };
 
 function hoursSince(iso: string): number {
@@ -303,7 +540,10 @@ export function WeeklyPlanSection({
   plan,
   isAdmin = false,
   canReview,
+  canRefineIdeas,
+  canSaveIdeas,
   reviews,
+  artistId,
 }: WeeklyPlanSectionProps) {
   const [ideas, setIdeas] = useState<ContentIdea[] | null>(initialIdeas);
   const [loading, setLoading] = useState(false);
@@ -319,6 +559,18 @@ export function WeeklyPlanSection({
   const normalizedPlan = normalizePlan(plan);
   const canGenerate = canDo(normalizedPlan, "canGeneratePlan", isAdmin);
   const supabase = useMemo(() => createClient(), []);
+
+  async function handleAddToCalendar(idea: ContentIdea, date: string) {
+    const title = idea.hook.trim().slice(0, 100);
+    const { error } = await supabase.from("events").insert({
+      title: title || "(Idea)",
+      event_date: date,
+      event_type: "Content",
+      notes: idea.caption,
+      artist_id: artistId,
+    });
+    if (error) throw new Error(error.message);
+  }
 
   function sanitizeStorageFilename(name: string): string {
     const base = (name || "file").trim();
@@ -530,6 +782,9 @@ export function WeeklyPlanSection({
                 onRate={handleRate}
                 initialRating={initialIdeaRatings[idea.hook] ?? null}
                 feedback={review?.feedback ?? null}
+                onAddToCalendar={handleAddToCalendar}
+                canRefineIdeas={canRefineIdeas}
+                canSaveIdeas={canSaveIdeas}
                 onSubmitReview={
                   canReview
                     ? async (ideaParam, file) => {

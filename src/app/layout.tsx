@@ -15,17 +15,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Roadie — AI content planning for music artists",
-  description:
-    "Your weekly content plan, built for your music. Roadie combines AI speed with music industry expertise to give you 5 specific post ideas every week.",
+  title: "Roadie",
+  description: "AI content planning for music artists",
   icons: {
     icon: "/favicon.png",
     apple: "/favicon.png",
   },
   openGraph: {
-    title: "Roadie — AI content planning for music artists",
-    description:
-      "Your weekly content plan, built for your music. Roadie combines AI speed with music industry expertise to give you 5 specific post ideas every week.",
+    title: "Roadie",
+    description: "AI content planning for music artists",
     url: "https://app.roadie.media",
     siteName: "Roadie",
   },

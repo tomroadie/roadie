@@ -32,6 +32,7 @@ export function AppNav({
   showAdminLink = false,
 }: AppNavProps) {
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [switchError, setSwitchError] = useState<string | null>(null);
   const links = useMemo(() => buildLinks(showAdminLink), [showAdminLink]);
@@ -71,41 +72,55 @@ export function AppNav({
 
   return (
     <header className="sticky top-0 z-40 mb-6 border-b border-[#1a1a1a] bg-background/90 pb-3 pt-3 backdrop-blur">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4 sm:gap-6">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center"
-            aria-label="Roadie"
-          >
-            <img src="/logo.png" height={36} alt="Roadie" className="h-9 w-auto" />
-          </Link>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-3 md:justify-start md:gap-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              href="/dashboard"
+              className="inline-flex shrink-0 items-center"
+              aria-label="Roadie"
+              onClick={() => setMenuOpen(false)}
+            >
+              <img src="/logo.png" height={36} alt="Roadie" className="h-9 w-auto" />
+            </Link>
 
-          <nav
-            className="hidden items-center gap-2 overflow-x-auto whitespace-nowrap pr-1 sm:flex"
-            aria-label="Main"
+            <nav
+              className="hidden items-center gap-2 overflow-x-auto whitespace-nowrap pr-1 md:flex"
+              aria-label="Main"
+            >
+              {links.map(({ href, label }) => {
+                const active = pathname === href;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`relative shrink-0 px-1.5 py-1 text-sm font-semibold transition-colors ${
+                      active ? "text-brand" : "text-foreground hover:text-brand"
+                    }`}
+                  >
+                    {label}
+                    {active ? (
+                      <span className="absolute inset-x-1.5 bottom-0 h-0.5 rounded-full bg-brand" />
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          <button
+            type="button"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-card-border bg-card text-lg leading-none text-foreground shadow-sm transition-colors hover:border-brand md:hidden"
+            aria-expanded={menuOpen}
+            aria-controls="app-nav-mobile-menu"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            onClick={() => setMenuOpen((o) => !o)}
           >
-            {links.map(({ href, label }) => {
-              const active = pathname === href;
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`relative shrink-0 px-1.5 py-1 text-sm font-semibold transition-colors ${
-                    active ? "text-brand" : "text-foreground hover:text-brand"
-                  }`}
-                >
-                  {label}
-                  {active ? (
-                    <span className="absolute inset-x-1.5 bottom-0 h-0.5 rounded-full bg-brand" />
-                  ) : null}
-                </Link>
-              );
-            })}
-          </nav>
+            ☰
+          </button>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-end">
           {artistOptions.length > 1 ? (
             <div className="flex items-center gap-3">
               <div className="relative">
@@ -149,25 +164,29 @@ export function AppNav({
         </div>
       </div>
 
-      <nav className="mt-4 flex flex-wrap gap-x-6 gap-y-2 sm:hidden" aria-label="Main">
-        {links.map(({ href, label }) => {
-          const active = pathname === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`relative px-1.5 py-1 text-sm font-semibold transition-colors ${
-                active ? "text-brand" : "text-foreground hover:text-brand"
-              }`}
-            >
-              {label}
-              {active ? (
-                <span className="absolute inset-x-1.5 bottom-0 h-0.5 rounded-full bg-brand" />
-              ) : null}
-            </Link>
-          );
-        })}
-      </nav>
+      {menuOpen ? (
+        <nav
+          id="app-nav-mobile-menu"
+          className="mt-3 flex flex-col gap-0.5 rounded-lg border border-card-border bg-card p-2 shadow-lg md:hidden"
+          aria-label="Main"
+        >
+          {links.map(({ href, label }) => {
+            const active = pathname === href;
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`rounded-md px-3 py-2.5 text-sm font-semibold transition-colors ${
+                  active ? "bg-brand/10 text-brand" : "text-foreground hover:bg-card-border/40"
+                }`}
+                onClick={() => setMenuOpen(false)}
+              >
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+      ) : null}
     </header>
   );
 }

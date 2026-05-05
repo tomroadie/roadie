@@ -433,6 +433,7 @@ Artist: ${artistName}. Below is a structured summary of their Instagram profile 
         .maybeSingle();
 
       if (!existingPlan) {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
         await fetch(`${appUrl}/api/generate-plan`, {
           method: "POST",
           headers: {

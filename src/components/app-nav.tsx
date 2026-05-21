@@ -17,7 +17,11 @@ function buildLinks(showAdminLink: boolean) {
     { href: "/settings", label: "Settings" },
   ] as const;
   if (!showAdminLink) return base;
-  return [...base, { href: "/admin", label: "Admin" } as const];
+  return [
+    ...base,
+    { href: "/prep", label: "Prep" } as const,
+    { href: "/admin", label: "Admin" } as const,
+  ];
 }
 
 type AppNavProps = {

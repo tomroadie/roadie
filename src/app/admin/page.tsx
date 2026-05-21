@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
@@ -260,9 +261,17 @@ export default async function AdminPage() {
     <div className="mx-auto flex min-h-full w-full max-w-6xl flex-1 flex-col px-4 py-10 sm:px-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-foreground">
-            Admin
-          </h1>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <h1 className="text-2xl font-black uppercase tracking-tight text-foreground">
+              Admin
+            </h1>
+            <Link
+              href="/prep"
+              className="text-sm font-semibold text-brand transition-colors hover:text-brand/80"
+            >
+              Client prep →
+            </Link>
+          </div>
           <p className="mt-2 text-muted">
             Browse every artist, switch context, create managed clients, or enqueue
             an intake audit (same pipeline as{" "}

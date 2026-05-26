@@ -291,6 +291,9 @@ type WeeklyPlanSectionProps = {
     admin_note: string | null;
     artist_acknowledged_at: string | null;
   } | null;
+  hasJustUpgraded?: boolean;
+  hasJustRegistered?: boolean;
+  auditJustCompleted?: boolean;
 };
 
 function hoursSince(iso: string): number {
@@ -324,6 +327,9 @@ export function WeeklyPlanSection({
   hideUpcomingThisWeek = false,
   isManaged = false,
   revisionRequest = null,
+  hasJustUpgraded = false,
+  hasJustRegistered = false,
+  auditJustCompleted = false,
 }: WeeklyPlanSectionProps) {
   const router = useRouter();
   const [ideas, setIdeas] = useState<ContentIdea[] | null>(initialIdeas);
@@ -716,7 +722,7 @@ export function WeeklyPlanSection({
 
   return (
     <section className="mt-12">
-      {auditPending && !hasAudit ? (
+      {auditPending && !hasAudit && !hasJustRegistered ? (
         <div className="mb-6 rounded-xl border border-card-border bg-card p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
@@ -737,6 +743,48 @@ export function WeeklyPlanSection({
               Refresh
             </button>
           </div>
+        </div>
+      ) : null}
+
+      {hasJustRegistered && auditPending ? (
+        <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3">
+          <p className="text-sm leading-relaxed text-emerald-100">
+            Welcome to Roadie. Your Instagram audit is running — it takes about
+            5 minutes. We&apos;ll show your content plan below once it&apos;s
+            ready.
+          </p>
+        </div>
+      ) : null}
+
+      {hasJustRegistered && !auditPending ? (
+        <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+          <p className="text-sm leading-relaxed text-amber-100">
+            Welcome to Roadie. Add your Instagram handle in{" "}
+            <Link
+              href="/settings"
+              className="font-semibold underline underline-offset-4 hover:text-amber-50"
+            >
+              Settings
+            </Link>{" "}
+            to run your free audit and unlock your content plan.
+          </p>
+        </div>
+      ) : null}
+
+      {hasJustUpgraded && !hasPlanIdeas ? (
+        <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3">
+          <p className="text-sm leading-relaxed text-emerald-100">
+            Welcome to Roadie Pro. Generate your first plan below.
+          </p>
+        </div>
+      ) : null}
+
+      {auditJustCompleted && !hasPlanIdeas && !hasJustRegistered ? (
+        <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3">
+          <p className="text-sm leading-relaxed text-emerald-100">
+            Your Instagram audit is ready. Generate your first content plan
+            below.
+          </p>
         </div>
       ) : null}
 

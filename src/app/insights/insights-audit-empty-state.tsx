@@ -11,9 +11,11 @@ function pendingStorageKey(artistId: string) {
 export function InsightsAuditEmptyState({
   artistId,
   instagramHandle,
+  auditPending = false,
 }: {
   artistId: string;
   instagramHandle: string | null;
+  auditPending?: boolean;
 }) {
   const router = useRouter();
   const trimmed = instagramHandle?.trim() ?? "";
@@ -35,7 +37,7 @@ export function InsightsAuditEmptyState({
   }, [artistId]);
 
   useEffect(() => {
-    if (!pending) return;
+    if (!auditPending && !pending) return;
     const id = window.setInterval(async () => {
       try {
         const res = await fetch(
@@ -51,7 +53,7 @@ export function InsightsAuditEmptyState({
       }
     }, 10_000);
     return () => clearInterval(id);
-  }, [pending, artistId, router]);
+  }, [auditPending, pending, artistId, router]);
 
   const runAudit = async () => {
     setError(null);
@@ -101,6 +103,14 @@ export function InsightsAuditEmptyState({
           </Link>
         </p>
       </>
+    );
+  }
+
+  if (auditPending) {
+    return (
+      <p className="text-sm text-brand animate-pulse">
+        Your audit is running — usually takes 2-3 minutes.
+      </p>
     );
   }
 

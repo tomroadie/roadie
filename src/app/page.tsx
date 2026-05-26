@@ -296,7 +296,7 @@ export default function Home() {
                 Get started free
               </Link>
               <span className="text-[10px] font-medium text-white/45">
-                21-day trial · No card required
+                14-day free trial · No card required
               </span>
             </div>
           </div>
@@ -370,7 +370,7 @@ export default function Home() {
                     Get started free
                   </Link>
                     <span className="text-center text-[10px] font-medium text-white/45">
-                      21-day trial · No card required
+                      14-day free trial · No card required
                     </span>
                   </div>
                 </div>
@@ -443,7 +443,7 @@ export default function Home() {
               </div>
 
               <p className="mt-4 text-center text-xs text-white/55">
-                21-day free trial · No card required
+                14-day free trial · No card required
               </p>
 
               <p className="mt-8 text-sm text-white/60">
@@ -998,14 +998,14 @@ export default function Home() {
                     Get started
                   </Link>
                   <p className="mt-2 text-center text-xs text-gray-500">
-                    21-day trial · No card required
+                    14-day free trial · No card required
                   </p>
                 </div>
               ))}
             </div>
 
             <p className="mt-10 text-center text-sm text-gray-400">
-              All plans include a 21-day free trial. No card required. Cancel
+              All plans include a 14-day free trial. No card required. Cancel
               anytime.
             </p>
           </div>
@@ -1056,7 +1056,7 @@ export default function Home() {
                       Get started free
                     </Link>
                     <span className="text-[11px] text-gray-500">
-                      21-day trial · No card required
+                      14-day free trial · No card required
                     </span>
                   </div>
                 </div>
@@ -1162,7 +1162,7 @@ export default function Home() {
                   Get started free
                 </Link>
                 <span className="text-xs text-white/55">
-                  21-day free trial · No card required
+                  14-day free trial · No card required
                 </span>
               </div>
             </div>
@@ -1214,7 +1214,7 @@ export default function Home() {
                 Get started
               </Link>
               <span className="text-[10px] font-medium text-white/45">
-                21-day trial · No card required
+                14-day free trial · No card required
               </span>
             </div>
           </div>

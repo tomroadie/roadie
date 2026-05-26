@@ -152,5 +152,5 @@ export async function completeOnboarding(
     }
   }
 
-  redirect("/dashboard?registered=true");
+  redirect("/home?registered=true");
 }

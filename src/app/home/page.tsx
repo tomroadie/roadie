@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { WeeklyPlanSection } from "@/app/dashboard/weekly-plan-section";
+import { FirstRunChecklist } from "@/app/dashboard/first-run-checklist";
 import { InsightsAuditEmptyState } from "@/app/insights/insights-audit-empty-state";
 import { RecentPostsCards } from "@/app/insights/recent-posts-cards";
 import {
@@ -205,7 +206,12 @@ function normalizeInstagramLivePayload(payload: {
   return { insights, media };
 }
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ upgraded?: string; registered?: string }>;
+}) {
+  const { upgraded, registered } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -302,6 +308,18 @@ export default async function HomePage() {
   const audit = (auditByArtistId ?? auditByHandle ?? null) as AuditRow | null;
   const hasAudit = !!audit;
 
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: recentAudit } = await supabase
+    .from("audits")
+    .select("id, created_at")
+    .eq("artist_id", activeArtistId)
+    .gte("created_at", twentyFourHoursAgo)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const auditJustCompleted = !!recentAudit;
+
   const { data: reviewsData, error: reviewsError } = await supabase
     .from("content_reviews")
     .select("idea_hook, feedback, reviewed_at")
@@ -378,22 +396,32 @@ export default async function HomePage() {
       : null;
 
   const hasPlanIdeas = (initialIdeas?.length ?? 0) > 0;
+  const hasInstagram = Boolean(profile?.instagram_handle?.trim());
+  const hasRatedIdea = Object.keys(initialIdeaRatings).length > 0;
+  const canGeneratePlan = canDo(plan, "canGeneratePlan", isAdmin);
+  const isManaged = profile?.is_managed ?? false;
+  const profileIncomplete = !profile?.genre?.trim();
   const momentum =
     plan === "free" && !isAdmin && !hasPlanIdeas
-      ? auditPending
+      ? profileIncomplete
         ? {
-            label: "Audit: Running",
-            cls: "bg-emerald-500/20 text-emerald-200 ring-emerald-500/35",
+            label: "Profile: Get started",
+            cls: "bg-zinc-700 text-white ring-zinc-600/40",
           }
-        : hasAudit
+        : auditPending
           ? {
-              label: "Plan: Upgrade to unlock",
-              cls: "bg-amber-400 text-zinc-950 ring-amber-200/40",
+              label: "Audit: Running",
+              cls: "bg-emerald-500/20 text-emerald-200 ring-emerald-500/35",
             }
-          : {
-              label: "Profile: Get started",
-              cls: "bg-zinc-700 text-white ring-zinc-600/40",
-            }
+          : hasAudit
+            ? {
+                label: "Plan: Upgrade to unlock",
+                cls: "bg-amber-400 text-zinc-950 ring-amber-200/40",
+              }
+            : {
+                label: "Audit: Get started",
+                cls: "bg-zinc-700 text-white ring-zinc-600/40",
+              }
       : !hasPlanIdeas
         ? {
             label: "Plan: Generate now",
@@ -476,6 +504,16 @@ export default async function HomePage() {
 
       <AppNavWrapper />
 
+      <FirstRunChecklist
+        hasInstagram={hasInstagram}
+        hasAudit={hasAudit}
+        hasPlanIdeas={hasPlanIdeas}
+        hasRatedIdea={hasRatedIdea}
+        canGeneratePlan={canGeneratePlan}
+        isManaged={isManaged}
+        auditPending={auditPending}
+      />
+
       {audit ? (
         <section className="mt-10 rounded-xl border border-card-border bg-card p-7">
           <p className="text-xs font-bold uppercase tracking-widest text-brand">
@@ -535,13 +573,20 @@ export default async function HomePage() {
         hideUpcomingThisWeek
         isManaged={profile?.is_managed ?? false}
         revisionRequest={revisionRequest}
+        hasJustUpgraded={upgraded === "true"}
+        hasJustRegistered={registered === "true"}
+        auditJustCompleted={auditJustCompleted}
       />
 
       {!audit ? (
-        <div className="mt-10 rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
+        <div
+          id="audit-section"
+          className="mt-10 rounded-xl border border-dashed border-card-border bg-input p-10 text-center"
+        >
           <InsightsAuditEmptyState
             artistId={activeArtistId}
             instagramHandle={profile?.instagram_handle ?? null}
+            auditPending={auditPending}
           />
         </div>
       ) : (

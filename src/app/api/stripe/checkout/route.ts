@@ -63,11 +63,11 @@ export async function POST(request: Request) {
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: priceId.trim(), quantity: 1 }],
-    success_url: `${origin}/dashboard?upgraded=true`,
+    success_url: `${origin}/home?upgraded=true`,
     cancel_url: `${origin}/pricing`,
     customer_email: user.email ?? undefined,
     subscription_data: {
-      trial_period_days: 21,
+      trial_period_days: 14,
     },
     metadata: {
       userId: user.id,

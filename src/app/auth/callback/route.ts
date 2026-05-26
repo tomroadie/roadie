@@ -76,6 +76,23 @@ export async function GET(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  let redirectPath = "/home";
+
+  if (user?.id) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("artist_name")
+      .eq("owner_user_id", user.id);
+
+    const hasCompletedProfile = (profiles ?? []).some((p) =>
+      Boolean(p.artist_name?.trim())
+    );
+
+    if (!hasCompletedProfile) {
+      redirectPath = "/onboarding";
+    }
+  }
+
   if (user?.email) {
     const { data: existingProfile } = await supabase
       .from("profiles")
@@ -107,5 +124,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(new URL("/dashboard", request.url));
+  return NextResponse.redirect(new URL(redirectPath, request.url));
 }

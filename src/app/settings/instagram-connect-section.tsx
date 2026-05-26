@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import {
@@ -23,8 +24,10 @@ function DisconnectButton() {
 
 export function InstagramConnectSection({
   instagramUserId,
+  canConnectLiveStats,
 }: {
   instagramUserId: string | null;
+  canConnectLiveStats: boolean;
 }) {
   const connected = Boolean(instagramUserId?.trim());
 
@@ -51,13 +54,23 @@ export function InstagramConnectSection({
             <DisconnectButton />
           </form>
         </div>
-      ) : (
+      ) : canConnectLiveStats ? (
         <a
           href="/api/auth/instagram"
           className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
         >
           Connect Instagram for live stats
         </a>
+      ) : (
+        <p className="text-sm text-muted">
+          Live Instagram stats are available on the Pro plan.
+          <Link
+            href="/pricing"
+            className="ml-1 font-semibold text-brand hover:underline"
+          >
+            Upgrade →
+          </Link>
+        </p>
       )}
 
       {state?.error ? (

@@ -9,6 +9,8 @@ import { InstagramConnectSection } from "./instagram-connect-section";
 import { VoiceForm } from "./voice-form";
 import { PostingGoalForm } from "./posting-goal-form";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
+import { canDo, normalizePlan } from "@/lib/plan-limits";
+import { userIsAdmin } from "@/lib/is-admin";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -34,7 +36,7 @@ export default async function SettingsPage() {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, instagram_handle, instagram_user_id, voice_description, posting_frequency"
+      "artist_name, instagram_handle, instagram_user_id, voice_description, posting_frequency, plan"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -46,6 +48,10 @@ export default async function SettingsPage() {
   if (!profile?.artist_name?.trim()) {
     redirect("/onboarding");
   }
+
+  const isAdmin = await userIsAdmin(supabase, user.id);
+  const plan = normalizePlan(profile?.plan);
+  const canConnectLiveStats = canDo(plan, "canViewLiveSocialData", isAdmin);
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
@@ -67,6 +73,7 @@ export default async function SettingsPage() {
 
       <InstagramConnectSection
         instagramUserId={profile.instagram_user_id ?? null}
+        canConnectLiveStats={canConnectLiveStats}
       />
 
       <VoiceForm initialVoice={profile.voice_description ?? null} />

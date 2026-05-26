@@ -45,8 +45,9 @@ export default function LoginClient() {
 
     router.refresh();
     const redirectParam = searchParams.get("redirect");
+    const defaultPath = isSignUp ? "/onboarding" : "/home";
     const redirectTo =
-      redirectParam && redirectParam.startsWith("/") ? redirectParam : "/dashboard";
+      redirectParam && redirectParam.startsWith("/") ? redirectParam : defaultPath;
     router.push(redirectTo);
     setLoading(false);
   }

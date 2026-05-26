@@ -20,7 +20,7 @@ const PLANS: Array<{
   {
     key: "starter",
     name: "Starter",
-    price: "£19/month",
+    price: "£29/month",
     blurb: "Everything you need to show up consistently as an independent artist.",
     features: [
       "Weekly content plan",
@@ -33,7 +33,7 @@ const PLANS: Array<{
   {
     key: "pro",
     name: "Pro",
-    price: "£49/month",
+    price: "£59/month",
     blurb: "Live data, expert eyes on your content, and room to grow.",
     highlight: "Most popular",
     features: [
@@ -152,8 +152,7 @@ export default function PricingClient({
       </div>
 
       <p className="mt-10 text-center text-sm leading-relaxed text-muted">
-        Start free — no card required. Your first{" "}
-        <span className="font-semibold text-brand">14 days are on us</span>.
+        Start with a 14-day free trial. Cancel anytime.
       </p>
 
       <div className="mt-10 grid gap-5 md:grid-cols-3">
@@ -216,7 +215,7 @@ export default function PricingClient({
                 </button>
                 {!isCurrent ? (
                   <p className="mt-2 text-center text-xs text-muted">
-                    14-day trial · No card required
+                    14-day free trial · Cancel anytime
                   </p>
                 ) : null}
               </div>
@@ -226,9 +225,9 @@ export default function PricingClient({
       </div>
 
       <p className="mt-10 text-center text-sm leading-relaxed text-muted">
-        All plans start with a 14-day free trial. No card required.
+        All plans start with a 14-day free trial. Cancel anytime.
         <br />
-        Cancel anytime — your data is always yours.
+        Your data is always yours.
       </p>
 
       {error ? (

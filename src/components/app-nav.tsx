@@ -11,7 +11,7 @@ export type AppNavArtist = {
 
 function buildLinks(showAdminLink: boolean) {
   const base = [
-    { href: "/home", label: "Dashboard" },
+    { href: "/home", label: "Home" },
     { href: "/settings", label: "Settings" },
   ] as const;
   if (!showAdminLink) return base;

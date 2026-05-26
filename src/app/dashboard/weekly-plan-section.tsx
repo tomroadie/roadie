@@ -284,6 +284,7 @@ type WeeklyPlanSectionProps = {
   reviews: Array<{ idea_hook: string; feedback: string; reviewed_at: string }>;
   artistId: string;
   hideUpcomingThisWeek?: boolean;
+  isManaged?: boolean;
 };
 
 function hoursSince(iso: string): number {
@@ -315,6 +316,7 @@ export function WeeklyPlanSection({
   reviews,
   artistId,
   hideUpcomingThisWeek = false,
+  isManaged = false,
 }: WeeklyPlanSectionProps) {
   const router = useRouter();
   const [ideas, setIdeas] = useState<ContentIdea[] | null>(initialIdeas);
@@ -532,7 +534,12 @@ export function WeeklyPlanSection({
             )}
           </p>
         </div>
-        {isPlanBeingPrepared ? null : canGenerate ? (
+        {isPlanBeingPrepared ? null : isManaged ? (
+          <p className="text-sm text-muted">
+            Your plan arrives every Monday. Check your email on Friday for your
+            weekly check-in.
+          </p>
+        ) : canGenerate ? (
           <button
             id="dashboard-generate-plan"
             type="button"

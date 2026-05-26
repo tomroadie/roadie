@@ -502,6 +502,7 @@ export default async function HomePage() {
         reviews={reviews}
         artistId={activeArtistId}
         hideUpcomingThisWeek
+        isManaged={profile?.is_managed ?? false}
       />
 
       {!audit ? (

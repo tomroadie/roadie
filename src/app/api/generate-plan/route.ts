@@ -276,6 +276,172 @@ ${lines.join("\n")}
 `;
 }
 
+function parseIdeaRatingsFromDb(raw: unknown): Record<string, "up" | "down"> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, "up" | "down"> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (v === "up" || v === "down") out[k] = v;
+  }
+  return out;
+}
+
+function formatIdeaRatingsPromptSection(
+  uplikedHooks: string[],
+  dislikedHooks: string[]
+): string {
+  if (uplikedHooks.length === 0 && dislikedHooks.length === 0) return "";
+
+  const parts: string[] = ["## Artist content feedback (last 4 weeks)", ""];
+
+  if (uplikedHooks.length > 0) {
+    parts.push(
+      "### Ideas the artist rated positively",
+      ...uplikedHooks.map((hook) => `- ${hook}`),
+      ""
+    );
+  }
+
+  if (dislikedHooks.length > 0) {
+    parts.push(
+      "### Ideas the artist did not want to pursue",
+      ...dislikedHooks.map((hook) => `- ${hook}`),
+      ""
+    );
+  }
+
+  parts.push(
+    'Do not repeat any concept, format, or angle from the "did not want to pursue" list. Weight the "rated positively" list as signals of what resonates — but do not repeat those ideas directly, use them as directional signals only.'
+  );
+
+  return `${parts.join("\n")}\n`;
+}
+
+type PostPerformanceRow = {
+  post_type: string | null;
+  likes: number | null;
+  comments: number | null;
+  views: number | null;
+  engagement_rate: number | null;
+  post_date: string | null;
+  caption: string | null;
+};
+
+const POST_PERFORMANCE_TYPES = ["reel", "carousel", "image"] as const;
+
+function postTypeLabel(postType: string): string {
+  switch (postType.toLowerCase()) {
+    case "reel":
+      return "Reels";
+    case "carousel":
+      return "Carousels";
+    case "image":
+      return "Images";
+    default:
+      return postType;
+  }
+}
+
+function averageEngagementRate(rows: PostPerformanceRow[]): number {
+  if (rows.length === 0) return 0;
+  const total = rows.reduce(
+    (sum, row) => sum + (Number(row.engagement_rate) || 0),
+    0
+  );
+  return Math.round((total / rows.length) * 100) / 100;
+}
+
+function formatPostPerformancePromptSection(
+  rows: PostPerformanceRow[]
+): string {
+  const byType = Object.fromEntries(
+    POST_PERFORMANCE_TYPES.map((type) => [type, [] as PostPerformanceRow[]])
+  ) as Record<(typeof POST_PERFORMANCE_TYPES)[number], PostPerformanceRow[]>;
+
+  for (const row of rows) {
+    const type = String(row.post_type ?? "").trim().toLowerCase();
+    if (type in byType) {
+      byType[type as (typeof POST_PERFORMANCE_TYPES)[number]].push(row);
+    }
+  }
+
+  const typeStats = POST_PERFORMANCE_TYPES.map((type) => ({
+    type,
+    count: byType[type].length,
+    avg: averageEngagementRate(byType[type]),
+  }));
+
+  const rankedTypes = typeStats
+    .filter((stat) => stat.count > 0)
+    .sort((a, b) => b.avg - a.avg);
+
+  const formatLines = typeStats
+    .map((stat) => {
+      if (stat.count === 0) {
+        return `- ${postTypeLabel(stat.type)}: no posts`;
+      }
+      return `- ${postTypeLabel(stat.type)}: avg ${stat.avg.toFixed(2)}% engagement (${stat.count} posts)`;
+    })
+    .join("\n");
+
+  const bestType = rankedTypes[0];
+
+  const last5 = rows.slice(0, 5);
+  const posts6to15 = rows.slice(5, 15);
+  const avgLast5 = averageEngagementRate(last5);
+  const avg6to15 = averageEngagementRate(posts6to15);
+
+  let trendSentence = "Engagement appears stable compared to earlier posts.";
+  if (posts6to15.length > 0 && avg6to15 > 0) {
+    const pctChange = ((avgLast5 - avg6to15) / avg6to15) * 100;
+    if (pctChange <= -20) {
+      trendSentence =
+        "Recent engagement dip — average engagement on the last 5 posts is more than 20% lower than posts 6–15.";
+    } else if (pctChange >= 20) {
+      trendSentence =
+        "Recent engagement uplift — average engagement on the last 5 posts is more than 20% higher than posts 6–15.";
+    }
+  } else if (last5.length > 0 && posts6to15.length === 0) {
+    trendSentence = "Not enough historical posts to compare recent trend.";
+  }
+
+  const topPosts = [...rows]
+    .sort(
+      (a, b) =>
+        (Number(b.engagement_rate) || 0) - (Number(a.engagement_rate) || 0)
+    )
+    .slice(0, 3);
+
+  const topLines = topPosts
+    .map((post, index) => {
+      const type = String(post.post_type ?? "unknown");
+      const rate = (Number(post.engagement_rate) || 0).toFixed(2);
+      const snippet = truncateForPlanCaption(String(post.caption ?? ""), 80);
+      return `${index + 1}. ${type} — ${rate}% — "${snippet}"`;
+    })
+    .join("\n");
+
+  const bestSection = bestType
+    ? `### Best performing format
+${bestType.type} — lean into this format this week.
+
+`
+    : "";
+
+  return `## Post performance history (${rows.length} posts analysed)
+
+### By format
+${formatLines}
+
+${bestSection}### Recent trend
+${trendSentence}
+
+### Top performing posts (for directional reference)
+${topLines}
+
+Use this data to weight format choices in the plan. If reels are outperforming other formats, more ideas should be reels. If a format is consistently underperforming, deprioritise it unless there is a strong strategic reason.
+`;
+}
+
 export async function POST(request: Request) {
   let vibe = "";
   let avoid = "";
@@ -397,6 +563,72 @@ export async function POST(request: Request) {
       { error: "Failed to load audit", details: auditError.message },
       { status: 500 }
     );
+  }
+
+  let ideaRatingsSection = "";
+  try {
+    const { data: recentPlans, error: recentPlansError } = await supabase
+      .from("weekly_plans")
+      .select("ideas, idea_ratings, week_start, created_at")
+      .eq("artist_id", activeArtistId)
+      .order("created_at", { ascending: false })
+      .limit(4);
+
+    if (recentPlansError) {
+      console.error("generate-plan: failed to load idea ratings", {
+        artist_id: activeArtistId,
+        error: recentPlansError.message,
+      });
+    } else {
+      const uplikedHooks: string[] = [];
+      const dislikedHooks: string[] = [];
+
+      for (const plan of recentPlans ?? []) {
+        const ratings = parseIdeaRatingsFromDb(plan.idea_ratings);
+        for (const [hook, rating] of Object.entries(ratings)) {
+          if (rating === "up") uplikedHooks.push(hook);
+          else if (rating === "down") dislikedHooks.push(hook);
+        }
+      }
+
+      ideaRatingsSection = formatIdeaRatingsPromptSection(
+        [...new Set(uplikedHooks)],
+        [...new Set(dislikedHooks)]
+      );
+    }
+  } catch (e) {
+    console.error("generate-plan: idea ratings enrichment failed", {
+      artist_id: activeArtistId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+
+  let postPerformanceSection = "";
+  try {
+    const { data: performanceRows, error: performanceError } = await supabase
+      .from("post_performance")
+      .select(
+        "post_type, likes, comments, views, engagement_rate, post_date, caption"
+      )
+      .eq("artist_id", activeArtistId)
+      .order("post_date", { ascending: false })
+      .limit(30);
+
+    if (performanceError) {
+      console.error("generate-plan: failed to load post performance", {
+        artist_id: activeArtistId,
+        error: performanceError.message,
+      });
+    } else if ((performanceRows ?? []).length > 0) {
+      postPerformanceSection = formatPostPerformancePromptSection(
+        performanceRows as PostPerformanceRow[]
+      );
+    }
+  } catch (e) {
+    console.error("generate-plan: post performance enrichment failed", {
+      artist_id: activeArtistId,
+      error: e instanceof Error ? e.message : String(e),
+    });
   }
 
   let instagramLiveSection = "";
@@ -556,6 +788,8 @@ No audit available yet.`;
 If 'In their own words' is provided, treat it as the primary voice reference and make captions sound exactly like that person wrote them.
 
 ${auditSection}
+${ideaRatingsSection}
+${postPerformanceSection}
 ${instagramLiveSection}
 
 ## Audit synthesis you must use

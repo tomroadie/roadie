@@ -216,3 +216,59 @@ export async function adminRunAuditForArtist(
 
   return {};
 }
+
+export async function adminToggleManaged(
+  artistId: string,
+  isManaged: boolean
+): Promise<{ error?: string }> {
+  const trimmed = artistId.trim();
+  if (!trimmed) {
+    return { error: "Missing artist." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Unauthorized." };
+  }
+
+  if (!(await userIsAdmin(supabase, user.id))) {
+    return { error: "Forbidden." };
+  }
+
+  let adminSupabase: ReturnType<typeof createServiceRoleClient>;
+  try {
+    adminSupabase = createServiceRoleClient();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Configuration error";
+    return { error: msg };
+  }
+
+  const { data: row, error: fetchError } = await adminSupabase
+    .from("profiles")
+    .select("id")
+    .eq("id", trimmed)
+    .maybeSingle();
+
+  if (fetchError) {
+    return { error: fetchError.message };
+  }
+
+  if (!row?.id) {
+    return { error: "Artist not found." };
+  }
+
+  const { error: updateError } = await adminSupabase
+    .from("profiles")
+    .update({ is_managed: isManaged })
+    .eq("id", trimmed);
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  return {};
+}

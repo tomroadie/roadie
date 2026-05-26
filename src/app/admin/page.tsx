@@ -73,7 +73,7 @@ export default async function AdminPage() {
   const { data: profiles, error: profilesError } = await adminSupabase
     .from("profiles")
     .select(
-      "id, artist_name, genre, instagram_handle, plan, owner_user_id, created_at, similar_artists, sound_description, voice_description, is_admin, stripe_customer_id"
+      "id, artist_name, genre, instagram_handle, plan, owner_user_id, created_at, similar_artists, sound_description, voice_description, is_admin, stripe_customer_id, is_managed"
     )
     .order("created_at", { ascending: false });
 
@@ -136,6 +136,7 @@ export default async function AdminPage() {
       genre: p.genre ?? "",
       instagram_handle: (p.instagram_handle ?? "").replace(/^@/, ""),
       plan: p.plan ?? "free",
+      is_managed: p.is_managed === true,
     };
   });
 

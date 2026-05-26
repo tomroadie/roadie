@@ -5,7 +5,7 @@ import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { cookies } from "next/headers";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { getMondayDateString } from "@/lib/week";
-import { parseIdeasJson } from "@/lib/parse-ideas-json";
+import type { ContentIdea } from "@/types/content-plan";
 import { NextResponse } from "next/server";
 import { canDo, normalizePlan } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
@@ -43,6 +43,118 @@ function extractOpportunitySection(fullAnalysis: string): string {
 function optionalBodyString(value: unknown): string {
   if (typeof value !== "string") return "";
   return value.trim();
+}
+
+type PlanConcept = ContentIdea & { variant: string };
+type PlanSlot = {
+  slot_number: number;
+  slot_purpose: string;
+  suggested_day: string;
+  concepts: PlanConcept[];
+};
+type PlanSlotsResponse = { slots: PlanSlot[] };
+
+function stripCodeFence(raw: string): string {
+  const trimmed = raw.trim();
+  const fence = /^```(?:json)?\s*\n?([\s\S]*?)\n?```$/m.exec(trimmed);
+  if (fence) {
+    return fence[1].trim();
+  }
+  return trimmed;
+}
+
+function isPlanConcept(value: unknown): value is PlanConcept {
+  if (!value || typeof value !== "object") return false;
+  const o = value as Record<string, unknown>;
+  return (
+    typeof o.variant === "string" &&
+    typeof o.format === "string" &&
+    typeof o.hook === "string" &&
+    typeof o.caption === "string" &&
+    typeof o.why === "string" &&
+    typeof o.timing === "string"
+  );
+}
+
+function isPlanSlot(value: unknown): value is PlanSlot {
+  if (!value || typeof value !== "object") return false;
+  const o = value as Record<string, unknown>;
+  if (
+    typeof o.slot_number !== "number" ||
+    typeof o.slot_purpose !== "string" ||
+    typeof o.suggested_day !== "string" ||
+    !Array.isArray(o.concepts)
+  ) {
+    return false;
+  }
+  return o.concepts.every(isPlanConcept);
+}
+
+function parsePlanSlotsJson(text: string): PlanSlotsResponse {
+  const inner = stripCodeFence(text);
+  const parsed: unknown = JSON.parse(inner);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Response is not a JSON object");
+  }
+  const slots = (parsed as Record<string, unknown>).slots;
+  if (!Array.isArray(slots)) {
+    throw new Error("Response missing slots array");
+  }
+  const validSlots = slots.filter(isPlanSlot);
+  if (validSlots.length !== 5) {
+    throw new Error("Expected exactly 5 content slots");
+  }
+  return { slots: validSlots };
+}
+
+function pickSafeIdeasFromSlots(slots: PlanSlot[]): ContentIdea[] {
+  const ideas: ContentIdea[] = [];
+  for (const slot of slots) {
+    const safe =
+      slot.concepts.find((c) => c.variant.toLowerCase() === "safe") ??
+      slot.concepts[0];
+    if (!safe) {
+      throw new Error(`Slot ${slot.slot_number} has no concepts`);
+    }
+    ideas.push({
+      format: safe.format,
+      hook: safe.hook,
+      caption: safe.caption,
+      why: safe.why,
+      timing: safe.timing,
+    });
+  }
+  return ideas;
+}
+
+async function sendResendEmail(args: {
+  apiKey: string;
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+}): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${args.apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "Roadie <hello@roadie.media>",
+      to: [args.to],
+      subject: args.subject,
+      text: args.text,
+      html: args.html,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    return { ok: false, status: res.status, error: text || res.statusText };
+  }
+
+  return { ok: true };
 }
 
 function verifyWebhookSecret(headerValue: string | null, secret: string): boolean {
@@ -223,7 +335,7 @@ export async function POST(request: Request) {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, genre, sound_description, similar_artists, voice_description, instagram_access_token, instagram_user_id, posting_frequency, owner_user_id"
+      "artist_name, genre, sound_description, similar_artists, voice_description, instagram_access_token, instagram_user_id, posting_frequency, owner_user_id, is_managed"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -240,6 +352,11 @@ export async function POST(request: Request) {
       { error: "Complete onboarding before generating a plan." },
       { status: 400 }
     );
+  }
+
+  let isManaged = false;
+  if (profile.is_managed === true) {
+    isManaged = true;
   }
 
   const { data: audit, error: auditError } = await supabase
@@ -428,31 +545,68 @@ Suggested posting days this week: ${getPostingSchedule(frequency)}
 
 ${eventsCalendarSection}
 
-${artistInputSection}CRITICAL PRIORITY RULE: If there are any URGENT events (within 7 days), at least 3 of the 5 ideas MUST directly serve those events — building hype, driving ticket sales, creating anticipation, or capturing behind-the-scenes content. Do not suggest content about unrelated songs or past work when there is an imminent event. The imminent event IS the content opportunity this week.
+${artistInputSection}CRITICAL PRIORITY RULE: If there are any URGENT events (within 7 days), at least 3 of the 5 slots MUST directly serve those events — building hype, driving ticket sales, creating anticipation, or capturing behind-the-scenes content. Do not suggest content about unrelated songs or past work when there is an imminent event. The imminent event IS the content opportunity this week.
 
 ## What you must produce
-Give **exactly 5** content ideas that feel personal, specific, and tied to what is actually happening in this artist's world — their sound, references, the dates above, and the Instagram audit data (if present). No filler, no one-size-fits-all tips.
+Produce exactly 5 content slots. Each slot represents a different strategic purpose for the week.
 
-Each idea's **caption** must naturally mention **${artistName}** by name **or** clearly reference something specific to them (a release, show, collaboration, or detail from their profile/dates) so it could not be swapped onto another act.
+For each slot, produce 3 concept options:
+- SAFE: A proven format with predictable engagement. Low effort, reliable results.
+- CREATIVE: An interesting angle that requires some thought and effort. Higher upside than safe.
+- BOLD: Unconventional approach. Might not suit every artist but highest potential impact.
 
-The ideas should directly address what the audit says is missing and amplify what's already working. Reference the audit's language and specifics, not generic social advice.
+The 3 concepts within each slot should serve the same strategic purpose but via meaningfully different approaches — different formats, different angles, different emotional registers.
 
-Use the CORE PROBLEM and OPPORTUNITY above to shape at least **3 of the 5** ideas directly.
+Each concept's **caption** must naturally mention **${artistName}** by name **or** clearly reference something specific to them (a release, show, collaboration, or detail from their profile/dates) so it could not be swapped onto another act.
 
-Respond with **ONLY** valid JSON: a JSON array of exactly 5 objects. Each object must have these string fields:
-- **format** — e.g. Reel, Carousel, Story thread, Short video
-- **hook** — sharp, specific angle (not generic)
-- **caption** — short draft caption or voice-note script; must include "${artistName}" or unmistakable personal context as above
-- **why** — one or two sentences on why this fits *this* artist right now
-- **timing** — include a specific suggested posting day from the schedule above (e.g. "Post Monday evening — [reason]") and space the 5 ideas across the week according to that schedule
+The slots should directly address what the audit says is missing and amplify what's already working. Reference the audit's language and specifics, not generic social advice.
 
-No markdown fences, no commentary outside the JSON array.`;
+Use the CORE PROBLEM and OPPORTUNITY above to shape at least **3 of the 5** slots directly.
+
+Respond with ONLY valid JSON in this exact structure:
+{
+  "slots": [
+    {
+      "slot_number": 1,
+      "slot_purpose": "brief description of what this slot achieves this week",
+      "suggested_day": "Monday",
+      "concepts": [
+        {
+          "variant": "safe",
+          "format": "...",
+          "hook": "...",
+          "caption": "...",
+          "why": "...",
+          "timing": "..."
+        },
+        {
+          "variant": "creative",
+          "format": "...",
+          "hook": "...",
+          "caption": "...",
+          "why": "...",
+          "timing": "..."
+        },
+        {
+          "variant": "bold",
+          "format": "...",
+          "hook": "...",
+          "caption": "...",
+          "why": "...",
+          "timing": "..."
+        }
+      ]
+    }
+  ]
+}
+
+No markdown fences, no commentary outside the JSON object.`;
 
   const anthropic = new Anthropic({ apiKey });
 
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-5",
-    max_tokens: 4096,
+    max_tokens: 8192,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: prompt }],
   });
@@ -465,9 +619,9 @@ No markdown fences, no commentary outside the JSON array.`;
     );
   }
 
-  let ideas;
+  let planSlots: PlanSlotsResponse;
   try {
-    ideas = parseIdeasJson(textBlock.text);
+    planSlots = parsePlanSlotsJson(textBlock.text);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Invalid JSON from model";
     return NextResponse.json(
@@ -477,6 +631,20 @@ No markdown fences, no commentary outside the JSON array.`;
   }
 
   const weekStart = getMondayDateString();
+  const nowIso = new Date().toISOString();
+
+  const planPayload = isManaged
+    ? {
+        concepts: planSlots,
+        status: "pending_review" as const,
+        ideas: null,
+        created_at: nowIso,
+      }
+    : {
+        ideas: pickSafeIdeasFromSlots(planSlots.slots),
+        status: "published" as const,
+        created_at: nowIso,
+      };
 
   const { data: existing } = await supabase
     .from("weekly_plans")
@@ -488,7 +656,7 @@ No markdown fences, no commentary outside the JSON array.`;
   if (existing?.id) {
     const { error: updateError } = await supabase
       .from("weekly_plans")
-      .update({ ideas, created_at: new Date().toISOString() })
+      .update(planPayload)
       .eq("id", existing.id);
 
     if (updateError) {
@@ -501,7 +669,7 @@ No markdown fences, no commentary outside the JSON array.`;
     const { error: insertError } = await supabase.from("weekly_plans").insert({
       artist_id: activeArtistId,
       week_start: weekStart,
-      ideas,
+      ...planPayload,
     });
 
     if (insertError) {
@@ -509,6 +677,37 @@ No markdown fences, no commentary outside the JSON array.`;
         { error: "Failed to save plan", details: insertError.message },
         { status: 500 }
       );
+    }
+  }
+
+  if (isManaged) {
+    const resendKey = process.env.RESEND_API_KEY;
+    if (resendKey) {
+      const hdrHost =
+        request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+      const hdrProto = request.headers.get("x-forwarded-proto") ?? "http";
+      const fallbackOrigin = hdrHost
+        ? `${hdrProto}://${hdrHost}`
+        : "http://localhost:3000";
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? fallbackOrigin;
+      const adminPlansUrl = `${baseUrl}/admin/plans`;
+
+      const emailSend = await sendResendEmail({
+        apiKey: resendKey,
+        to: "tom@roadie.media",
+        subject: `Plan ready to review: ${artistName}`,
+        text: `A weekly content plan for ${artistName} is ready for review.\n\nReview it here: ${adminPlansUrl}`,
+        html: `<p>A weekly content plan for <strong>${artistName}</strong> is ready for review.</p><p><a href="${adminPlansUrl}">Review plan</a></p>`,
+      });
+
+      if (!emailSend.ok) {
+        console.error("Resend send failed", {
+          artist_id: activeArtistId,
+          status: emailSend.status,
+          error: emailSend.error,
+        });
+      }
     }
   }
 
@@ -531,7 +730,14 @@ No markdown fences, no commentary outside the JSON array.`;
     });
   }
 
-  return NextResponse.json({ ideas });
+  if (isManaged) {
+    return NextResponse.json({
+      concepts: planSlots,
+      status: "pending_review",
+    });
+  }
+
+  return NextResponse.json({ ideas: planPayload.ideas });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

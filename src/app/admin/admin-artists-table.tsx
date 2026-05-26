@@ -1,7 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { adminRunAuditForArtist, adminSwitchArtist } from "./actions";
+import { useEffect, useMemo, useState } from "react";
+import {
+  adminRunAuditForArtist,
+  adminSwitchArtist,
+  adminToggleManaged,
+} from "./actions";
 
 export type AdminArtistDirectoryRow = {
   id: string;
@@ -12,6 +16,7 @@ export type AdminArtistDirectoryRow = {
   genre: string;
   instagram_handle: string;
   plan: string;
+  is_managed: boolean;
 };
 
 function formatCreated(iso: string): string {
@@ -25,26 +30,34 @@ function formatCreated(iso: string): string {
 }
 
 export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] }) {
+  const [localRows, setLocalRows] = useState<AdminArtistDirectoryRow[]>(() => rows);
   const [q, setQ] = useState("");
   const [auditBusy, setAuditBusy] = useState<string | null>(null);
+  const [managedBusy, setManagedBusy] = useState<string | null>(null);
   const [auditError, setAuditError] = useState<string | null>(null);
+  const [managedError, setManagedError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLocalRows(rows);
+  }, [rows]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    if (!needle) return rows;
-    return rows.filter((r) => {
+    if (!needle) return localRows;
+    return localRows.filter((r) => {
       const hay = [
         r.artist_name,
         r.owner_email,
         r.genre,
         r.instagram_handle,
         r.plan,
+        r.is_managed ? "managed" : "",
       ]
         .join(" ")
         .toLowerCase();
       return hay.includes(needle);
     });
-  }, [q, rows]);
+  }, [q, localRows]);
 
   async function handleRunAudit(artistId: string) {
     setAuditError(null);
@@ -57,6 +70,22 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
     }
   }
 
+  async function handleToggleManaged(artistId: string, nextManaged: boolean) {
+    setManagedError(null);
+    setManagedBusy(artistId);
+    const res = await adminToggleManaged(artistId, nextManaged);
+    setManagedBusy(null);
+    if (res.error) {
+      setManagedError(res.error);
+      return;
+    }
+    setLocalRows((prev) =>
+      prev.map((row) =>
+        row.id === artistId ? { ...row, is_managed: nextManaged } : row
+      )
+    );
+  }
+
   return (
     <div className="mt-10 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -65,7 +94,7 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
             All artists
           </h2>
           <p className="mt-1 text-sm text-muted">
-            {rows.length} artist{rows.length === 1 ? "" : "s"} in the directory.
+            {localRows.length} artist{localRows.length === 1 ? "" : "s"} in the directory.
           </p>
         </div>
         <div className="w-full sm:max-w-xs">
@@ -92,6 +121,12 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
         </p>
       ) : null}
 
+      {managedError ? (
+        <p className="text-sm text-red-400" role="alert">
+          {managedError}
+        </p>
+      ) : null}
+
       <div className="overflow-x-auto rounded-xl border border-card-border bg-card shadow-sm">
         <table className="min-w-full divide-y divide-[#1a1a1a] text-left text-sm">
           <thead>
@@ -101,6 +136,7 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
               <th className="whitespace-nowrap px-4 py-3">Genre</th>
               <th className="whitespace-nowrap px-4 py-3">Instagram</th>
               <th className="whitespace-nowrap px-4 py-3">Plan</th>
+              <th className="whitespace-nowrap px-4 py-3">Managed</th>
               <th className="whitespace-nowrap px-4 py-3">Created</th>
               <th className="whitespace-nowrap px-4 py-3 text-right">Actions</th>
             </tr>
@@ -119,6 +155,32 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
                   {r.instagram_handle ? `@${r.instagram_handle.replace(/^@/, "")}` : "—"}
                 </td>
                 <td className="px-4 py-3 uppercase text-muted-strong">{r.plan}</td>
+                <td className="px-4 py-3">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={r.is_managed}
+                    aria-label={`${r.is_managed ? "Disable" : "Enable"} managed for ${r.artist_name.trim() || "artist"}`}
+                    disabled={managedBusy === r.id}
+                    onClick={() => void handleToggleManaged(r.id, !r.is_managed)}
+                    className={[
+                      "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:cursor-not-allowed disabled:opacity-60",
+                      r.is_managed ? "bg-brand" : "bg-zinc-700",
+                    ].join(" ")}
+                  >
+                    <span
+                      className={[
+                        "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform",
+                        r.is_managed ? "translate-x-6" : "translate-x-1",
+                      ].join(" ")}
+                    />
+                  </button>
+                  {managedBusy === r.id ? (
+                    <span className="mt-1 block text-[10px] font-semibold uppercase tracking-wide text-muted">
+                      Saving…
+                    </span>
+                  ) : null}
+                </td>
                 <td className="whitespace-nowrap px-4 py-3 text-muted-strong">
                   {formatCreated(r.created_at)}
                 </td>

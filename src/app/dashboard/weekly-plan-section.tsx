@@ -276,6 +276,7 @@ type WeeklyPlanSectionProps = {
   lastGeneratedAt: string | null;
   upcomingThisWeek: EventRow[];
   plan: string;
+  planStatus: string | null;
   auditPending: boolean;
   hasAudit: boolean;
   isAdmin?: boolean;
@@ -305,6 +306,7 @@ export function WeeklyPlanSection({
   lastGeneratedAt,
   upcomingThisWeek,
   plan,
+  planStatus,
   auditPending,
   hasAudit,
   isAdmin = false,
@@ -329,6 +331,8 @@ export function WeeklyPlanSection({
   const supabase = useMemo(() => createClient(), []);
   const hasPlanIdeas = (ideas?.length ?? 0) > 0;
   const freePlanNoIdeasYet = !canGenerate && !hasPlanIdeas;
+  const isPlanBeingPrepared =
+    planStatus === "pending_review" && !hasPlanIdeas;
 
   useEffect(() => {
     if (!auditPending || hasAudit) return;
@@ -526,7 +530,7 @@ export function WeeklyPlanSection({
             )}
           </p>
         </div>
-        {canGenerate ? (
+        {isPlanBeingPrepared ? null : canGenerate ? (
           <button
             id="dashboard-generate-plan"
             type="button"
@@ -621,6 +625,16 @@ export function WeeklyPlanSection({
             ))}
           </ul>
         </>
+      ) : isPlanBeingPrepared ? (
+        <div className="mt-6 rounded-xl border border-card-border bg-card p-5">
+          <div className="flex items-start gap-3">
+            <span className="mt-1 inline-flex h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" />
+            <p className="text-sm leading-relaxed text-muted">
+              Your plan for this week is being prepared — you&apos;ll get an email
+              when it&apos;s ready.
+            </p>
+          </div>
+        </div>
       ) : !loading ? (
         <div className="mt-6 rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
           <p className="text-sm leading-relaxed text-muted">

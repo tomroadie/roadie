@@ -84,7 +84,7 @@ export default async function DashboardPage() {
 
   const { data: weeklyPlan } = await supabase
     .from("weekly_plans")
-    .select("ideas, created_at, week_start, idea_ratings")
+    .select("ideas, created_at, week_start, idea_ratings, status")
     .eq("artist_id", activeArtistId)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -246,6 +246,7 @@ export default async function DashboardPage() {
         lastGeneratedAt={lastGeneratedAt}
         upcomingThisWeek={upcomingThisWeek}
         plan={plan}
+        planStatus={(weeklyPlan?.status as string | undefined) ?? null}
         auditPending={auditPending}
         hasAudit={hasAudit}
         isAdmin={isAdmin}

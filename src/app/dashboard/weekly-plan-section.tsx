@@ -542,7 +542,7 @@ export function WeeklyPlanSection({
       return (
         <div className="mt-8 flex flex-col gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm leading-relaxed text-emerald-100">
-            Your revision has been applied.
+            Your revision is being prepared — we&apos;ll have it ready soon.
           </p>
           <button
             type="button"

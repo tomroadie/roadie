@@ -119,6 +119,14 @@ export async function POST(request: Request) {
   const artistId = String(revisionRequest.artist_id ?? "").trim();
   const artistNote = String(revisionRequest.artist_note ?? "").trim();
 
+  const requestBody: Record<string, string> = {
+    artist_id: artistId,
+    force_pending_review: "true",
+  };
+  if (artistNote) {
+    requestBody.focus = artistNote;
+  }
+
   try {
     const generateRes = await fetch(`${appBaseUrl(request)}/api/generate-plan`, {
       method: "POST",
@@ -127,7 +135,7 @@ export async function POST(request: Request) {
         "x-internal-artist-id": artistId,
         "x-webhook-secret": webhookSecret,
       },
-      body: JSON.stringify({ focus: artistNote }),
+      body: JSON.stringify(requestBody),
       cache: "no-store",
     });
 

@@ -477,11 +477,13 @@ export async function POST(request: Request) {
   let vibe = "";
   let avoid = "";
   let focus = "";
+  let forcePendingReview = false;
   try {
     const body = (await request.json()) as Record<string, unknown>;
     vibe = optionalBodyString(body.vibe);
     avoid = optionalBodyString(body.avoid);
     focus = optionalBodyString(body.focus);
+    forcePendingReview = body.force_pending_review === "true";
   } catch {
     /* no JSON body or invalid JSON — optional inputs stay empty */
   }
@@ -578,6 +580,7 @@ export async function POST(request: Request) {
   if (profile.is_managed === true) {
     isManaged = true;
   }
+  const treatAsManaged = isManaged || forcePendingReview;
 
   const { data: audit, error: auditError } = await supabase
     .from("audits")
@@ -911,7 +914,7 @@ No markdown fences, no commentary outside the JSON object.`;
 
   let planSlots: PlanSlotsResponse;
   try {
-    if (isManaged) {
+    if (treatAsManaged) {
       console.error(
         "[generate-plan] raw slots response:",
         textBlock.text.slice(4500, 6500)
@@ -929,7 +932,7 @@ No markdown fences, no commentary outside the JSON object.`;
   const weekStart = getMondayDateString();
   const nowIso = new Date().toISOString();
 
-  const planPayload = isManaged
+  const planPayload = treatAsManaged
     ? {
         concepts: planSlots,
         status: "pending_review" as const,
@@ -1026,7 +1029,7 @@ No markdown fences, no commentary outside the JSON object.`;
     });
   }
 
-  if (isManaged) {
+  if (treatAsManaged) {
     return NextResponse.json({
       concepts: planSlots,
       status: "pending_review",

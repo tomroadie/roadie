@@ -211,7 +211,7 @@ export default async function AdminPlansPage() {
             </Link>
           </div>
           <p className="mt-2 text-muted">
-            Review managed-artist weekly plans before they go live.
+            Review weekly plans before they go live.
           </p>
         </div>
         <LogoutButton />

@@ -8,6 +8,7 @@ export type PlanFeature =
   | "canReview"
   | "canRefineIdeas"
   | "canSaveIdeas"
+  | "canViewEngagementTrends"
   | "maxArtists";
 
 export const PLAN_LIMITS: Record<
@@ -21,6 +22,7 @@ export const PLAN_LIMITS: Record<
     canReview: boolean;
     canRefineIdeas: boolean;
     canSaveIdeas: boolean;
+    canViewEngagementTrends: boolean;
   }
 > = {
   free: {
@@ -32,6 +34,7 @@ export const PLAN_LIMITS: Record<
     canReview: false,
     canRefineIdeas: false,
     canSaveIdeas: false,
+    canViewEngagementTrends: false,
   },
   starter: {
     maxArtists: 1,
@@ -42,6 +45,7 @@ export const PLAN_LIMITS: Record<
     canReview: false,
     canRefineIdeas: false,
     canSaveIdeas: true,
+    canViewEngagementTrends: false,
   },
   pro: {
     maxArtists: 3,
@@ -52,6 +56,7 @@ export const PLAN_LIMITS: Record<
     canReview: true,
     canRefineIdeas: true,
     canSaveIdeas: true,
+    canViewEngagementTrends: true,
   },
   label: {
     maxArtists: 10,
@@ -62,6 +67,7 @@ export const PLAN_LIMITS: Record<
     canReview: true,
     canRefineIdeas: true,
     canSaveIdeas: true,
+    canViewEngagementTrends: true,
   },
 };
 

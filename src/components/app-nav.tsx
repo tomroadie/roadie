@@ -11,9 +11,7 @@ export type AppNavArtist = {
 
 function buildLinks(showAdminLink: boolean) {
   const base = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/events", label: "Your dates" },
-    { href: "/insights", label: "Insights" },
+    { href: "/home", label: "Dashboard" },
     { href: "/settings", label: "Settings" },
   ] as const;
   if (!showAdminLink) return base;
@@ -67,7 +65,7 @@ export function AppNav({
       } catch {
         /* ignore */
       }
-      window.location.href = "/dashboard";
+      window.location.href = "/home";
     } catch {
       setSwitchError("Network error.");
       setSwitching(false);
@@ -80,7 +78,7 @@ export function AppNav({
         <div className="flex min-w-0 flex-1 items-center justify-between gap-3 md:justify-start md:gap-6">
           <div className="flex min-w-0 items-center gap-3">
             <Link
-              href="/dashboard"
+              href="/home"
               className="inline-flex shrink-0 items-center"
               aria-label="Roadie"
               onClick={() => setMenuOpen(false)}

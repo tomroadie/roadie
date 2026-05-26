@@ -283,6 +283,7 @@ type WeeklyPlanSectionProps = {
   canReview: boolean;
   reviews: Array<{ idea_hook: string; feedback: string; reviewed_at: string }>;
   artistId: string;
+  hideUpcomingThisWeek?: boolean;
 };
 
 function hoursSince(iso: string): number {
@@ -313,6 +314,7 @@ export function WeeklyPlanSection({
   canReview,
   reviews,
   artistId,
+  hideUpcomingThisWeek = false,
 }: WeeklyPlanSectionProps) {
   const router = useRouter();
   const [ideas, setIdeas] = useState<ContentIdea[] | null>(initialIdeas);
@@ -722,37 +724,39 @@ export function WeeklyPlanSection({
         </div>
       )}
 
-      <div className="mt-10 rounded-xl border border-card-border bg-card p-6">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand">
-          Upcoming this week
-        </p>
-        {upcomingThisWeek.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {upcomingThisWeek.map((ev) => (
-              <span
-                key={ev.id}
-                className="inline-flex items-center gap-2 rounded-full bg-input px-3 py-1 text-xs font-medium text-foreground"
-              >
-                <span className="text-muted">
-                  {new Date(ev.event_date + "T12:00:00").toLocaleDateString(
-                    "en-GB",
-                    { weekday: "short", day: "numeric", month: "short" }
-                  )}
-                </span>
-                <span className="font-semibold text-foreground">{ev.title}</span>
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-muted">
-            Nothing scheduled this week —{" "}
-            <Link href="/events" className="font-semibold text-brand hover:underline">
-              add a date
-            </Link>
-            .
+      {!hideUpcomingThisWeek ? (
+        <div className="mt-10 rounded-xl border border-card-border bg-card p-6">
+          <p className="text-xs font-bold uppercase tracking-widest text-brand">
+            Upcoming this week
           </p>
-        )}
-      </div>
+          {upcomingThisWeek.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {upcomingThisWeek.map((ev) => (
+                <span
+                  key={ev.id}
+                  className="inline-flex items-center gap-2 rounded-full bg-input px-3 py-1 text-xs font-medium text-foreground"
+                >
+                  <span className="text-muted">
+                    {new Date(ev.event_date + "T12:00:00").toLocaleDateString(
+                      "en-GB",
+                      { weekday: "short", day: "numeric", month: "short" }
+                    )}
+                  </span>
+                  <span className="font-semibold text-foreground">{ev.title}</span>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-muted">
+              Nothing scheduled this week —{" "}
+              <Link href="/events" className="font-semibold text-brand hover:underline">
+                add a date
+              </Link>
+              .
+            </p>
+          )}
+        </div>
+      ) : null}
 
       {error ? (
         <p className="mt-4 text-sm text-red-400" role="alert">

@@ -1,22 +1,22 @@
- "use client";
+"use client";
 
 import Link from "next/link";
 
 type Props = {
-  hasEvents: boolean;
+  hasCheckin: boolean;
   hasPlan: boolean;
   instagramHandle: string | null;
   onGeneratePlan?: () => void;
 };
 
 export function FirstRunChecklist({
-  hasEvents,
+  hasCheckin,
   hasPlan,
   instagramHandle,
   onGeneratePlan,
 }: Props) {
   const step1Done = true;
-  const step2Done = hasEvents;
+  const step2Done = hasCheckin;
   const step3Done = hasPlan;
   const step4Done = Boolean(instagramHandle?.trim());
 
@@ -55,13 +55,13 @@ export function FirstRunChecklist({
             {step2Done ? "✓" : "+"}
           </span>
           {step2Done ? (
-            <span className="text-muted-strong">Add at least one date</span>
+            <span className="text-muted-strong">Answer your weekly check-in</span>
           ) : (
             <Link
-              href="/events"
+              href="/checkin"
               className="font-medium text-foreground underline-offset-4 hover:text-brand hover:underline"
             >
-              Add at least one date
+              Answer your weekly check-in
             </Link>
           )}
         </li>

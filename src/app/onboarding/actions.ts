@@ -48,20 +48,52 @@ export async function completeOnboarding(
     return { error: "Please select a valid genre." };
   }
 
-  const { data: existingArtist, error: findArtistErr } = await supabase
-    .from("artists")
+  const cookieStore = await cookies();
+  const cookieArtistId =
+    cookieStore.get(ACTIVE_ARTIST_COOKIE)?.value?.trim() || null;
+  const isAdmin = await userIsAdmin(supabase, user.id);
+
+  const { data: existingProfile, error: findProfileErr } = await supabase
+    .from("profiles")
     .select("id")
     .eq("owner_user_id", user.id)
-    .limit(1)
+    .eq("artist_name", artistName)
     .maybeSingle();
 
-  if (findArtistErr) {
-    return { error: findArtistErr.message };
+  if (findProfileErr) {
+    return { error: findProfileErr.message };
   }
 
   let activeArtistId: string;
-  if (existingArtist?.id) {
-    activeArtistId = existingArtist.id;
+
+  if (existingProfile?.id) {
+    activeArtistId = existingProfile.id;
+  } else if (cookieArtistId) {
+    const { data: cookieArtist, error: cookieArtistErr } = await supabase
+      .from("artists")
+      .select("id, owner_user_id")
+      .eq("id", cookieArtistId)
+      .maybeSingle();
+
+    if (cookieArtistErr) {
+      return { error: cookieArtistErr.message };
+    }
+
+    if (
+      cookieArtist &&
+      (isAdmin || cookieArtist.owner_user_id === user.id)
+    ) {
+      activeArtistId = cookieArtist.id;
+    } else {
+      activeArtistId = crypto.randomUUID();
+      const { error: createArtistErr } = await supabase.from("artists").insert({
+        id: activeArtistId,
+        owner_user_id: user.id,
+      });
+      if (createArtistErr) {
+        return { error: createArtistErr.message };
+      }
+    }
   } else {
     activeArtistId = crypto.randomUUID();
     const { error: createArtistErr } = await supabase.from("artists").insert({
@@ -73,39 +105,12 @@ export async function completeOnboarding(
     }
   }
 
-  const cookieStore = await cookies();
   cookieStore.set(ACTIVE_ARTIST_COOKIE, activeArtistId, {
     path: "/",
     sameSite: "lax",
     maxAge: 60 * 60 * 24 * 400,
     httpOnly: false,
   });
-
-  const isAdmin = await userIsAdmin(supabase, user.id);
-
-  const { data: artistRow, error: artistLookupErr } = await supabase
-    .from("artists")
-    .select("id, owner_user_id")
-    .eq("id", activeArtistId)
-    .maybeSingle();
-
-  if (artistLookupErr) {
-    return { error: artistLookupErr.message };
-  }
-
-  if (!artistRow) {
-    return {
-      error:
-        "That artist profile isn’t available. Pick an artist from the nav or add one in Settings.",
-    };
-  }
-
-  if (!isAdmin && artistRow.owner_user_id !== user.id) {
-    return {
-      error:
-        "That artist profile isn’t available. Pick an artist from the nav or add one in Settings.",
-    };
-  }
 
   const { error: artistUpsertErr } = await supabase.from("artists").upsert(
     { id: activeArtistId, owner_user_id: user.id },

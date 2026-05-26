@@ -794,6 +794,8 @@ export function WeeklyPlanSection({
               Go to settings
             </Link>
           )
+        ) : canGenerate && hasPlanIdeas ? (
+          null
         ) : (
           <Link
             href="/pricing"

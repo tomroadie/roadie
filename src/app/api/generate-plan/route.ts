@@ -646,6 +646,12 @@ No markdown fences, no commentary outside the JSON object.`;
 
   let planSlots: PlanSlotsResponse;
   try {
+    if (isManaged) {
+      console.error(
+        "[generate-plan] raw slots response:",
+        textBlock.text.slice(4500, 6500)
+      );
+    }
     planSlots = parsePlanSlotsJson(textBlock.text);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Invalid JSON from model";

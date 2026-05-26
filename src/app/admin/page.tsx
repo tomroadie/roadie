@@ -272,6 +272,12 @@ export default async function AdminPage() {
             >
               Client prep →
             </Link>
+            <Link
+              href="/admin/plans"
+              className="text-sm font-semibold text-brand transition-colors hover:text-brand/80"
+            >
+              Plans to review →
+            </Link>
           </div>
           <p className="mt-2 text-muted">
             Browse every artist, switch context, create managed clients, or enqueue

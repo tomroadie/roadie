@@ -11,49 +11,32 @@ function pendingStorageKey(artistId: string) {
 export function InsightsAuditEmptyState({
   artistId,
   instagramHandle,
-  auditPending = false,
+  embedded = false,
 }: {
   artistId: string;
   instagramHandle: string | null;
-  auditPending?: boolean;
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const trimmed = instagramHandle?.trim() ?? "";
   const hasHandle = Boolean(trimmed);
-  const displayHandle = trimmed.replace(/^@/, "");
 
-  const [pending, setPending] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
       if (typeof window !== "undefined") {
-        setPending(localStorage.getItem(pendingStorageKey(artistId)) === "1");
+        const pending =
+          localStorage.getItem(pendingStorageKey(artistId)) === "1";
+        if (pending) {
+          router.refresh();
+        }
       }
     } catch {
       // ignore storage failures
     }
-  }, [artistId]);
-
-  useEffect(() => {
-    if (!auditPending && !pending) return;
-    const id = window.setInterval(async () => {
-      try {
-        const res = await fetch(
-          `/api/audit-status?artist_id=${encodeURIComponent(artistId)}`
-        );
-        const data = (await res.json()) as { ready?: boolean };
-        if (data.ready === true) {
-          clearInterval(id);
-          router.refresh();
-        }
-      } catch {
-        // keep polling
-      }
-    }, 10_000);
-    return () => clearInterval(id);
-  }, [auditPending, pending, artistId, router]);
+  }, [artistId, router]);
 
   const runAudit = async () => {
     setError(null);
@@ -78,12 +61,11 @@ export function InsightsAuditEmptyState({
       try {
         localStorage.setItem(pendingStorageKey(artistId), "1");
       } catch {
-        // still show pending UI
+        // still refresh
       }
-      setPending(true);
+      router.refresh();
     } catch {
       setError("Network error — try again.");
-    } finally {
       setStarting(false);
     }
   };
@@ -91,13 +73,15 @@ export function InsightsAuditEmptyState({
   if (!hasHandle) {
     return (
       <>
-        <p className="text-sm leading-relaxed text-muted">
-          Add your Instagram handle in Settings to run your audit
-        </p>
-        <p className="mt-5">
+        {!embedded ? (
+          <p className="text-sm leading-relaxed text-muted">
+            Add your Instagram handle in Settings to run your audit
+          </p>
+        ) : null}
+        <p className={embedded ? undefined : "mt-5"}>
           <Link
             href="/settings"
-            className="inline-flex h-11 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
+            className="inline-flex h-11 items-center justify-center rounded-lg bg-brand px-6 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
           >
             Go to settings →
           </Link>
@@ -106,32 +90,27 @@ export function InsightsAuditEmptyState({
     );
   }
 
-  if (auditPending) {
-    return (
-      <p className="text-sm text-brand animate-pulse">
-        Your audit is running — usually takes 2-3 minutes.
-      </p>
-    );
-  }
-
-  if (pending) {
+  if (embedded) {
     return (
       <>
-        <p className="animate-pulse text-sm leading-relaxed text-muted">
-          Checking for your audit results...
-        </p>
-        <p className="mt-5">
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-input px-4 text-sm font-semibold uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
-          >
-            Refresh
-          </button>
-        </p>
+        <button
+          type="button"
+          onClick={runAudit}
+          disabled={starting}
+          className="inline-flex h-11 items-center justify-center rounded-lg bg-brand px-6 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {starting ? "Starting…" : "Run my Instagram audit"}
+        </button>
+        {error ? (
+          <p role="alert" className="mt-4 text-sm text-red-400">
+            {error}
+          </p>
+        ) : null}
       </>
     );
   }
+
+  const displayHandle = trimmed.replace(/^@/, "");
 
   return (
     <>

@@ -293,7 +293,7 @@ type WeeklyPlanSectionProps = {
   } | null;
   hasJustUpgraded?: boolean;
   hasJustRegistered?: boolean;
-  auditJustCompleted?: boolean;
+  hasInstagramHandle?: boolean;
 };
 
 function hoursSince(iso: string): number {
@@ -329,7 +329,7 @@ export function WeeklyPlanSection({
   revisionRequest = null,
   hasJustUpgraded = false,
   hasJustRegistered = false,
-  auditJustCompleted = false,
+  hasInstagramHandle = false,
 }: WeeklyPlanSectionProps) {
   const router = useRouter();
   const [ideas, setIdeas] = useState<ContentIdea[] | null>(initialIdeas);
@@ -376,16 +376,6 @@ export function WeeklyPlanSection({
       router.refresh();
     }
   }, [revision, router]);
-
-  useEffect(() => {
-    if (!auditPending || hasAudit) return;
-    const id = window.setInterval(() => {
-      router.refresh();
-    }, 30_000);
-    return () => {
-      window.clearInterval(id);
-    };
-  }, [auditPending, hasAudit, router]);
 
   function sanitizeStorageFilename(name: string): string {
     const base = (name || "file").trim();
@@ -722,41 +712,7 @@ export function WeeklyPlanSection({
 
   return (
     <section className="mt-12">
-      {auditPending && !hasAudit && !hasJustRegistered ? (
-        <div className="mb-6 rounded-xl border border-card-border bg-card p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <span className="mt-1 inline-flex h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" />
-              <p className="text-sm leading-relaxed text-muted">
-                <span className="font-semibold text-foreground">
-                  Your Instagram audit is running
-                </span>{" "}
-                — we&apos;re analysing your profile and recent posts. Your first
-                personalised plan will be ready in about 5 minutes.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => router.refresh()}
-              className="inline-flex h-9 items-center justify-center rounded-lg border border-card-border bg-transparent px-3 text-xs font-semibold uppercase tracking-wide text-muted transition-colors hover:border-brand hover:text-foreground"
-            >
-              Refresh
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {hasJustRegistered && auditPending ? (
-        <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3">
-          <p className="text-sm leading-relaxed text-emerald-100">
-            Welcome to Roadie. Your Instagram audit is running — it takes about
-            5 minutes. We&apos;ll show your content plan below once it&apos;s
-            ready.
-          </p>
-        </div>
-      ) : null}
-
-      {hasJustRegistered && !auditPending ? (
+      {hasJustRegistered && !hasInstagramHandle && !auditPending ? (
         <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
           <p className="text-sm leading-relaxed text-amber-100">
             Welcome to Roadie. Add your Instagram handle in{" "}
@@ -775,15 +731,6 @@ export function WeeklyPlanSection({
         <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3">
           <p className="text-sm leading-relaxed text-emerald-100">
             Welcome to Roadie Pro. Generate your first plan below.
-          </p>
-        </div>
-      ) : null}
-
-      {auditJustCompleted && !hasPlanIdeas && !hasJustRegistered ? (
-        <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3">
-          <p className="text-sm leading-relaxed text-emerald-100">
-            Your Instagram audit is ready. Generate your first content plan
-            below.
           </p>
         </div>
       ) : null}

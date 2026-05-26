@@ -5,8 +5,8 @@ import Link from "next/link";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { WeeklyPlanSection } from "@/app/dashboard/weekly-plan-section";
-import { FirstRunChecklist } from "@/app/dashboard/first-run-checklist";
 import { InsightsAuditEmptyState } from "@/app/insights/insights-audit-empty-state";
+import { AuditPendingSection } from "@/app/insights/audit-pending-section";
 import { RecentPostsCards } from "@/app/insights/recent-posts-cards";
 import {
   LiveStatsSection,
@@ -397,9 +397,6 @@ export default async function HomePage({
 
   const hasPlanIdeas = (initialIdeas?.length ?? 0) > 0;
   const hasInstagram = Boolean(profile?.instagram_handle?.trim());
-  const hasRatedIdea = Object.keys(initialIdeaRatings).length > 0;
-  const canGeneratePlan = canDo(plan, "canGeneratePlan", isAdmin);
-  const isManaged = profile?.is_managed ?? false;
   const profileIncomplete = !profile?.genre?.trim();
   const momentum =
     plan === "free" && !isAdmin && !hasPlanIdeas
@@ -504,15 +501,47 @@ export default async function HomePage({
 
       <AppNavWrapper />
 
-      <FirstRunChecklist
-        hasInstagram={hasInstagram}
-        hasAudit={hasAudit}
-        hasPlanIdeas={hasPlanIdeas}
-        hasRatedIdea={hasRatedIdea}
-        canGeneratePlan={canGeneratePlan}
-        isManaged={isManaged}
-        auditPending={auditPending}
-      />
+      {auditJustCompleted && !hasPlanIdeas && !auditPending ? (
+        <div className="mt-6 rounded-xl border-2 border-brand bg-brand/10 px-6 py-5">
+          <p className="text-xs font-bold uppercase tracking-widest text-brand">
+            Your audit is ready
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-foreground">
+            We&apos;ve analysed your Instagram. Generate your first content plan
+            below — it&apos;s been shaped by your real data.
+          </p>
+        </div>
+      ) : null}
+
+      {!hasAudit && auditPending ? (
+        <AuditPendingSection artistId={activeArtistId} />
+      ) : null}
+
+      {!hasAudit && !auditPending ? (
+        <section
+          id="audit-section"
+          className="mt-10 rounded-xl border-2 border-brand bg-card p-8 text-center"
+        >
+          <p className="text-xs font-bold uppercase tracking-widest text-brand">
+            Next step
+          </p>
+          <h2 className="mt-3 text-2xl font-black uppercase tracking-tight text-foreground">
+            Run your free Instagram audit
+          </h2>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-strong">
+            We&apos;ll analyse your last 10 posts, follower patterns, and content
+            style — takes about 3 minutes. Your content plan will be shaped by what
+            we find.
+          </p>
+          <div className="mt-6">
+            <InsightsAuditEmptyState
+              embedded
+              artistId={activeArtistId}
+              instagramHandle={profile?.instagram_handle ?? null}
+            />
+          </div>
+        </section>
+      ) : null}
 
       {audit ? (
         <section className="mt-10 rounded-xl border border-card-border bg-card p-7">
@@ -575,21 +604,10 @@ export default async function HomePage({
         revisionRequest={revisionRequest}
         hasJustUpgraded={upgraded === "true"}
         hasJustRegistered={registered === "true"}
-        auditJustCompleted={auditJustCompleted}
+        hasInstagramHandle={hasInstagram}
       />
 
-      {!audit ? (
-        <div
-          id="audit-section"
-          className="mt-10 rounded-xl border border-dashed border-card-border bg-input p-10 text-center"
-        >
-          <InsightsAuditEmptyState
-            artistId={activeArtistId}
-            instagramHandle={profile?.instagram_handle ?? null}
-            auditPending={auditPending}
-          />
-        </div>
-      ) : (
+      {audit ? (
         <>
           <section className="mt-10 rounded-xl border border-card-border bg-card p-7 border-l-4 border-brand">
             <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
@@ -604,7 +622,7 @@ export default async function HomePage({
             <FullAnalysisCollapsible sections={fullAnalysisSections} />
           </div>
         </>
-      )}
+      ) : null}
 
       <section className="mt-10 rounded-xl border border-card-border bg-card p-7">
         <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">

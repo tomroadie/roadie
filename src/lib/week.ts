@@ -1,4 +1,8 @@
-/** Monday start of week in local timezone, as YYYY-MM-DD */
+/**
+ * Monday start of week in local timezone, as YYYY-MM-DD.
+ * @example getMondayDateString() → this week's Monday
+ * @example getMondayDateString(new Date("2026-05-21")) → "2026-05-19"
+ */
 export function getMondayDateString(d = new Date()): string {
   const date = new Date(d);
   date.setHours(0, 0, 0, 0);

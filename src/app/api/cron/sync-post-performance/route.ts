@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { getMondayDateString } from "@/lib/week";
+import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 
 const GRAPH_VERSION = "v19.0";
 
@@ -48,6 +49,94 @@ function engagementRate(
   return Math.round(((likes + comments) / followers) * 100 * 100) / 100;
 }
 
+async function linkPostsToPlanIdeas(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  artistId: string
+): Promise<{ linked: number; errors: string[] }> {
+  const errors: string[] = [];
+  let linked = 0;
+
+  const { data: plans, error: plansError } = await supabase
+    .from("weekly_plans")
+    .select("id, week_start, ideas")
+    .eq("artist_id", artistId)
+    .order("created_at", { ascending: false })
+    .limit(8);
+
+  if (plansError) {
+    errors.push(`${artistId}: linking plans fetch failed: ${plansError.message}`);
+    return { linked, errors };
+  }
+
+  const ideasByWeekStart = new Map<
+    string,
+    Array<{ hook: string; format: string }>
+  >();
+
+  for (const plan of plans ?? []) {
+    const weekStart = String(plan.week_start ?? "").trim();
+    if (!weekStart) continue;
+
+    const ideas = normalizeIdeasFromDb(plan.ideas) ?? [];
+    if (ideas.length === 0) continue;
+
+    ideasByWeekStart.set(
+      weekStart,
+      ideas.map((idea) => ({
+        hook: idea.hook.trim(),
+        format: idea.format.trim(),
+      }))
+    );
+  }
+
+  if (ideasByWeekStart.size === 0) {
+    return { linked, errors };
+  }
+
+  const { data: unlinkedPosts, error: postsError } = await supabase
+    .from("post_performance")
+    .select("id, week_start, caption")
+    .eq("artist_id", artistId)
+    .is("linked_idea_hook", null)
+    .in("week_start", [...ideasByWeekStart.keys()]);
+
+  if (postsError) {
+    errors.push(`${artistId}: linking posts fetch failed: ${postsError.message}`);
+    return { linked, errors };
+  }
+
+  for (const post of unlinkedPosts ?? []) {
+    const weekStart = String(post.week_start ?? "").trim();
+    const ideas = ideasByWeekStart.get(weekStart);
+    if (!ideas) continue;
+
+    const caption = String(post.caption ?? "").trim().toLowerCase();
+    if (!caption) continue;
+
+    for (const idea of ideas) {
+      const hookLower = idea.hook.toLowerCase();
+      if (!hookLower || !caption.includes(hookLower)) continue;
+
+      const { error: linkError } = await supabase
+        .from("post_performance")
+        .update({
+          linked_idea_hook: idea.hook,
+          linked_idea_format: idea.format,
+        })
+        .eq("id", post.id);
+
+      if (linkError) {
+        errors.push(`${artistId}/${post.id}: linking failed: ${linkError.message}`);
+      } else {
+        linked += 1;
+      }
+      break;
+    }
+  }
+
+  return { linked, errors };
+}
+
 export async function GET(request: Request) {
   try {
     const authHeader = request.headers.get("authorization");
@@ -90,6 +179,7 @@ export async function GET(request: Request) {
     });
 
     let synced = 0;
+    let linked = 0;
     const errors: string[] = [];
 
     for (const profile of connectedProfiles) {
@@ -171,7 +261,6 @@ export async function GET(request: Request) {
                 likes,
                 comments,
                 engagement_rate: rate,
-                scraped_at: scrapedAt,
               })
               .eq("artist_id", artistId)
               .eq("instagram_post_id", instagramPostId);
@@ -211,6 +300,16 @@ export async function GET(request: Request) {
 
           synced += 1;
         }
+
+        try {
+          const linkResult = await linkPostsToPlanIdeas(supabase, artistId);
+          linked += linkResult.linked;
+          errors.push(...linkResult.errors);
+        } catch (e) {
+          errors.push(
+            `${artistId}: linking pass failed: ${e instanceof Error ? e.message : "Unknown error"}`
+          );
+        }
       } catch (e) {
         errors.push(
           `${artistId}: ${e instanceof Error ? e.message : "Unknown error"}`
@@ -221,6 +320,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       synced,
       artists: connectedProfiles.length,
+      linked,
       errors,
     });
   } catch (err) {

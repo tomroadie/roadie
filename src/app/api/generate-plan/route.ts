@@ -324,6 +324,8 @@ type PostPerformanceRow = {
   engagement_rate: number | null;
   post_date: string | null;
   caption: string | null;
+  linked_idea_hook: string | null;
+  linked_idea_format: string | null;
 };
 
 const POST_PERFORMANCE_TYPES = ["reel", "carousel", "image"] as const;
@@ -427,6 +429,35 @@ ${bestType.type} — lean into this format this week.
 `
     : "";
 
+  const linkedPosts = rows
+    .filter(
+      (row) =>
+        String(row.linked_idea_hook ?? "").trim() &&
+        (Number(row.engagement_rate) || 0) > 0
+    )
+    .sort(
+      (a, b) =>
+        (Number(b.engagement_rate) || 0) - (Number(a.engagement_rate) || 0)
+    )
+    .slice(0, 5);
+
+  const linkedSection =
+    linkedPosts.length > 0
+      ? `### What worked from past plans
+${linkedPosts
+  .map((post) => {
+    const hook = String(post.linked_idea_hook ?? "").trim();
+    const format = String(post.linked_idea_format ?? "unknown").trim();
+    const rate = (Number(post.engagement_rate) || 0).toFixed(2);
+    return `- "${hook}" (${format}) → ${rate}% engagement`;
+  })
+  .join("\n")}
+
+Use the "What worked from past plans" list as strong directional signals. These are ideas from previous Roadie plans that the artist actually posted and that generated measurable engagement. Build on these themes and formats — do not repeat them directly.
+
+`
+      : "";
+
   return `## Post performance history (${rows.length} posts analysed)
 
 ### By format
@@ -438,7 +469,7 @@ ${trendSentence}
 ### Top performing posts (for directional reference)
 ${topLines}
 
-Use this data to weight format choices in the plan. If reels are outperforming other formats, more ideas should be reels. If a format is consistently underperforming, deprioritise it unless there is a strong strategic reason.
+${linkedSection}Use this data to weight format choices in the plan. If reels are outperforming other formats, more ideas should be reels. If a format is consistently underperforming, deprioritise it unless there is a strong strategic reason.
 `;
 }
 
@@ -608,7 +639,7 @@ export async function POST(request: Request) {
     const { data: performanceRows, error: performanceError } = await supabase
       .from("post_performance")
       .select(
-        "post_type, likes, comments, views, engagement_rate, post_date, caption"
+        "post_type, likes, comments, views, engagement_rate, post_date, caption, linked_idea_hook, linked_idea_format"
       )
       .eq("artist_id", activeArtistId)
       .order("post_date", { ascending: false })
@@ -921,7 +952,7 @@ No markdown fences, no commentary outside the JSON object.`;
   if (existing?.id) {
     const { error: updateError } = await supabase
       .from("weekly_plans")
-      .update(planPayload)
+      .update({ ...planPayload, week_start: weekStart })
       .eq("id", existing.id);
 
     if (updateError) {

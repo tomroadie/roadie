@@ -14,6 +14,10 @@ import {
   AdminArtistsTable,
   type AdminArtistDirectoryRow,
 } from "./admin-artists-table";
+import {
+  RevisionRequestsSection,
+  type RevisionRequestRow,
+} from "./revision-requests-section";
 
 function AdminPageError({ message }: { message: string }) {
   return (
@@ -258,6 +262,72 @@ export default async function AdminPage() {
     }
   }
 
+  const { data: revisionRows, error: revisionError } = await adminSupabase
+    .from("plan_revision_requests")
+    .select(
+      "id, artist_id, week_start, artist_note, created_at, weekly_plan_id, weekly_plans ( ideas )"
+    )
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+
+  if (revisionError) {
+    return (
+      <AdminPageError
+        message={`Could not load revision requests: ${revisionError.message}`}
+      />
+    );
+  }
+
+  const revisionRequests: RevisionRequestRow[] = (revisionRows ?? []).map((r) => {
+    const planJoin = r.weekly_plans as { ideas?: unknown } | null;
+    return {
+      id: String(r.id ?? ""),
+      artist_id: String(r.artist_id ?? ""),
+      week_start: String(r.week_start ?? ""),
+      artist_note: String(r.artist_note ?? ""),
+      created_at:
+        typeof r.created_at === "string"
+          ? r.created_at
+          : r.created_at != null
+            ? String(r.created_at)
+            : "",
+      weekly_plan_id:
+        typeof r.weekly_plan_id === "string" ? r.weekly_plan_id : null,
+      plan_ideas: planJoin?.ideas ?? null,
+    };
+  });
+
+  const revisionArtistIds = Array.from(
+    new Set(revisionRequests.map((r) => r.artist_id).filter(Boolean))
+  );
+
+  const revisionArtistNames: Record<string, string> = { ...artistNames };
+  const missingRevisionArtistIds = revisionArtistIds.filter(
+    (id) => !revisionArtistNames[id]
+  );
+
+  if (missingRevisionArtistIds.length) {
+    const { data: revisionArtistRows, error: revisionArtistNamesError } =
+      await adminSupabase
+        .from("profiles")
+        .select("id, artist_name")
+        .in("id", missingRevisionArtistIds);
+
+    if (revisionArtistNamesError) {
+      return (
+        <AdminPageError
+          message={`Could not load revision artist names: ${revisionArtistNamesError.message}`}
+        />
+      );
+    }
+
+    for (const row of revisionArtistRows ?? []) {
+      const id = String(row.id ?? "");
+      if (!id) continue;
+      revisionArtistNames[id] = String(row.artist_name ?? "");
+    }
+  }
+
   return (
     <div className="mx-auto flex min-h-full w-full max-w-6xl flex-1 flex-col px-4 py-10 sm:px-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -290,6 +360,11 @@ export default async function AdminPage() {
       </header>
 
       <AppNavWrapper />
+
+      <RevisionRequestsSection
+        requests={revisionRequests}
+        artistNames={revisionArtistNames}
+      />
 
       <UsageAnalytics totalCounts={totalCounts} recentEvents={recentEvents} />
 

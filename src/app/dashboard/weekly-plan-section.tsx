@@ -1,7 +1,7 @@
 "use client";
 
 import type { ContentIdea } from "@/types/content-plan";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { EventRow } from "@/types/event";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -285,6 +285,12 @@ type WeeklyPlanSectionProps = {
   artistId: string;
   hideUpcomingThisWeek?: boolean;
   isManaged?: boolean;
+  revisionRequest?: {
+    id: string;
+    status: "pending" | "approved" | "declined";
+    admin_note: string | null;
+    artist_acknowledged_at: string | null;
+  } | null;
 };
 
 function hoursSince(iso: string): number {
@@ -317,6 +323,7 @@ export function WeeklyPlanSection({
   artistId,
   hideUpcomingThisWeek = false,
   isManaged = false,
+  revisionRequest = null,
 }: WeeklyPlanSectionProps) {
   const router = useRouter();
   const [ideas, setIdeas] = useState<ContentIdea[] | null>(initialIdeas);
@@ -330,6 +337,12 @@ export function WeeklyPlanSection({
     avoid: "",
     focus: "",
   });
+  const [revision, setRevision] = useState(revisionRequest);
+  const [showRevisionForm, setShowRevisionForm] = useState(false);
+  const [revisionNote, setRevisionNote] = useState("");
+  const [revisionSubmitting, setRevisionSubmitting] = useState(false);
+  const [revisionSent, setRevisionSent] = useState(false);
+  const refreshedApprovedRevisionId = useRef<string | null>(null);
   const normalizedPlan = normalizePlan(plan);
   const canGenerate = canDo(normalizedPlan, "canGeneratePlan", isAdmin);
   const supabase = useMemo(() => createClient(), []);
@@ -337,6 +350,26 @@ export function WeeklyPlanSection({
   const freePlanNoIdeasYet = !canGenerate && !hasPlanIdeas;
   const isPlanBeingPrepared =
     planStatus === "pending_review" && !hasPlanIdeas;
+
+  useEffect(() => {
+    setIdeas(initialIdeas);
+  }, [initialIdeas]);
+
+  useEffect(() => {
+    setRevision(revisionRequest);
+  }, [revisionRequest]);
+
+  useEffect(() => {
+    if (
+      revision?.status === "approved" &&
+      !revision.artist_acknowledged_at &&
+      revision.id &&
+      refreshedApprovedRevisionId.current !== revision.id
+    ) {
+      refreshedApprovedRevisionId.current = revision.id;
+      router.refresh();
+    }
+  }, [revision, router]);
 
   useEffect(() => {
     if (!auditPending || hasAudit) return;
@@ -416,6 +449,195 @@ export function WeeklyPlanSection({
       setLoadingStep(null);
     };
   }, [loading]);
+
+  async function handleAcknowledgeRevision() {
+    if (!revision?.id) return;
+    setError(null);
+    try {
+      const res = await fetch("/api/revision-request/acknowledge", {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request_id: revision.id }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(data.error ?? "Could not dismiss message.");
+        return;
+      }
+      setRevision((prev) =>
+        prev
+          ? { ...prev, artist_acknowledged_at: new Date().toISOString() }
+          : prev
+      );
+      router.refresh();
+    } catch {
+      setError("Network error. Try again.");
+    }
+  }
+
+  async function handleSubmitRevisionRequest() {
+    const note = revisionNote.trim();
+    if (!note) {
+      setError("Please describe what you would like changed.");
+      return;
+    }
+
+    setError(null);
+    setRevisionSubmitting(true);
+    try {
+      const res = await fetch("/api/revision-request", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          artist_id: artistId,
+          artist_note: note,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+
+      if (res.status === 409) {
+        setError(data.error ?? "You already have a pending request this week.");
+        return;
+      }
+
+      if (!res.ok) {
+        setError(data.error ?? "Could not send revision request.");
+        return;
+      }
+
+      setRevisionSent(true);
+      setShowRevisionForm(false);
+      setRevisionNote("");
+      setRevision({
+        id: revision?.id ?? "pending",
+        status: "pending",
+        admin_note: null,
+        artist_acknowledged_at: null,
+      });
+      router.refresh();
+    } catch {
+      setError("Network error. Try again.");
+    } finally {
+      setRevisionSubmitting(false);
+    }
+  }
+
+  function renderRevisionRequestUi() {
+    if (isManaged || !hasPlanIdeas || isPlanBeingPrepared) return null;
+
+    if (revision?.status === "pending" || revisionSent) {
+      return (
+        <p className="mt-8 text-sm text-muted">
+          Revision requested — we&apos;ll review it shortly.
+        </p>
+      );
+    }
+
+    if (
+      revision?.status === "approved" &&
+      !revision.artist_acknowledged_at
+    ) {
+      return (
+        <div className="mt-8 flex flex-col gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm leading-relaxed text-emerald-100">
+            Your revision has been applied.
+          </p>
+          <button
+            type="button"
+            onClick={() => void handleAcknowledgeRevision()}
+            className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-emerald-500/40 bg-transparent px-3 text-xs font-semibold uppercase tracking-wide text-emerald-100 transition-colors hover:border-emerald-400"
+          >
+            Dismiss
+          </button>
+        </div>
+      );
+    }
+
+    if (
+      revision?.status === "declined" &&
+      !revision.artist_acknowledged_at
+    ) {
+      return (
+        <div className="mt-8 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm leading-relaxed text-amber-100">
+                Revision not applied this week.
+              </p>
+              {revision.admin_note?.trim() ? (
+                <p className="mt-2 text-xs leading-relaxed text-amber-100/80">
+                  {revision.admin_note.trim()}
+                </p>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleAcknowledgeRevision()}
+              className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-amber-500/30 bg-transparent px-3 text-xs font-semibold uppercase tracking-wide text-amber-100 transition-colors hover:border-amber-400"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (showRevisionForm) {
+      return (
+        <div className="mt-8 rounded-xl border border-card-border bg-card p-5">
+          <label className="block">
+            <span className="text-sm text-muted">
+              What would you like changed?
+            </span>
+            <textarea
+              value={revisionNote}
+              onChange={(e) => setRevisionNote(e.target.value)}
+              placeholder="What would you like changed?"
+              maxLength={500}
+              rows={3}
+              className="mt-2 w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted"
+            />
+          </label>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void handleSubmitRevisionRequest()}
+              disabled={revisionSubmitting}
+              className="inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-xs font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {revisionSubmitting ? "Sending…" : "Send request"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowRevisionForm(false);
+                setRevisionNote("");
+              }}
+              disabled={revisionSubmitting}
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-xs font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setShowRevisionForm(true);
+          setError(null);
+        }}
+        className="mt-8 text-sm text-muted transition-colors hover:text-foreground"
+      >
+        Not quite right? Request a revision →
+      </button>
+    );
+  }
 
   async function runGenerate(answersParam: PlanAnswers | null) {
     setError(null);
@@ -539,7 +761,7 @@ export function WeeklyPlanSection({
             Your plan arrives every Monday. Check your email on Friday for your
             weekly check-in.
           </p>
-        ) : canGenerate ? (
+        ) : canGenerate && !hasPlanIdeas ? (
           <button
             id="dashboard-generate-plan"
             type="button"
@@ -547,11 +769,7 @@ export function WeeklyPlanSection({
             disabled={loading}
             className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading
-              ? "Generating…"
-              : ideas?.length
-                ? "Regenerate plan"
-                : "Generate my weekly plan"}
+            {loading ? "Generating…" : "Generate my weekly plan"}
           </button>
         ) : freePlanNoIdeasYet ? (
           auditPending ? (
@@ -633,6 +851,7 @@ export function WeeklyPlanSection({
               </li>
             ))}
           </ul>
+          {renderRevisionRequestUi()}
         </>
       ) : isPlanBeingPrepared ? (
         <div className="mt-6 rounded-xl border border-card-border bg-card p-5">
@@ -853,12 +1072,12 @@ export function WeeklyPlanSection({
             <h3 className="text-base font-semibold text-foreground">
               {confirm === "no-dates"
                 ? "Your dates are empty"
-                : "Regenerate your plan?"}
+                : "Generate your plan?"}
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-muted">
               {confirm === "no-dates"
                 ? "Content ideas will be more generic without dates. Add dates first or continue anyway?"
-                : "You generated a plan today. Regenerate with updated info?"}
+                : "You generated a plan today. Generate again with updated info?"}
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
               {confirm === "no-dates" ? (
@@ -887,7 +1106,7 @@ export function WeeklyPlanSection({
                 onClick={confirmGenerateAnyway}
                 className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
               >
-                {confirm === "no-dates" ? "Generate anyway" : "Regenerate"}
+                {confirm === "no-dates" ? "Generate anyway" : "Generate anyway"}
               </button>
             </div>
           </div>

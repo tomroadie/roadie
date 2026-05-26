@@ -346,6 +346,37 @@ export default async function HomePage() {
     .toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
     .toUpperCase();
 
+  const { data: revisionRequestRow } = await supabase
+    .from("plan_revision_requests")
+    .select("id, status, admin_note, artist_acknowledged_at")
+    .eq("artist_id", activeArtistId)
+    .eq("week_start", weekStart)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const revisionRequest =
+    revisionRequestRow?.id &&
+    (revisionRequestRow.status === "pending" ||
+      revisionRequestRow.status === "approved" ||
+      revisionRequestRow.status === "declined")
+      ? {
+          id: String(revisionRequestRow.id),
+          status: revisionRequestRow.status as
+            | "pending"
+            | "approved"
+            | "declined",
+          admin_note:
+            typeof revisionRequestRow.admin_note === "string"
+              ? revisionRequestRow.admin_note
+              : null,
+          artist_acknowledged_at:
+            typeof revisionRequestRow.artist_acknowledged_at === "string"
+              ? revisionRequestRow.artist_acknowledged_at
+              : null,
+        }
+      : null;
+
   const hasPlanIdeas = (initialIdeas?.length ?? 0) > 0;
   const momentum =
     plan === "free" && !isAdmin && !hasPlanIdeas
@@ -503,6 +534,7 @@ export default async function HomePage() {
         artistId={activeArtistId}
         hideUpcomingThisWeek
         isManaged={profile?.is_managed ?? false}
+        revisionRequest={revisionRequest}
       />
 
       {!audit ? (

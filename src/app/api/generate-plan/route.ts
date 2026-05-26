@@ -55,12 +55,25 @@ type PlanSlot = {
 type PlanSlotsResponse = { slots: PlanSlot[] };
 
 function stripCodeFence(raw: string): string {
-  const trimmed = raw.trim();
+  let trimmed = raw.trim();
+  trimmed = trimmed.replace(/^```(?:json)?\s*\n?/i, "");
+  trimmed = trimmed.replace(/\n?```\s*$/i, "");
   const fence = /^```(?:json)?\s*\n?([\s\S]*?)\n?```$/m.exec(trimmed);
   if (fence) {
     return fence[1].trim();
   }
-  return trimmed;
+  return trimmed.trim();
+}
+
+function replaceNewlinesInQuotedStrings(text: string): string {
+  return text.replace(/"(?:[^"\\]|\\.)*"/g, (match) =>
+    match.replace(/\r\n|\n|\r/g, "\\n")
+  );
+}
+
+function cleanPlanSlotsJsonText(raw: string): string {
+  const withoutFences = stripCodeFence(raw);
+  return replaceNewlinesInQuotedStrings(withoutFences);
 }
 
 function isPlanConcept(value: unknown): value is PlanConcept {
@@ -91,8 +104,18 @@ function isPlanSlot(value: unknown): value is PlanSlot {
 }
 
 function parsePlanSlotsJson(text: string): PlanSlotsResponse {
-  const inner = stripCodeFence(text);
-  const parsed: unknown = JSON.parse(inner);
+  const cleaned = cleanPlanSlotsJsonText(text);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch (e) {
+    console.error("Failed to parse plan slots JSON", {
+      error: e instanceof Error ? e.message : String(e),
+      raw: text,
+      cleaned,
+    });
+    throw e instanceof Error ? e : new Error("Invalid JSON from model");
+  }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("Response is not a JSON object");
   }
@@ -599,6 +622,8 @@ Respond with ONLY valid JSON in this exact structure:
     }
   ]
 }
+
+IMPORTANT: Ensure all JSON string values use \\n for line breaks, never literal newlines. Keep captions concise — under 200 characters each.
 
 No markdown fences, no commentary outside the JSON object.`;
 

@@ -260,6 +260,11 @@ export default async function HomePage({
   const plan = getPlanForGating(profile ?? {});
   const canReview = canDo(plan, "canReview", isAdmin);
   const canViewLiveSocialData = canDo(plan, "canViewLiveSocialData", isAdmin);
+  const canViewEngagementTrends = canDo(
+    plan,
+    "canViewEngagementTrends",
+    isAdmin
+  );
 
   const { data: weeklyPlan } = await supabase
     .from("weekly_plans")
@@ -695,22 +700,185 @@ export default async function HomePage({
             </div>
           </div>
         ) : (
-          <div className="mt-5 rounded-xl border border-card-border bg-input p-6 opacity-60">
-            <p className="text-sm leading-relaxed text-muted">
-              Connect your Instagram to see real-time performance data and post
-              analytics.
-            </p>
-            <div className="mt-5">
-              <Link
-                href="/pricing"
-                className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
-              >
-                Upgrade to Pro
-              </Link>
+          <div className="relative mt-5 overflow-hidden rounded-xl">
+            <div
+              className="pointer-events-none select-none space-y-3 blur-sm opacity-50"
+              aria-hidden="true"
+            >
+              {[
+                {
+                  likes: 142,
+                  comments: 23,
+                  eng: "6.2%",
+                  label: "Your most recent post",
+                },
+                {
+                  likes: 98,
+                  comments: 11,
+                  eng: "4.8%",
+                  label: "Two days ago",
+                },
+                {
+                  likes: 203,
+                  comments: 31,
+                  eng: "8.1%",
+                  label: "Last week",
+                },
+              ].map((post, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between rounded-lg bg-input px-4 py-3"
+                >
+                  <p className="text-xs text-muted">{post.label}</p>
+                  <div className="flex gap-4 text-xs">
+                    <span className="font-semibold text-foreground">
+                      ♥ {post.likes}
+                    </span>
+                    <span className="font-semibold text-foreground">
+                      💬 {post.comments}
+                    </span>
+                    <span className="font-bold text-brand">{post.eng}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-card/80 backdrop-blur-[2px]">
+              <div className="px-4 text-center">
+                <p className="text-2xl">📊</p>
+                <p className="mt-2 text-sm font-black uppercase tracking-wide text-foreground">
+                  Live Instagram stats
+                </p>
+                <p className="mt-1 max-w-xs text-sm text-muted">
+                  Connect your Instagram Business account to see real-time
+                  performance data feeding into your weekly plan.
+                </p>
+                <Link
+                  href="/pricing"
+                  className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95"
+                >
+                  Unlock with Pro →
+                </Link>
+              </div>
             </div>
           </div>
         )}
       </section>
+
+      {!canViewEngagementTrends ? (
+        <section className="relative mt-10 overflow-hidden rounded-xl border border-card-border bg-card p-7">
+          <div
+            className="pointer-events-none select-none blur-sm opacity-60"
+            aria-hidden="true"
+          >
+            <p className="text-xs font-bold uppercase tracking-widest text-brand">
+              Engagement trends
+            </p>
+            <h2 className="mt-2 text-lg font-black uppercase tracking-tight text-foreground">
+              Week-on-week performance
+            </h2>
+            <div className="mt-5 flex h-24 items-end gap-2">
+              {[40, 65, 45, 80, 55, 90, 70].map((h, i) => (
+                <div
+                  key={i}
+                  className="flex-1 rounded-t bg-brand/40"
+                  style={{ height: `${h}%` }}
+                />
+              ))}
+            </div>
+            <div className="mt-2 flex justify-between">
+              <span className="text-xs text-muted">Mon</span>
+              <span className="text-xs text-muted">Sun</span>
+            </div>
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="rounded-lg bg-input p-3">
+                <p className="text-xs text-muted">Avg engagement</p>
+                <p className="text-xl font-black text-foreground">4.2%</p>
+              </div>
+              <div className="rounded-lg bg-input p-3">
+                <p className="text-xs text-muted">Best format</p>
+                <p className="text-xl font-black text-foreground">Reels</p>
+              </div>
+              <div className="rounded-lg bg-input p-3">
+                <p className="text-xs text-muted">Trend</p>
+                <p className="text-xl font-black text-brand">↑ 12%</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-card/80 backdrop-blur-[2px]">
+            <div className="px-6 text-center">
+              <p className="text-2xl">📈</p>
+              <p className="mt-2 text-sm font-black uppercase tracking-wide text-foreground">
+                Engagement trends
+              </p>
+              <p className="mt-1 max-w-xs text-sm text-muted">
+                See how your content is performing week on week — format
+                breakdowns, engagement trends, and what&apos;s working.
+              </p>
+              <Link
+                href="/pricing"
+                className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95"
+              >
+                Unlock with Pro →
+              </Link>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {!canReview ? (
+        <section className="relative mt-10 overflow-hidden rounded-xl border border-card-border bg-card p-7">
+          <div
+            className="pointer-events-none select-none blur-sm opacity-60"
+            aria-hidden="true"
+          >
+            <p className="text-xs font-bold uppercase tracking-widest text-brand">
+              Content review
+            </p>
+            <h2 className="mt-2 text-lg font-black uppercase tracking-tight text-foreground">
+              Expert feedback on your ideas
+            </h2>
+            <div className="mt-5 space-y-3">
+              <div className="rounded-xl border border-card-border bg-input p-4">
+                <p className="text-xs font-bold text-brand">REEL</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">
+                  Behind the scenes — recording day
+                </p>
+                <div className="mt-3 rounded-lg bg-card p-3">
+                  <p className="mb-1 text-xs font-bold uppercase tracking-wide text-brand">
+                    Feedback
+                  </p>
+                  <p className="text-xs text-muted-strong">
+                    Strong concept. Lead with the moment of tension — the take
+                    that went wrong before the one that didn&apos;t. That&apos;s
+                    the hook. Keep it under 30 seconds.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-card/80 backdrop-blur-[2px]">
+            <div className="px-6 text-center">
+              <p className="text-2xl">✍️</p>
+              <p className="mt-2 text-sm font-black uppercase tracking-wide text-foreground">
+                Content review
+              </p>
+              <p className="mt-1 max-w-xs text-sm text-muted">
+                Submit your plan ideas for expert feedback before you post. 2
+                reviews included per month on Pro.
+              </p>
+              <Link
+                href="/pricing"
+                className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95"
+              >
+                Unlock with Pro →
+              </Link>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="mt-10 rounded-xl border border-card-border bg-card p-6">
         <p className="text-xs font-bold uppercase tracking-widest text-brand">

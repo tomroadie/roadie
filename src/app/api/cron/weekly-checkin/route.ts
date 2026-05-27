@@ -208,7 +208,8 @@ export async function GET(request: Request) {
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
       .select("id, artist_name, owner_user_id, is_managed")
-      .or(ELIGIBLE_PROFILES_FILTER);
+      .or(ELIGIBLE_PROFILES_FILTER)
+      .eq("cron_active", true);
 
     if (profilesError) {
       return NextResponse.json(

@@ -8,7 +8,7 @@ import { GENRES } from "@/app/onboarding/genres";
 import { enqueueNewLead } from "@/lib/new-lead-pipeline";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { normalizePlan } from "@/lib/plan-limits";
+import { getPlanForGating } from "@/lib/plan-limits";
 
 export type AdminCreateArtistState = { error?: string } | null;
 
@@ -89,7 +89,7 @@ export async function adminCreateClientArtist(
 
   const { data: planRow, error: planError } = await supabase
     .from("profiles")
-    .select("plan")
+    .select("plan, plan_override")
     .eq("owner_user_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -98,7 +98,7 @@ export async function adminCreateClientArtist(
     return { error: planError.message };
   }
 
-  const plan = normalizePlan(planRow?.plan);
+  const plan = getPlanForGating(planRow ?? {});
 
   const id = crypto.randomUUID();
 

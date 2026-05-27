@@ -7,7 +7,7 @@ import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { getMondayDateString } from "@/lib/week";
 import type { ContentIdea } from "@/types/content-plan";
 import { NextResponse } from "next/server";
-import { canDo, normalizePlan } from "@/lib/plan-limits";
+import { canDo, getPlanForGating } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 import { trackUsage } from "@/lib/track-usage";
 
@@ -523,7 +523,7 @@ export async function POST(request: Request) {
 
     const { data: planRow, error: planError } = await supabase
       .from("profiles")
-      .select("plan")
+      .select("plan, plan_override")
       .eq("owner_user_id", user.id)
       .limit(1)
       .maybeSingle();
@@ -535,7 +535,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const plan = normalizePlan(planRow?.plan);
+    const plan = getPlanForGating(planRow ?? {});
     if (!canDo(plan, "canGeneratePlan", isAdmin)) {
       return NextResponse.json(
         { error: "Upgrade required", details: "Upgrade to generate your weekly plan." },

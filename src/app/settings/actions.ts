@@ -9,7 +9,7 @@ import { GENRES } from "@/app/onboarding/genres";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { maxArtistsAllowed, normalizePlan, type RoadiePlan } from "@/lib/plan-limits";
+import { getPlanForGating, maxArtistsAllowed, type RoadiePlan } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 
 export type AddArtistState =
@@ -226,7 +226,7 @@ export async function addArtist(
 
   const { data: planRow, error: planError } = await supabase
     .from("profiles")
-    .select("plan")
+    .select("plan, plan_override")
     .eq("owner_user_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -235,7 +235,7 @@ export async function addArtist(
     return { error: planError.message };
   }
 
-  const plan = normalizePlan(planRow?.plan);
+  const plan = getPlanForGating(planRow ?? {});
   const maxArtists = maxArtistsAllowed(plan, isAdmin);
 
   const { count: artistCount, error: countError } = await supabase

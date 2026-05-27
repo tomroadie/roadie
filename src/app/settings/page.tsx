@@ -9,7 +9,7 @@ import { InstagramConnectSection } from "./instagram-connect-section";
 import { VoiceForm } from "./voice-form";
 import { PostingGoalForm } from "./posting-goal-form";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
-import { canDo, normalizePlan } from "@/lib/plan-limits";
+import { canDo, getPlanForGating } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 
 export default async function SettingsPage() {
@@ -36,7 +36,7 @@ export default async function SettingsPage() {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, instagram_handle, instagram_user_id, voice_description, posting_frequency, plan"
+      "artist_name, instagram_handle, instagram_user_id, voice_description, posting_frequency, plan, plan_override"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -50,7 +50,7 @@ export default async function SettingsPage() {
   }
 
   const isAdmin = await userIsAdmin(supabase, user.id);
-  const plan = normalizePlan(profile?.plan);
+  const plan = getPlanForGating(profile ?? {});
   const canConnectLiveStats = canDo(plan, "canViewLiveSocialData", isAdmin);
 
   return (

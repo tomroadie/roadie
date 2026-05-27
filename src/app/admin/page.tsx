@@ -77,8 +77,10 @@ export default async function AdminPage() {
   const { data: profiles, error: profilesError } = await adminSupabase
     .from("profiles")
     .select(
-      "id, artist_name, genre, instagram_handle, plan, owner_user_id, created_at, similar_artists, sound_description, voice_description, is_admin, stripe_customer_id, is_managed"
+      "id, artist_name, genre, instagram_handle, plan, plan_override, cron_active, owner_user_id, created_at, similar_artists, sound_description, voice_description, is_admin, stripe_customer_id, is_managed"
     )
+    .not("artist_name", "is", null)
+    .neq("artist_name", "")
     .order("created_at", { ascending: false });
 
   if (profilesError) {
@@ -124,7 +126,35 @@ export default async function AdminPage() {
     listPage += 1;
   }
 
-  const rowsUnsorted: AdminArtistDirectoryRow[] = (profiles ?? []).map((p) => {
+  const { data: weeklyPlanRows, error: weeklyPlansError } = await adminSupabase
+    .from("weekly_plans")
+    .select("artist_id, created_at")
+    .order("created_at", { ascending: false });
+
+  if (weeklyPlansError) {
+    return (
+      <AdminPageError
+        message={`Could not load weekly plans: ${weeklyPlansError.message}`}
+      />
+    );
+  }
+
+  const lastPlanByArtistId = new Map<string, string>();
+  for (const row of weeklyPlanRows ?? []) {
+    const artistId = String(row.artist_id ?? "").trim();
+    if (!artistId || lastPlanByArtistId.has(artistId)) continue;
+    const createdAt =
+      typeof row.created_at === "string"
+        ? row.created_at
+        : row.created_at != null
+          ? String(row.created_at)
+          : "";
+    if (createdAt) lastPlanByArtistId.set(artistId, createdAt);
+  }
+
+  const rowsUnsorted: AdminArtistDirectoryRow[] = (profiles ?? [])
+    .filter((p) => String(p.artist_name ?? "").trim().length > 0)
+    .map((p) => {
     const profileCreated =
       typeof p.created_at === "string" ? p.created_at : null;
     const createdAt =
@@ -140,9 +170,15 @@ export default async function AdminPage() {
       genre: p.genre ?? "",
       instagram_handle: (p.instagram_handle ?? "").replace(/^@/, ""),
       plan: p.plan ?? "free",
+      plan_override:
+        typeof p.plan_override === "string" && p.plan_override.trim()
+          ? p.plan_override.trim().toLowerCase()
+          : null,
+      cron_active: p.cron_active !== false,
       is_managed: p.is_managed === true,
+      last_plan_at: lastPlanByArtistId.get(p.id) ?? null,
     };
-  });
+    });
 
   const rows = rowsUnsorted.sort(
     (a, b) =>

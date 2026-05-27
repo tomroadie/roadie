@@ -3,7 +3,9 @@ const KNOWN_SECTIONS = [
   "Content Pattern",
   "Engagement Reality",
   "Core Problem",
+  "Core Opportunity",
   "Opportunity",
+  "Your Next Move",
 ] as const;
 
 export type ParsedAnalysisSection = {

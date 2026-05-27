@@ -6,7 +6,7 @@ import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { WeeklyPlanSection } from "@/app/dashboard/weekly-plan-section";
 import { InsightsAuditEmptyState } from "@/app/insights/insights-audit-empty-state";
-import { AuditPendingSection } from "@/app/insights/audit-pending-section";
+import { AuditProgressBar } from "@/app/insights/audit-progress-bar";
 import { RecentPostsCards } from "@/app/insights/recent-posts-cards";
 import {
   LiveStatsSection,
@@ -273,6 +273,8 @@ export default async function HomePage({
     .maybeSingle();
 
   const auditPending = !!pendingAudit;
+  const pendingAuditTriggeredAt =
+    (pendingAudit?.created_at as string | undefined) ?? null;
 
   const { data: auditByArtistId, error: auditByArtistIdError } = await supabase
     .from("audits")
@@ -514,7 +516,10 @@ export default async function HomePage({
       ) : null}
 
       {!hasAudit && auditPending ? (
-        <AuditPendingSection artistId={activeArtistId} />
+        <AuditProgressBar
+          artistId={activeArtistId}
+          triggeredAt={pendingAuditTriggeredAt}
+        />
       ) : null}
 
       {!hasAudit && !auditPending ? (

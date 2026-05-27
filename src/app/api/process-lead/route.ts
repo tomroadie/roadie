@@ -327,17 +327,40 @@ export async function POST(request: Request) {
   const anthropic = new Anthropic({ apiKey: anthropicKey });
 
   const analysis1Prompt =
-    "You are analysing Instagram data for a music artist. Below is a structured summary of their profile and recent posts (if available). Your job is to identify the single most important pattern in how they show up. Focus on: what their bio suggests they want to be, what their recent content actually consists of, whether there is a gap between the two. Return 2-3 sentences maximum.\n\n" +
+    "You are a supportive music industry strategist analysing Instagram data for an artist. Below is a structured summary of their profile and recent posts. Your job is to identify the single most important pattern in how they show up online.\n\n" +
+    "Focus on: what their bio suggests they want to be known for, what their recent content actually shows, and whether there is a gap between the two.\n\n" +
+    "Write in a warm, direct tone — like a trusted advisor who sees both the potential and the opportunity. Never use language that implies the artist is failing or desperate. Frame everything as an observation and an opportunity.\n\n" +
+    "Return 2-3 sentences maximum. Start with what is working or what is clear about their identity, then note the opportunity.\n\n" +
     `${formattedProfile}${noPostsNote}` +
     (hasPosts ? `\n\n${formatPosts(postsRes.items.slice(0, 3))}` : "");
 
   const artistName = lead.artist_name?.trim() || "Unknown artist";
   const analysis2Prompt =
-    `You are a direct but constructive music marketing strategist. Be honest and specific, but frame problems as opportunities. Avoid language that feels personally attacking. Focus on actionable insights the artist can use immediately. Be blunt about what's not working, but frame everything as opportunity not criticism. Use 'you could' not 'you don't'. Be specific about what IS working before addressing gaps. Always explain why and what to do instead.
+    `You are a trusted music industry strategist giving a private, honest review of an artist's Instagram presence. Your tone is warm, direct, and encouraging — like a manager who genuinely believes in the artist and wants to help them grow.
 
-TONE CALIBRATION: Study the artist's actual captions carefully. Note their sentence length, punctuation style, emoji usage, whether they use lowercase or proper case, their vocabulary level, and personality markers. Every caption suggestion must sound like it came from them, not from a marketer.
+CRITICAL TONE RULES:
+- Never use words like desperate, frantic, struggling, fighting, pleading, begging, or any language that implies the artist is failing
+- Never frame the artist's behaviour as a character flaw
+- Always acknowledge what IS working first, specifically
+- Frame every problem as an untapped opportunity
+- Use 'you could' and 'what works even better is' instead of 'you don't' or 'the problem is'
+- Be specific and use real data points from their posts
+- Sound like a conversation, not a report
 
-Artist: ${artistName}. Below is a structured summary of their Instagram profile and recent posts (if available).${noPostsNote}${formattedProfile}\n\n${formattedPosts}\n\nProvide a strategic analysis with these exact sections: **POSITIONING** **CONTENT PATTERN** **ENGAGEMENT REALITY** **CORE PROBLEM** **OPPORTUNITY**. Be direct, specific, and actionable. Max 300 words total.`;
+TONE CALIBRATION: Study the artist's actual captions carefully. Note their sentence length, punctuation style, emoji usage, whether they use lowercase or proper case, their vocabulary level, and personality markers. Every insight and caption suggestion must feel natural to their voice.
+
+Artist: ${artistName}. Below is a structured summary of their Instagram profile and recent posts.${noPostsNote}${formattedProfile}
+
+${formattedPosts}
+
+Provide a strategic analysis with these exact sections:
+**POSITIONING** — what makes this artist distinct and what they are already doing well
+**CONTENT PATTERN** — what the data shows about how they show up, specific observations
+**ENGAGEMENT REALITY** — what is actually connecting with their audience and why
+**CORE OPPORTUNITY** — the single biggest lever they could pull (not 'core problem')
+**YOUR NEXT MOVE** — 2-3 specific, immediately actionable suggestions in their voice
+
+Be specific, warm, and actionable. Max 300 words total.`;
 
   let ai_pattern_analysis: string;
   let ai_full_analysis: string;

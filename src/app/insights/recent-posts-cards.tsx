@@ -137,7 +137,13 @@ function Caption({ text }: { text: string }) {
   );
 }
 
-export function RecentPostsCards({ raw }: { raw: string }) {
+export function RecentPostsCards({
+  raw,
+  previewCount = 5,
+}: {
+  raw: string;
+  previewCount?: number;
+}) {
   const posts = useMemo(() => parseRecentPosts(raw), [raw]);
   const [showAll, setShowAll] = useState(false);
 
@@ -154,8 +160,9 @@ export function RecentPostsCards({ raw }: { raw: string }) {
 
   if (validPosts.length === 0) return null;
 
-  const previewCount = 5;
-  const visiblePosts = showAll ? validPosts : validPosts.slice(0, previewCount);
+  const visiblePosts = showAll
+    ? validPosts
+    : validPosts.slice(0, previewCount);
 
   return (
     <section className="rounded-xl border border-card-border bg-card p-7">

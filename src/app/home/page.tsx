@@ -86,6 +86,13 @@ function sortRecentPostsRawByDateDesc(raw: string): string {
   return scored.map((x) => x.block).join("\n\n---\n\n");
 }
 
+function countRecentPostsRaw(raw: string): number {
+  return raw
+    .split(/\n\s*---\s*\n/g)
+    .map((b) => b.trim())
+    .filter(Boolean).length;
+}
+
 function sumInstagramAccountMetric(insightsPayload: unknown, metric: string): number {
   if (!insightsPayload || typeof insightsPayload !== "object") return 0;
   const data = (insightsPayload as { data?: unknown }).data;
@@ -397,6 +404,7 @@ export default async function HomePage({
       : null;
 
   const hasPlanIdeas = (initialIdeas?.length ?? 0) > 0;
+  const isManaged = profile?.is_managed ?? false;
   const hasInstagram = Boolean(profile?.instagram_handle?.trim());
   const profileIncomplete = !profile?.genre?.trim();
   const momentum =
@@ -503,15 +511,27 @@ export default async function HomePage({
       <AppNavWrapper />
 
       {auditJustCompleted && !hasPlanIdeas && !auditPending ? (
-        <div className="mt-6 rounded-xl border-2 border-brand bg-brand/10 px-6 py-5">
-          <p className="text-xs font-bold uppercase tracking-widest text-brand">
-            Your audit is ready
-          </p>
-          <p className="mt-1 text-sm leading-relaxed text-foreground">
-            We&apos;ve analysed your Instagram. Generate your first content plan
-            below — it&apos;s been shaped by your real data.
-          </p>
-        </div>
+        isManaged ? (
+          <div className="mt-6 rounded-xl border-2 border-brand bg-brand/10 px-6 py-5">
+            <p className="text-xs font-bold uppercase tracking-widest text-brand">
+              Your audit is ready
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-foreground">
+              We&apos;ve analysed your Instagram. Your first content plan will
+              arrive on Monday morning.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-6 rounded-xl border-2 border-brand bg-brand/10 px-6 py-5">
+            <p className="text-xs font-bold uppercase tracking-widest text-brand">
+              Your audit is ready
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-foreground">
+              Generate your first content plan below — it&apos;s been shaped by
+              your real data.
+            </p>
+          </div>
+        )
       ) : null}
 
       {!hasAudit ? (
@@ -580,7 +600,7 @@ export default async function HomePage({
         reviews={reviews}
         artistId={activeArtistId}
         hideUpcomingThisWeek
-        isManaged={profile?.is_managed ?? false}
+        isManaged={isManaged}
         revisionRequest={revisionRequest}
         hasJustUpgraded={upgraded === "true"}
         hasJustRegistered={registered === "true"}
@@ -618,10 +638,16 @@ export default async function HomePage({
               timestamps={liveSocialStats.media.map((m) => m.timestamp)}
             />
           </div>
-        ) : audit?.recent_posts_raw?.trim() ? (
+        ) : hasAudit && !liveSocialStats && audit.recent_posts_raw?.trim() ? (
           <div className="mt-5">
+            <p className="mb-3 text-xs text-muted">
+              Showing your last{" "}
+              {countRecentPostsRaw(audit.recent_posts_raw)} posts from your
+              Instagram audit
+            </p>
             <RecentPostsCards
               raw={sortRecentPostsRawByDateDesc(audit.recent_posts_raw)}
+              previewCount={10}
             />
             <p className="mt-5 text-center text-sm text-muted">
               <Link

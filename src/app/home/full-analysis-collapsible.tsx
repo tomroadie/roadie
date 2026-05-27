@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ParsedAnalysisSection } from "@/lib/parse-full-analysis";
 
 function sectionAccent(title: string): { border: string; label: string } {
@@ -13,12 +13,31 @@ function sectionAccent(title: string): { border: string; label: string } {
   return { border: "border-l-zinc-600", label: "text-foreground" };
 }
 
+function analysisSeenKey(artistId: string): string {
+  return `roadie_analysis_seen_${artistId}`;
+}
+
 type FullAnalysisCollapsibleProps = {
   sections: ParsedAnalysisSection[];
+  artistId: string;
 };
 
-export function FullAnalysisCollapsible({ sections }: FullAnalysisCollapsibleProps) {
+export function FullAnalysisCollapsible({
+  sections,
+  artistId,
+}: FullAnalysisCollapsibleProps) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const key = analysisSeenKey(artistId);
+    const seen = localStorage.getItem(key);
+    if (!seen) {
+      localStorage.setItem(key, "true");
+      setOpen(true);
+    } else {
+      setOpen(false);
+    }
+  }, [artistId]);
 
   if (sections.length === 0) return null;
 

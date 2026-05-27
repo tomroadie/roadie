@@ -17,7 +17,7 @@ import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { getMondayDateString } from "@/lib/week";
 import { parseFullAnalysisText } from "@/lib/parse-full-analysis";
-import { canDo, normalizePlan } from "@/lib/plan-limits";
+import { canDo, getPlanForGating } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 import type { EventRow } from "@/types/event";
 
@@ -243,7 +243,7 @@ export default async function HomePage({
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, genre, instagram_handle, plan, voice_description, posting_frequency, is_managed, instagram_user_id, instagram_access_token"
+      "artist_name, genre, instagram_handle, plan, plan_override, voice_description, posting_frequency, is_managed, instagram_user_id, instagram_access_token"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -257,7 +257,7 @@ export default async function HomePage({
     redirect("/onboarding");
   }
 
-  const plan = normalizePlan(profile?.plan);
+  const plan = getPlanForGating(profile ?? {});
   const canReview = canDo(plan, "canReview", isAdmin);
   const canViewLiveSocialData = canDo(plan, "canViewLiveSocialData", isAdmin);
 
@@ -534,6 +534,21 @@ export default async function HomePage({
         )
       ) : null}
 
+      {registered === "true" && !hasInstagram && !auditPending ? (
+        <div className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+          <p className="text-sm leading-relaxed text-amber-100">
+            Welcome to Roadie. Add your Instagram handle in{" "}
+            <Link
+              href="/settings"
+              className="font-semibold underline underline-offset-4 hover:text-amber-50"
+            >
+              Settings
+            </Link>{" "}
+            to run your free audit and unlock your content plan.
+          </p>
+        </div>
+      ) : null}
+
       {!hasAudit ? (
         <AuditCTASection
           artistId={activeArtistId}
@@ -542,6 +557,28 @@ export default async function HomePage({
           initialTriggeredAt={pendingAuditTriggeredAt}
         />
       ) : null}
+
+      <WeeklyPlanSection
+        initialIdeas={initialIdeas}
+        initialIdeaRatings={initialIdeaRatings}
+        upcomingEventsCount={upcomingEventsCount}
+        lastGeneratedAt={lastGeneratedAt}
+        upcomingThisWeek={upcomingThisWeek}
+        plan={plan}
+        planStatus={(weeklyPlan?.status as string | undefined) ?? null}
+        auditPending={auditPending}
+        hasAudit={hasAudit}
+        isAdmin={isAdmin}
+        canReview={canReview}
+        reviews={reviews}
+        artistId={activeArtistId}
+        hideUpcomingThisWeek
+        isManaged={isManaged}
+        revisionRequest={revisionRequest}
+        hasJustUpgraded={upgraded === "true"}
+        hasJustRegistered={false}
+        hasInstagram={hasInstagram}
+      />
 
       {audit ? (
         <section className="mt-10 rounded-xl border border-card-border bg-card p-7">
@@ -585,28 +622,6 @@ export default async function HomePage({
         </section>
       ) : null}
 
-      <WeeklyPlanSection
-        initialIdeas={initialIdeas}
-        initialIdeaRatings={initialIdeaRatings}
-        upcomingEventsCount={upcomingEventsCount}
-        lastGeneratedAt={lastGeneratedAt}
-        upcomingThisWeek={upcomingThisWeek}
-        plan={plan}
-        planStatus={(weeklyPlan?.status as string | undefined) ?? null}
-        auditPending={auditPending}
-        hasAudit={hasAudit}
-        isAdmin={isAdmin}
-        canReview={canReview}
-        reviews={reviews}
-        artistId={activeArtistId}
-        hideUpcomingThisWeek
-        isManaged={isManaged}
-        revisionRequest={revisionRequest}
-        hasJustUpgraded={upgraded === "true"}
-        hasJustRegistered={registered === "true"}
-        hasInstagram={hasInstagram}
-      />
-
       {audit ? (
         <>
           <section className="mt-10 rounded-xl border border-card-border bg-card p-7 border-l-4 border-brand">
@@ -619,7 +634,10 @@ export default async function HomePage({
           </section>
 
           <div className="mt-8">
-            <FullAnalysisCollapsible sections={fullAnalysisSections} />
+            <FullAnalysisCollapsible
+              sections={fullAnalysisSections}
+              artistId={activeArtistId}
+            />
           </div>
         </>
       ) : null}

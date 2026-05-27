@@ -284,7 +284,7 @@ export default function Home() {
             </Link>
             <div className="flex flex-col items-end gap-0.5">
               <Link
-                href="/dashboard"
+                href="/login?mode=signup"
                 onClick={onLeadCtaClick}
                 className="inline-flex h-10 items-center justify-center rounded-lg border px-4 text-sm font-semibold shadow-sm transition-colors hover:bg-white/5"
                 style={{
@@ -355,7 +355,7 @@ export default function Home() {
                   </Link>
                   <div className="flex flex-col gap-1">
                   <Link
-                    href="/dashboard"
+                    href="/login?mode=signup"
                     onClick={() => {
                       onLeadCtaClick();
                       setMobileOpen(false);
@@ -421,7 +421,7 @@ export default function Home() {
 
               <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link
-                  href="/dashboard"
+                  href="/login?mode=signup"
                   onClick={onLeadCtaClick}
                   className="inline-flex h-12 items-center justify-center rounded-xl border px-6 text-base font-semibold shadow-sm transition-colors hover:bg-white/5"
                   style={{
@@ -974,7 +974,7 @@ export default function Home() {
                   </ul>
 
                   <Link
-                    href="/pricing"
+                    href="/login?mode=signup"
                     className={classNames(
                       "mt-8 inline-flex h-11 w-full items-center justify-center rounded-xl px-5 text-sm font-semibold transition-colors",
                       plan.highlight
@@ -1044,7 +1044,7 @@ export default function Home() {
                   </Link>
                   <div className="flex flex-col gap-1">
                     <Link
-                      href="/dashboard"
+                      href="/login?mode=signup"
                       onClick={onLeadCtaClick}
                       className="inline-flex h-11 items-center justify-center rounded-xl border px-5 text-sm font-semibold shadow-sm transition-colors hover:bg-white/5"
                       style={{
@@ -1150,7 +1150,7 @@ export default function Home() {
               </p>
               <div className="mt-10 flex flex-col items-center gap-2">
                 <Link
-                  href="/dashboard"
+                  href="/login?mode=signup"
                   onClick={onLeadCtaClick}
                   className="inline-flex h-12 items-center justify-center rounded-xl border px-7 text-base font-semibold shadow-sm transition-colors hover:bg-white/5"
                   style={{
@@ -1203,7 +1203,7 @@ export default function Home() {
             </Link>
             <div className="flex flex-col items-center gap-0.5 sm:items-end">
               <Link
-                href="/dashboard"
+                href="/login?mode=signup"
                 className="inline-flex h-10 items-center justify-center rounded-lg border px-4 text-sm font-semibold shadow-sm transition-colors hover:bg-white/5"
                 style={{
                   borderColor: "rgba(0,255,135,0.55)",

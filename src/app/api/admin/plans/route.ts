@@ -61,7 +61,7 @@ function generatePlanReadyEmail(args: {
 
   const text = [
     `Your plan for the week of ${weekLabel} is ready.`,
-    noteBlock ? `\nNote from your Roadie team:\n${noteBlock}\n` : "",
+    noteBlock ? `\nNote from your Tempo team:\n${noteBlock}\n` : "",
     `View your plan: ${args.dashboardUrl}`,
   ]
     .filter(Boolean)
@@ -70,7 +70,7 @@ function generatePlanReadyEmail(args: {
   const noteHtml = noteBlock
     ? `<div style="margin:20px 0 0 0;padding:16px 18px;background:rgba(0,255,135,0.08);border:1px solid rgba(0,255,135,0.25);border-radius:12px;">
          <div style="color:#00FF87;font-size:12px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 8px 0;">
-           Note from your Roadie team
+           Note from your Tempo team
          </div>
          <div style="color:#E4E4E7;font-size:14px;line-height:1.7;margin:0;">
            ${nl2br(noteBlock)}
@@ -94,7 +94,7 @@ function generatePlanReadyEmail(args: {
               <tr>
                 <td style="background:#111111;padding:26px 32px;text-align:left;border-bottom:1px solid rgba(0,255,135,0.22);">
                   <div style="font-weight:900;color:#00FF87;font-size:15px;letter-spacing:0.18em;">
-                    ROADIE
+                    TEMPO
                   </div>
                 </td>
               </tr>
@@ -120,7 +120,7 @@ function generatePlanReadyEmail(args: {
               <tr>
                 <td style="background:#0A0A0F;padding:18px 32px 28px 32px;text-align:left;">
                   <div style="color:#71717A;font-size:12px;line-height:1.6;margin:0;">
-                    You're receiving this because you use Roadie at app.roadie.media
+                    You're receiving this because you use Tempo at app.roadie.media
                   </div>
                 </td>
               </tr>
@@ -149,7 +149,7 @@ async function sendResendEmail(args: {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      from: "Roadie <hello@roadie.media>",
+      from: "Tempo <hello@roadie.media>",
       to: [args.to],
       subject: args.subject,
       text: args.text,

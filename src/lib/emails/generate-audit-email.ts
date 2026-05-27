@@ -17,7 +17,7 @@ const DELIVERABILITY_FOOTER_TEXT =
 
 export function getAuditEmailSubject(artistName: string): string {
   const name = (artistName || "there").trim();
-  return `${name}, your Roadie analysis is here`;
+  return `${name}, your Tempo analysis is here`;
 }
 
 function toDisplayNumber(n: number | string | null): string {
@@ -81,7 +81,7 @@ export function generateAuditEmail(input: GenerateAuditEmailInput): string {
     <head>
       <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Roadie analysis</title>
+      <title>Tempo analysis</title>
     </head>
     <body style="margin:0;padding:0;background:#0A0A0F;font-family:Arial, sans-serif;">
       <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
@@ -96,7 +96,7 @@ export function generateAuditEmail(input: GenerateAuditEmailInput): string {
               <tr>
                 <td style="background:#111111;padding:26px 32px;text-align:left;border-bottom:1px solid rgba(0,255,135,0.22);">
                   <div style="font-weight:900;color:#00FF87;font-size:15px;letter-spacing:0.18em;">
-                    ROADIE
+                    TEMPO
                   </div>
                 </td>
               </tr>

@@ -131,7 +131,7 @@ export default function PricingClient({
           <p className="mt-3 text-sm text-muted">You&apos;re on the free plan</p>
         ) : null}
         <p className="max-w-2xl text-base text-muted">
-          Join artists using Roadie to show up consistently, grow their audience, and spend
+          Join artists using Tempo to show up consistently, grow their audience, and spend
           less time stressing about what to post.
         </p>
       </div>

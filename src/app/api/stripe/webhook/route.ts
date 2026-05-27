@@ -63,7 +63,7 @@ async function sendResendEmail(args: {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      from: "Roadie <hello@roadie.media>",
+      from: "Tempo <hello@roadie.media>",
       to: [args.to],
       subject: args.subject,
       text: args.text,
@@ -121,7 +121,7 @@ async function handleTrialWillEnd(subscription: Stripe.Subscription) {
   const text = [
     "Hi,",
     "",
-    "Your 14-day free trial of Roadie ends in 3 days.",
+    "Your 14-day free trial of Tempo ends in 3 days.",
     "",
     "Everything you've built — your audit, your content plan, your Instagram insights — stays live as long as your subscription is active.",
     "",
@@ -129,14 +129,14 @@ async function handleTrialWillEnd(subscription: Stripe.Subscription) {
     "",
     "If you have any questions, just reply to this email.",
     "",
-    "— Tom at Roadie",
+    "— Tom at Tempo",
     "https://app.roadie.media",
   ].join("\n");
 
   const emailSend = await sendResendEmail({
     apiKey: resendKey,
     to: email,
-    subject: "Your Roadie trial ends in 3 days",
+    subject: "Your Tempo trial ends in 3 days",
     text,
   });
 

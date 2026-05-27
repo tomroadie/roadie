@@ -77,11 +77,11 @@ export default function LoginClient() {
     <div className="flex min-h-full flex-1 flex-col items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm space-y-8">
         <div className="flex justify-center">
-          <img src="/logo.png" height={48} alt="Roadie" className="h-12 w-auto" />
+          <img src="/logo.png" height={48} alt="Tempo" className="h-12 w-auto" />
         </div>
         <div className="text-center">
           <h1 className="text-2xl font-black uppercase tracking-tight text-foreground">
-            {isSignup ? "Create your Roadie account" : "Sign in to Roadie"}
+            {isSignup ? "Create your Tempo account" : "Sign in to Tempo"}
           </h1>
           <p className="mt-2 text-sm text-muted">
             AI-powered content planning for music artists

@@ -537,7 +537,7 @@ export default async function HomePage({
       {registered === "true" && !hasInstagram && !auditPending ? (
         <div className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
           <p className="text-sm leading-relaxed text-amber-100">
-            Welcome to Roadie. Add your Instagram handle in{" "}
+            Welcome to Tempo. Add your Instagram handle in{" "}
             <Link
               href="/settings"
               className="font-semibold underline underline-offset-4 hover:text-amber-50"

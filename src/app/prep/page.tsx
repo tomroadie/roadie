@@ -71,7 +71,7 @@ export default async function PrepPage() {
             CLIENT PREP
           </h1>
           <p className="mt-2 text-muted">
-            Prepare for client calls using Roadie&apos;s analysis
+            Prepare for client calls using Tempo&apos;s analysis
           </p>
         </div>
         <LogoutButton />

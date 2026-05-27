@@ -39,7 +39,7 @@ function generateSelfServeWeeklyCheckinEmail(args: {
   artistName: string;
   checkinUrl: string;
 }): { subject: string; text: string; html: string } {
-  const subject = "Your weekly Roadie check-in 🎸";
+  const subject = "Your weekly Tempo check-in 🎸";
   const greeting = args.artistName.trim() || "there";
   const body = [
     `Hi ${greeting},`,
@@ -51,7 +51,7 @@ function generateSelfServeWeeklyCheckinEmail(args: {
     "",
     "Takes 2 minutes. The more context you give us, the better your plan.",
     "",
-    "— Tom at Roadie",
+    "— Tom at Tempo",
   ].join("\n");
 
   const text = body;
@@ -64,7 +64,7 @@ function generateSelfServeWeeklyCheckinEmail(args: {
     "",
     "Takes 2 minutes. The more context you give us, the better your plan.",
     "",
-    "— Tom at Roadie",
+    "— Tom at Tempo",
   ]
     .map((line) => (line === "" ? "<br />" : escapeHtml(line)))
     .join("<br />");
@@ -107,7 +107,7 @@ function buildWeeklyCheckinEmailHtml(args: {
               <tr>
                 <td style="background:#111111;padding:26px 32px;text-align:left;border-bottom:1px solid rgba(0,255,135,0.22);">
                   <div style="font-weight:900;color:#00FF87;font-size:15px;letter-spacing:0.18em;">
-                    ROADIE
+                    TEMPO
                   </div>
                 </td>
               </tr>
@@ -129,7 +129,7 @@ function buildWeeklyCheckinEmailHtml(args: {
               <tr>
                 <td style="background:#0A0A0F;padding:18px 32px 28px 32px;text-align:left;">
                   <div style="color:#71717A;font-size:12px;line-height:1.6;margin:0;">
-                    You&apos;re receiving this because you use Roadie at app.roadie.media
+                    You&apos;re receiving this because you use Tempo at app.roadie.media
                   </div>
                 </td>
               </tr>
@@ -156,7 +156,7 @@ async function sendResendEmail(args: {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      from: "Roadie <hello@roadie.media>",
+      from: "Tempo <hello@roadie.media>",
       to: [args.to],
       subject: args.subject,
       text: args.text,

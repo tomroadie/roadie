@@ -155,7 +155,7 @@ async function sendResendEmail(args: {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      from: "Roadie <hello@roadie.media>",
+      from: "Tempo <hello@roadie.media>",
       to: [args.to],
       subject: args.subject,
       text: args.text,

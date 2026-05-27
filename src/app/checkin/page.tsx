@@ -21,7 +21,7 @@ export default async function CheckinPage({
   return (
     <div className="mx-auto flex min-h-full w-full max-w-lg flex-1 flex-col px-4 py-16 sm:px-6">
       <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">
-        Roadie
+        Tempo
       </p>
       <h1 className="mt-2 text-3xl font-black uppercase tracking-tight text-foreground">
         Weekly check-in

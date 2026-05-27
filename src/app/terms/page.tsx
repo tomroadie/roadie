@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Roadie",
+  title: "Terms of Service — Tempo",
   description:
-    "Terms of Service for Roadie, the content planning tool for music artists operated by Roadie Media.",
+    "Terms of Service for Tempo, the content planning tool for music artists operated by Roadie Media.",
 };
 
 export default function TermsPage() {
@@ -17,7 +17,7 @@ export default function TermsPage() {
         Terms of Service
       </h1>
       <p className="mt-3 text-sm text-muted">
-        Last updated: 5 May 2026. By using Roadie you agree to these terms.
+        Last updated: 5 May 2026. By using Tempo you agree to these terms.
       </p>
 
       <div className="mt-10 space-y-10 text-sm leading-relaxed text-muted">
@@ -26,8 +26,8 @@ export default function TermsPage() {
             Introduction
           </h2>
           <p>
-            Roadie is a software-as-a-service content planning tool designed for music artists and
-            their teams. The service is operated by Roadie Media (“Roadie”, “we”, “us”). These Terms
+            Tempo is a software-as-a-service content planning tool designed for music artists and
+            their teams. The service is operated by Roadie Media (“Tempo”, “we”, “us”). These Terms
             of Service (“Terms”) govern your access to and use of our websites, applications, and
             related services (collectively, the “Service”). If you do not agree, do not use the
             Service.
@@ -74,7 +74,7 @@ export default function TermsPage() {
           <ul className="list-disc space-y-2 pl-5">
             <li>
               Use the Service to scrape, harvest, automate access to, or systematically extract data
-              from Instagram, Roadie, or third parties in breach of their terms or applicable law.
+              from Instagram, Tempo, or third parties in breach of their terms or applicable law.
             </li>
             <li>
               Resell, sublicense, or commercially redistribute access to the Service without our
@@ -98,7 +98,7 @@ export default function TermsPage() {
           <p>
             Where you connect Instagram through Meta’s APIs or OAuth, we retrieve and analyse data
             you authorise (such as public profile and media insights) to generate suggestions and
-            reports inside Roadie. We do not ask for or store your Instagram password. Unless you
+            reports inside Tempo. We do not ask for or store your Instagram password. Unless you
             explicitly use features that send content on your behalf (if we offer them), we do not
             post to Instagram or change your account settings for you. Your use of Instagram remains
             subject to Meta’s terms and policies.
@@ -110,7 +110,7 @@ export default function TermsPage() {
             Intellectual property
           </h2>
           <p>
-            Roadie and its branding, software, and documentation are protected by intellectual
+            Tempo and its branding, software, and documentation are protected by intellectual
             property laws. Subject to these Terms, outputs such as content ideas, captions, or plans
             generated for you are yours to use for your creative and commercial purposes; we do not
             claim ownership of those outputs. You grant us a limited licence to host and process your
@@ -125,7 +125,7 @@ export default function TermsPage() {
           <p>
             The Service is provided “as is” and “as available”. To the fullest extent permitted by
             law, we disclaim warranties of merchantability, fitness for a particular purpose, and
-            non-infringement. Roadie provides planning assistance and analytics-style insights only.
+            non-infringement. Tempo provides planning assistance and analytics-style insights only.
             We do not guarantee any particular level of follower growth, engagement, revenue, or
             other business outcome. You are responsible for your posts, releases, and compliance with
             platform rules and applicable law.

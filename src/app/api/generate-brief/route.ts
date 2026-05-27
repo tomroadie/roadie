@@ -198,9 +198,9 @@ export async function POST(request: Request) {
   const aiFullAnalysis = audit?.ai_full_analysis?.trim() || "No audit available yet.";
   const eventsSummary = formatEventsSummary(events ?? []);
 
-  const prompt = `You are a music industry consultant preparing a client call brief for Roadie — an AI content planning tool that helps artists with release support, tour support, and content/social media strategy.
+  const prompt = `You are a music industry consultant preparing a client call brief for Tempo — an AI content planning tool that helps artists with release support, tour support, and content/social media strategy.
 
-Your job is to analyse this artist's Instagram presence and create a concise, actionable call brief that helps identify which Roadie services would benefit them most.
+Your job is to analyse this artist's Instagram presence and create a concise, actionable call brief that helps identify which Tempo services would benefit them most.
 
 Artist: ${artistName}
 Genre: ${genre}
@@ -220,7 +220,7 @@ Produce a call brief with exactly these sections in JSON format:
 {
   "situation": "2-3 sentences on where this artist is right now — career stage, momentum, what's happening",
   "instagram_health": "2-3 sentences on the state of their Instagram — what's working, what isn't, key numbers",
-  "biggest_opportunity": "1-2 sentences on the single most impactful thing Roadie could help with right now",
+  "biggest_opportunity": "1-2 sentences on the single most impactful thing Tempo could help with right now",
   "roadie_fit": {
     "primary_service": "release_support | tour_support | content_social | all_three",
     "reasoning": "2-3 sentences on why this service mix fits them right now",

@@ -80,10 +80,10 @@ export function AppNav({
             <Link
               href="/home"
               className="inline-flex shrink-0 items-center"
-              aria-label="Roadie"
+              aria-label="Tempo"
               onClick={() => setMenuOpen(false)}
             >
-              <img src="/logo.png" height={36} alt="Roadie" className="h-9 w-auto" />
+              <img src="/logo.png" height={36} alt="Tempo" className="h-9 w-auto" />
             </Link>
 
             <nav

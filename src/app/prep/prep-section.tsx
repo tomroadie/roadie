@@ -91,7 +91,7 @@ function buildFullBriefText(artistName: string, brief: CallBrief): string {
     "BIGGEST OPPORTUNITY",
     brief.biggest_opportunity,
     "",
-    "ROADIE FIT",
+    "TEMPO FIT",
     `Primary service: ${primaryServiceLabel(brief.roadie_fit.primary_service)}`,
     `Suggested plan: ${planLabel(brief.roadie_fit.suggested_plan)}`,
     brief.roadie_fit.reasoning,
@@ -360,7 +360,7 @@ export function PrepSection({ artists }: PrepSectionProps) {
           </div>
 
           <div className="rounded-xl border border-card-border bg-card p-6">
-            <SectionHeading>Roadie fit</SectionHeading>
+            <SectionHeading>Tempo fit</SectionHeading>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <span className="inline-flex items-center rounded-lg bg-input px-4 py-2 text-sm font-black uppercase tracking-wide text-foreground ring-1 ring-inset ring-brand/30">
                 {primaryServiceLabel(brief.roadie_fit.primary_service)}

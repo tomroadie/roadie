@@ -42,7 +42,7 @@ export default async function InstagramAccountSelectPage() {
       </h1>
       <p className="mt-3 text-sm text-muted-strong">
         We found multiple Instagram accounts linked to your Facebook. Pick the
-        one you want to connect to Roadie.
+        one you want to connect to Tempo.
       </p>
       <AccountPicker accounts={accounts} />
     </div>

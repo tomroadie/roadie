@@ -781,7 +781,7 @@ export function WeeklyPlanSection({
       {hasJustRegistered && !hasInstagram && !auditPending ? (
         <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
           <p className="text-sm leading-relaxed text-amber-100">
-            Welcome to Roadie. Add your Instagram handle in{" "}
+            Welcome to Tempo. Add your Instagram handle in{" "}
             <Link
               href="/settings"
               className="font-semibold underline underline-offset-4 hover:text-amber-50"
@@ -796,7 +796,7 @@ export function WeeklyPlanSection({
       {hasJustUpgraded && !hasPlanIdeas ? (
         <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3">
           <p className="text-sm leading-relaxed text-emerald-100">
-            Welcome to Roadie Pro. Generate your first plan below.
+            Welcome to Tempo Pro. Generate your first plan below.
           </p>
         </div>
       ) : null}

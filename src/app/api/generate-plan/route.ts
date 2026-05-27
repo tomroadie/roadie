@@ -164,7 +164,7 @@ async function sendResendEmail(args: {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      from: "Roadie <hello@roadie.media>",
+      from: "Tempo <hello@roadie.media>",
       to: [args.to],
       subject: args.subject,
       text: args.text,
@@ -453,7 +453,7 @@ ${linkedPosts
   })
   .join("\n")}
 
-Use the "What worked from past plans" list as strong directional signals. These are ideas from previous Roadie plans that the artist actually posted and that generated measurable engagement. Build on these themes and formats — do not repeat them directly.
+Use the "What worked from past plans" list as strong directional signals. These are ideas from previous Tempo plans that the artist actually posted and that generated measurable engagement. Build on these themes and formats — do not repeat them directly.
 
 `
       : "";

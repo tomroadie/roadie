@@ -1,7 +1,7 @@
 "use client";
 
 import type { ContentIdea } from "@/types/content-plan";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { EventRow } from "@/types/event";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -293,7 +293,7 @@ type WeeklyPlanSectionProps = {
   } | null;
   hasJustUpgraded?: boolean;
   hasJustRegistered?: boolean;
-  hasInstagramHandle?: boolean;
+  hasInstagram?: boolean;
 };
 
 function hoursSince(iso: string): number {
@@ -329,7 +329,7 @@ export function WeeklyPlanSection({
   revisionRequest = null,
   hasJustUpgraded = false,
   hasJustRegistered = false,
-  hasInstagramHandle = false,
+  hasInstagram = false,
 }: WeeklyPlanSectionProps) {
   const router = useRouter();
   const [ideas, setIdeas] = useState<ContentIdea[] | null>(initialIdeas);
@@ -710,9 +710,75 @@ export function WeeklyPlanSection({
     setShowQuestionsModal(true);
   }
 
+  let headerRight: ReactNode = null;
+  let headerRightIsButton = false;
+
+  if (!isPlanBeingPrepared && !isManaged) {
+    if (canGenerate && !hasPlanIdeas) {
+      headerRight = (
+        <button
+          id="dashboard-generate-plan"
+          type="button"
+          onClick={requestGenerate}
+          disabled={loading}
+          className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? "Generating…" : "Generate my weekly plan"}
+        </button>
+      );
+      headerRightIsButton = true;
+    } else if (freePlanNoIdeasYet) {
+      headerRight = auditPending ? (
+        <Link
+          href="/pricing"
+          className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-card px-5 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
+        >
+          Upgrade
+        </Link>
+      ) : hasAudit ? (
+        <Link
+          href="/pricing"
+          className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
+        >
+          Upgrade
+        </Link>
+      ) : (
+        <Link
+          href="/settings"
+          className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-card px-5 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
+        >
+          Go to settings
+        </Link>
+      );
+      headerRightIsButton = true;
+    } else if (!(canGenerate && hasPlanIdeas)) {
+      headerRight = (
+        <Link
+          href="/pricing"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-card-border bg-card px-5 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="h-4 w-4"
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.5 8V6a4.5 4.5 0 1 1 9 0v2h.5A1.5 1.5 0 0 1 16.5 9.5v6A1.5 1.5 0 0 1 15 17H5A1.5 1.5 0 0 1 3.5 15.5v-6A1.5 1.5 0 0 1 5 8h.5Zm2-2a2.5 2.5 0 0 1 5 0v2h-5V6Z"
+              clipRule="evenodd"
+            />
+          </svg>
+          Upgrade to generate your plan
+        </Link>
+      );
+      headerRightIsButton = true;
+    }
+  }
+
   return (
     <section className="mt-12">
-      {hasJustRegistered && !hasInstagramHandle && !auditPending ? (
+      {hasJustRegistered && !hasInstagram && !auditPending ? (
         <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
           <p className="text-sm leading-relaxed text-amber-100">
             Welcome to Roadie. Add your Instagram handle in{" "}
@@ -735,7 +801,13 @@ export function WeeklyPlanSection({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div
+        className={
+          headerRightIsButton
+            ? "flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
+            : "flex flex-col gap-3"
+        }
+      >
         <div>
           <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
             Your weekly plan
@@ -750,67 +822,11 @@ export function WeeklyPlanSection({
               <>No upcoming dates — add some to get more specific ideas.</>
             )}
           </p>
+          {!headerRightIsButton && headerRight ? (
+            <div className="mt-3">{headerRight}</div>
+          ) : null}
         </div>
-        {isPlanBeingPrepared ? null : isManaged ? (
-          <p className="text-sm text-muted">
-            Your plan arrives every Monday. Check your email on Friday for your
-            weekly check-in.
-          </p>
-        ) : canGenerate && !hasPlanIdeas ? (
-          <button
-            id="dashboard-generate-plan"
-            type="button"
-            onClick={requestGenerate}
-            disabled={loading}
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? "Generating…" : "Generate my weekly plan"}
-          </button>
-        ) : freePlanNoIdeasYet ? (
-          auditPending ? (
-            <Link
-              href="/pricing"
-              className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-card px-5 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
-            >
-              Upgrade
-            </Link>
-          ) : hasAudit ? (
-            <Link
-              href="/pricing"
-              className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
-            >
-              Upgrade
-            </Link>
-          ) : (
-            <Link
-              href="/settings"
-              className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-card px-5 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
-            >
-              Go to settings
-            </Link>
-          )
-        ) : canGenerate && hasPlanIdeas ? (
-          null
-        ) : (
-          <Link
-            href="/pricing"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-card-border bg-card px-5 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
-          >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="h-4 w-4"
-            >
-              <path
-                fillRule="evenodd"
-                d="M5.5 8V6a4.5 4.5 0 1 1 9 0v2h.5A1.5 1.5 0 0 1 16.5 9.5v6A1.5 1.5 0 0 1 15 17H5A1.5 1.5 0 0 1 3.5 15.5v-6A1.5 1.5 0 0 1 5 8h.5Zm2-2a2.5 2.5 0 0 1 5 0v2h-5V6Z"
-                clipRule="evenodd"
-              />
-            </svg>
-            Upgrade to generate your plan
-          </Link>
-        )}
+        {headerRightIsButton && headerRight ? headerRight : null}
       </div>
 
       {ideas?.length ? (
@@ -860,6 +876,17 @@ export function WeeklyPlanSection({
             </p>
           </div>
         </div>
+      ) : isManaged && !hasPlanIdeas ? (
+        <div className="mt-6 rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
+          <div className="py-8 text-center">
+            <p className="text-sm font-semibold text-foreground">
+              Your plan arrives every Monday.
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              Check your email on Friday for your weekly check-in.
+            </p>
+          </div>
+        </div>
       ) : !loading ? (
         <div className="mt-6 rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
           <p className="text-sm leading-relaxed text-muted">
@@ -872,7 +899,9 @@ export function WeeklyPlanSection({
                 "Complete your profile to get started."
               )
             ) : !auditPending && !hasAudit && !hasPlanIdeas ? (
-              "Add your Instagram handle in Settings to get a personalised audit, then generate your first plan."
+              hasInstagram
+                ? "Run your audit above to get a personalised content plan."
+                : "Add your Instagram handle in Settings to get started."
             ) : (
               "No plan for this week yet. Generate tailored ideas from your profile, dates, and Instagram audit."
             )}

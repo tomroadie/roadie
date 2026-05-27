@@ -604,7 +604,7 @@ export default async function HomePage({
         revisionRequest={revisionRequest}
         hasJustUpgraded={upgraded === "true"}
         hasJustRegistered={registered === "true"}
-        hasInstagramHandle={hasInstagram}
+        hasInstagram={hasInstagram}
       />
 
       {audit ? (

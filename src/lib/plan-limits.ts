@@ -100,3 +100,10 @@ export function comparePlans(a: unknown, b: unknown): number {
   return PLAN_ORDER.indexOf(pa) - PLAN_ORDER.indexOf(pb);
 }
 
+export function getPlanForGating(profile: {
+  plan?: string | null;
+  plan_override?: string | null;
+}): RoadiePlan {
+  return normalizePlan(profile.plan_override ?? profile.plan);
+}
+

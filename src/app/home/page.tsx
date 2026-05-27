@@ -5,8 +5,7 @@ import Link from "next/link";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { WeeklyPlanSection } from "@/app/dashboard/weekly-plan-section";
-import { InsightsAuditEmptyState } from "@/app/insights/insights-audit-empty-state";
-import { AuditProgressBar } from "@/app/insights/audit-progress-bar";
+import { AuditCTASection } from "@/app/insights/audit-cta-section";
 import { RecentPostsCards } from "@/app/insights/recent-posts-cards";
 import {
   LiveStatsSection,
@@ -515,37 +514,13 @@ export default async function HomePage({
         </div>
       ) : null}
 
-      {!hasAudit && auditPending ? (
-        <AuditProgressBar
+      {!hasAudit ? (
+        <AuditCTASection
           artistId={activeArtistId}
-          triggeredAt={pendingAuditTriggeredAt}
+          instagramHandle={profile?.instagram_handle ?? null}
+          initialHasPending={auditPending}
+          initialTriggeredAt={pendingAuditTriggeredAt}
         />
-      ) : null}
-
-      {!hasAudit && !auditPending ? (
-        <section
-          id="audit-section"
-          className="mt-10 rounded-xl border-2 border-brand bg-card p-8 text-center"
-        >
-          <p className="text-xs font-bold uppercase tracking-widest text-brand">
-            Next step
-          </p>
-          <h2 className="mt-3 text-2xl font-black uppercase tracking-tight text-foreground">
-            Run your free Instagram audit
-          </h2>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-strong">
-            We&apos;ll analyse your last 10 posts, follower patterns, and content
-            style — takes about 3 minutes. Your content plan will be shaped by what
-            we find.
-          </p>
-          <div className="mt-6">
-            <InsightsAuditEmptyState
-              embedded
-              artistId={activeArtistId}
-              instagramHandle={profile?.instagram_handle ?? null}
-            />
-          </div>
-        </section>
       ) : null}
 
       {audit ? (

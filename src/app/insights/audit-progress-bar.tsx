@@ -38,10 +38,12 @@ export function AuditProgressBar({
   artistId,
   triggeredAt,
   estimatedMinutes = 4,
+  onAuditReady,
 }: {
   artistId: string;
   triggeredAt: string | null;
   estimatedMinutes?: number;
+  onAuditReady?: () => void;
 }) {
   const router = useRouter();
   const [{ progress, elapsedLabel }, setProgressState] = useState(() =>
@@ -73,6 +75,7 @@ export function AuditProgressBar({
         );
         const data = (await res.json()) as { ready?: boolean };
         if (data.ready === true) {
+          onAuditReady?.();
           router.refresh();
         }
       } catch {
@@ -84,7 +87,7 @@ export function AuditProgressBar({
       window.clearInterval(refreshId);
       window.clearInterval(statusId);
     };
-  }, [artistId, router]);
+  }, [artistId, router, onAuditReady]);
 
   return (
     <div className="mt-10 rounded-xl border border-brand/40 bg-card p-8">

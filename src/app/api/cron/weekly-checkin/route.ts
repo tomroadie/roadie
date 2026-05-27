@@ -11,7 +11,10 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#039;");
 }
 
-function generateWeeklyCheckinEmail(args: {
+const ELIGIBLE_PROFILES_FILTER =
+  "is_managed.eq.true,and(is_managed.eq.false,plan.in.(starter,pro,label))";
+
+function generateManagedWeeklyCheckinEmail(args: {
   artistName: string;
   checkinUrl: string;
 }): { subject: string; text: string; html: string } {
@@ -22,13 +25,79 @@ function generateWeeklyCheckinEmail(args: {
 
   const text = `${body}\n\nTell us what's coming: ${args.checkinUrl}`;
 
-  const html = `
+  const html = buildWeeklyCheckinEmailHtml({
+    subject,
+    body,
+    checkinUrl: args.checkinUrl,
+    ctaLabel: "Tell us what's coming →",
+  });
+
+  return { subject, text, html };
+}
+
+function generateSelfServeWeeklyCheckinEmail(args: {
+  artistName: string;
+  checkinUrl: string;
+}): { subject: string; text: string; html: string } {
+  const subject = "Your weekly Roadie check-in 🎸";
+  const greeting = args.artistName.trim() || "there";
+  const body = [
+    `Hi ${greeting},`,
+    "",
+    "Your weekly content plan generates on Monday morning.",
+    "Tell us what's coming up so we can shape it around you.",
+    "",
+    args.checkinUrl,
+    "",
+    "Takes 2 minutes. The more context you give us, the better your plan.",
+    "",
+    "— Tom at Roadie",
+  ].join("\n");
+
+  const text = body;
+
+  const htmlBody = [
+    `Hi ${greeting},`,
+    "",
+    "Your weekly content plan generates on Monday morning.",
+    "Tell us what's coming up so we can shape it around you.",
+    "",
+    "Takes 2 minutes. The more context you give us, the better your plan.",
+    "",
+    "— Tom at Roadie",
+  ]
+    .map((line) => (line === "" ? "<br />" : escapeHtml(line)))
+    .join("<br />");
+
+  const html = buildWeeklyCheckinEmailHtml({
+    subject,
+    body: htmlBody,
+    checkinUrl: args.checkinUrl,
+    ctaLabel: "Share what's coming →",
+    bodyIsHtml: true,
+  });
+
+  return { subject, text, html };
+}
+
+function buildWeeklyCheckinEmailHtml(args: {
+  subject: string;
+  body: string;
+  checkinUrl: string;
+  ctaLabel: string;
+  bodyIsHtml?: boolean;
+}): string {
+  const bodyContent = args.bodyIsHtml
+    ? args.body
+    : escapeHtml(args.body);
+
+  return `
   <!doctype html>
   <html>
     <head>
       <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>${escapeHtml(subject)}</title>
+      <title>${escapeHtml(args.subject)}</title>
     </head>
     <body style="margin:0;padding:0;background:#0A0A0F;font-family:Arial, sans-serif;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0A0A0F;">
@@ -45,7 +114,7 @@ function generateWeeklyCheckinEmail(args: {
               <tr>
                 <td style="background:#111111;padding:28px 32px 18px 32px;">
                   <div style="color:#A1A1AA;font-size:14px;line-height:1.7;margin:0;">
-                    ${escapeHtml(body)}
+                    ${bodyContent}
                   </div>
                 </td>
               </tr>
@@ -53,7 +122,7 @@ function generateWeeklyCheckinEmail(args: {
                 <td style="background:#111111;padding:0 32px 30px 32px;text-align:left;">
                   <a href="${escapeHtml(args.checkinUrl)}"
                      style="display:block;background:#00FF87;color:#0A0A0F;text-decoration:none;font-weight:900;font-size:14px;padding:16px 18px;border-radius:12px;text-align:center;">
-                    Tell us what&apos;s coming &rarr;
+                    ${escapeHtml(args.ctaLabel)}
                   </a>
                 </td>
               </tr>
@@ -71,8 +140,6 @@ function generateWeeklyCheckinEmail(args: {
     </body>
   </html>
   `.trim();
-
-  return { subject, text, html };
 }
 
 async function sendResendEmail(args: {
@@ -140,12 +207,12 @@ export async function GET(request: Request) {
 
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, artist_name, owner_user_id")
-      .eq("is_managed", true);
+      .select("id, artist_name, owner_user_id, is_managed")
+      .or(ELIGIBLE_PROFILES_FILTER);
 
     if (profilesError) {
       return NextResponse.json(
-        { error: "Failed to load managed artists", details: profilesError.message },
+        { error: "Failed to load artists", details: profilesError.message },
         { status: 500 }
       );
     }
@@ -186,10 +253,10 @@ export async function GET(request: Request) {
 
       const checkinUrl = `${appUrl}/checkin?artist_id=${encodeURIComponent(artistId)}&token=${encodeURIComponent(token)}`;
       const artistName = String(profile.artist_name ?? "").trim();
-      const emailContent = generateWeeklyCheckinEmail({
-        artistName,
-        checkinUrl,
-      });
+      const isManaged = profile.is_managed === true;
+      const emailContent = isManaged
+        ? generateManagedWeeklyCheckinEmail({ artistName, checkinUrl })
+        : generateSelfServeWeeklyCheckinEmail({ artistName, checkinUrl });
 
       const emailSend = await sendResendEmail({
         apiKey: resendKey,

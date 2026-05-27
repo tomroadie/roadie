@@ -2,6 +2,9 @@ import Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import type { RoadiePlan } from "@/lib/stripe-plans";
+import { getMondayDateString } from "@/lib/week";
+
+const PAID_PLANS: RoadiePlan[] = ["starter", "pro", "label"];
 
 function stripeCustomerId(
   customer: string | Stripe.Customer | Stripe.DeletedCustomer | null | undefined
@@ -149,6 +152,69 @@ async function handleTrialWillEnd(subscription: Stripe.Subscription) {
   console.log(`Sent trial_will_end email to profile ${profile.id}`);
 }
 
+async function triggerFirstWeeklyPlanIfNeeded(artistId: string) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  const webhookSecret = process.env.WEBHOOK_SECRET;
+  if (!appUrl || !webhookSecret) {
+    console.log(
+      "checkout.session.completed: skip plan generation (missing NEXT_PUBLIC_APP_URL or WEBHOOK_SECRET)"
+    );
+    return;
+  }
+
+  const supabase = createServiceRoleClient();
+  const weekStart = getMondayDateString();
+
+  const { data: existingPlan, error: planLookupError } = await supabase
+    .from("weekly_plans")
+    .select("id")
+    .eq("artist_id", artistId)
+    .eq("week_start", weekStart)
+    .maybeSingle();
+
+  if (planLookupError) {
+    console.error("checkout.session.completed: failed to check weekly plan", {
+      artist_id: artistId,
+      error: planLookupError.message,
+    });
+    return;
+  }
+
+  if (existingPlan?.id) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`${appUrl}/api/generate-plan`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-internal-artist-id": artistId,
+        "x-webhook-secret": webhookSecret,
+      },
+      body: JSON.stringify({}),
+    });
+
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        details?: string;
+      };
+      console.error("checkout.session.completed: generate-plan failed", {
+        artist_id: artistId,
+        status: res.status,
+        error: data.error,
+        details: data.details,
+      });
+    }
+  } catch (e) {
+    console.error("checkout.session.completed: generate-plan request failed", {
+      artist_id: artistId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
 export async function POST(request: Request) {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -209,6 +275,10 @@ export async function POST(request: Request) {
         { error: "Failed to update profile", details: error.message },
         { status: 500 }
       );
+    }
+
+    if (PAID_PLANS.includes(plan)) {
+      await triggerFirstWeeklyPlanIfNeeded(artistId);
     }
 
     return NextResponse.json({ ok: true });

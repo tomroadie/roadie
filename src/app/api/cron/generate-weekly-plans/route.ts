@@ -2,11 +2,6 @@ import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { getMondayDateString } from "@/lib/week";
 
-type FailedArtist = {
-  artist_id: string;
-  error: string;
-};
-
 const ELIGIBLE_PROFILES_FILTER =
   "is_managed.eq.true,and(is_managed.eq.false,plan.in.(starter,pro,label))";
 
@@ -57,7 +52,7 @@ export async function GET(request: Request) {
 
     const artists = profiles ?? [];
     if (artists.length === 0) {
-      return NextResponse.json({ generated: 0, failed: [] });
+      return NextResponse.json({ queued: 0, artists: 0 });
     }
 
     const weekStart = getMondayDateString();
@@ -87,8 +82,7 @@ export async function GET(request: Request) {
       }
     }
 
-    let generated = 0;
-    const failed: FailedArtist[] = [];
+    let queued = 0;
 
     for (const profile of artists) {
       const artistId = String(profile.id ?? "").trim();
@@ -100,41 +94,22 @@ export async function GET(request: Request) {
         requestBody.focus = checkinResponse;
       }
 
-      try {
-        const res = await fetch(`${appUrl}/api/generate-plan`, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-internal-artist-id": artistId,
-            "x-webhook-secret": webhookSecret,
-          },
-          body: JSON.stringify(requestBody),
-        });
+      fetch(`${appUrl}/api/generate-plan`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-internal-artist-id": artistId,
+          "x-webhook-secret": webhookSecret,
+        },
+        body: JSON.stringify(requestBody),
+      }).catch((e) => {
+        console.error(`Failed to queue plan for ${artistId}:`, e);
+      });
 
-        if (!res.ok) {
-          const data = (await res.json().catch(() => ({}))) as {
-            error?: string;
-            details?: string;
-          };
-          failed.push({
-            artist_id: artistId,
-            error: data.details
-              ? `${data.error ?? "Request failed"}: ${data.details}`
-              : (data.error ?? `HTTP ${res.status}`),
-          });
-          continue;
-        }
-
-        generated += 1;
-      } catch (e) {
-        failed.push({
-          artist_id: artistId,
-          error: e instanceof Error ? e.message : "Network error",
-        });
-      }
+      queued += 1;
     }
 
-    return NextResponse.json({ generated, failed });
+    return NextResponse.json({ queued, artists: artists.length });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

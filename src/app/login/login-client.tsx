@@ -32,45 +32,48 @@ export default function LoginClient() {
 
     setLoading(true);
 
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
 
-    if (isSignup) {
-      const { error: signUpError } = await supabase.auth.signUp({
+      if (isSignup) {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        if (signUpError) {
+          setError(signUpError.message);
+          setLoading(false);
+          return;
+        }
+        router.refresh();
+        const redirectParam = searchParams.get("redirect");
+        const redirectTo =
+          redirectParam && redirectParam.startsWith("/")
+            ? redirectParam
+            : "/onboarding";
+        router.push(redirectTo);
+        return;
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      if (signUpError) {
-        setError(signUpError.message);
+      if (signInError) {
+        setError(signInError.message);
         setLoading(false);
         return;
       }
+
       router.refresh();
       const redirectParam = searchParams.get("redirect");
       const redirectTo =
-        redirectParam && redirectParam.startsWith("/")
-          ? redirectParam
-          : "/onboarding";
+        redirectParam && redirectParam.startsWith("/") ? redirectParam : "/home";
       router.push(redirectTo);
+    } catch {
+      setError("Something went wrong. Please try again.");
       setLoading(false);
-      return;
     }
-
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (signInError) {
-      setError(signInError.message);
-      setLoading(false);
-      return;
-    }
-
-    router.refresh();
-    const redirectParam = searchParams.get("redirect");
-    const redirectTo =
-      redirectParam && redirectParam.startsWith("/") ? redirectParam : "/home";
-    router.push(redirectTo);
-    setLoading(false);
   }
 
   return (
@@ -91,11 +94,12 @@ export default function LoginClient() {
         <div className="flex gap-2">
           <button
             type="button"
+            disabled={loading}
             onClick={() => {
               setIsSignup(false);
               setError(null);
             }}
-            className={`flex-1 rounded-lg py-2 text-sm font-bold uppercase tracking-wide transition ${
+            className={`flex-1 rounded-lg py-2 text-sm font-bold uppercase tracking-wide transition disabled:cursor-not-allowed disabled:opacity-60 ${
               !isSignup
                 ? "bg-brand text-brand-foreground"
                 : "bg-input text-muted"
@@ -105,11 +109,12 @@ export default function LoginClient() {
           </button>
           <button
             type="button"
+            disabled={loading}
             onClick={() => {
               setIsSignup(true);
               setError(null);
             }}
-            className={`flex-1 rounded-lg py-2 text-sm font-bold uppercase tracking-wide transition ${
+            className={`flex-1 rounded-lg py-2 text-sm font-bold uppercase tracking-wide transition disabled:cursor-not-allowed disabled:opacity-60 ${
               isSignup ? "bg-brand text-brand-foreground" : "bg-input text-muted"
             }`}
           >
@@ -194,9 +199,37 @@ export default function LoginClient() {
           <button
             type="submit"
             disabled={loading}
-            className="flex h-11 w-full items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-11 w-full items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Please wait…" : isSignup ? "Sign up" : "Sign in"}
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <svg
+                  className="h-4 w-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+                {isSignup ? "Creating account..." : "Signing in..."}
+              </span>
+            ) : isSignup ? (
+              "Create account"
+            ) : (
+              "Sign in"
+            )}
           </button>
         </form>
 

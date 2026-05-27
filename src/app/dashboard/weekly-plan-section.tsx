@@ -63,18 +63,40 @@ function buildCopyText(idea: ContentIdea): string {
   ].join("\n");
 }
 
+function formatRelativeTime(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "—";
+  const diffMs = Date.now() - t;
+  const mins = Math.floor(diffMs / (1000 * 60));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
 function IdeaCard({
   idea,
   onRate,
   initialRating = null,
   onSubmitReview,
-  feedback = null,
+  canReview = false,
+  reviewForThisIdea = null,
+  reviewLimitReached = false,
+  plan = "pro",
 }: {
   idea: ContentIdea;
   onRate: (hook: string, rating: "up" | "down") => void;
   initialRating?: "up" | "down" | null;
   onSubmitReview?: (idea: ContentIdea, file: File | null) => Promise<void>;
-  feedback?: string | null;
+  canReview?: boolean;
+  reviewForThisIdea?: {
+    feedback: string;
+    reviewed_at: string;
+  } | null;
+  reviewLimitReached?: boolean;
+  plan?: string;
 }) {
   const [copied, setCopied] = useState(false);
   const [rating, setRating] = useState<null | "up" | "down">(initialRating ?? null);
@@ -157,15 +179,6 @@ function IdeaCard({
           </button>
         </div>
 
-        {feedback ? (
-          <div className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
-              Expert feedback:
-            </p>
-            <p className="mt-2 text-sm leading-6 text-muted">{feedback}</p>
-          </div>
-        ) : null}
-
         <div className="mt-3 flex gap-2">
           <button
             type="button"
@@ -199,39 +212,81 @@ function IdeaCard({
           </button>
         </div>
 
-        {onSubmitReview ? (
-          <div className="mt-3">
-            <label className="block">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-                Optional attachment
-              </span>
-              <input
-                type="file"
-                disabled={reviewSubmitting || reviewSubmitted}
-                onChange={(e) => {
-                  const f = e.currentTarget.files?.[0] ?? null;
-                  setReviewFile(f);
-                }}
-                className="mt-1.5 block w-full cursor-pointer rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:tracking-wide file:text-brand-foreground disabled:cursor-not-allowed disabled:opacity-60"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => void handleSubmitReview()}
-              disabled={reviewSubmitting || reviewSubmitted}
-              className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {reviewSubmitted
-                ? "Submitted ✓"
-                : reviewSubmitting
-                  ? "Submitting..."
-                  : "Submit for review"}
-            </button>
-          </div>
-        ) : null}
-
         {rating !== null ? (
           <p className="mt-2 text-xs text-muted">Thanks for the feedback</p>
+        ) : null}
+
+        {canReview ? (
+          <div className="mt-4 border-t border-card-border pt-4">
+            {reviewForThisIdea ? (
+              <div className="rounded-lg bg-input p-3">
+                <p className="mb-1 text-xs font-bold uppercase tracking-wide text-brand">
+                  Expert feedback
+                </p>
+                <p className="text-sm leading-relaxed text-muted-strong">
+                  {reviewForThisIdea.feedback}
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  Reviewed {formatRelativeTime(reviewForThisIdea.reviewed_at)}
+                </p>
+              </div>
+            ) : reviewSubmitted ? (
+              <p className="text-xs italic text-muted">
+                Submitted for review — feedback coming soon.
+              </p>
+            ) : reviewLimitReached ? (
+              <p className="text-xs italic text-muted">
+                Monthly review limit reached. Resets on the 1st.
+                {normalizePlan(plan) === "pro" ? (
+                  <>
+                    {" "}
+                    <Link
+                      href="/pricing"
+                      className="text-brand hover:underline"
+                    >
+                      Upgrade for more →
+                    </Link>
+                  </>
+                ) : null}
+              </p>
+            ) : (
+              <>
+                <p className="mb-3 text-xs font-bold uppercase tracking-widest text-brand">
+                  Content review
+                </p>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted">
+                    Want expert eyes on this before you post?
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1">
+                      <input
+                        type="file"
+                        className="hidden"
+                        disabled={reviewSubmitting}
+                        accept="image/*,video/*"
+                        onChange={(e) => {
+                          const f = e.currentTarget.files?.[0] ?? null;
+                          setReviewFile(f);
+                        }}
+                      />
+                      <span className="inline-flex h-8 w-full cursor-pointer items-center gap-1.5 rounded-lg border border-card-border bg-input px-3 text-xs font-medium text-muted transition-colors hover:text-foreground">
+                        {reviewFile ? reviewFile.name : "Attach draft (optional)"}
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => void handleSubmitReview()}
+                      disabled={reviewSubmitting}
+                      className="h-8 shrink-0 rounded-lg bg-brand px-3 text-xs font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95 disabled:opacity-50"
+                    >
+                      {reviewSubmitting ? "Submitting..." : "Submit for review"}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         ) : null}
       </article>
     </div>
@@ -356,6 +411,16 @@ export function WeeklyPlanSection({
   const freePlanNoIdeasYet = !canGenerate && !hasPlanIdeas;
   const isPlanBeingPrepared =
     planStatus === "pending_review" && !hasPlanIdeas;
+
+  const now = new Date();
+  const reviewsUsedThisMonth = reviews.filter((r) => {
+    const d = new Date(r.reviewed_at);
+    return (
+      d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    );
+  }).length;
+  const reviewLimit = normalizedPlan === "label" ? 8 : 2;
+  const reviewLimitReached = canReview && reviewsUsedThisMonth >= reviewLimit;
 
   useEffect(() => {
     setIdeas(initialIdeas);
@@ -815,6 +880,17 @@ export function WeeklyPlanSection({
           <p className="mt-1 text-sm text-muted">
             Five ideas shaped by your profile, dates, and Instagram audit.
           </p>
+          {canReview && hasPlanIdeas ? (
+            <p className="mt-1 text-xs text-muted">
+              Pro includes expert feedback on your ideas before you post.
+            </p>
+          ) : null}
+          {canReview ? (
+            <p className="mt-1 text-xs text-muted">
+              Content reviews: {reviewsUsedThisMonth} / {reviewLimit} used this
+              month
+            </p>
+          ) : null}
           <p className="mt-2 text-sm text-muted">
             {upcomingEventsCount > 0 ? (
               <>Plan shaped by {upcomingEventsCount} upcoming events.</>
@@ -835,15 +911,19 @@ export function WeeklyPlanSection({
             {ideas.map((idea, i) => (
               <li key={`${idea.hook}-${i}`}>
                 {(() => {
-                  const review = reviews.find((r) => r.idea_hook === idea.hook) ?? null;
+                  const reviewForThisIdea =
+                    reviews.find((r) => r.idea_hook === idea.hook) ?? null;
                   return (
                     <IdeaCard
                       idea={idea}
                       onRate={handleRate}
                       initialRating={initialIdeaRatings[idea.hook] ?? null}
-                      feedback={review?.feedback ?? null}
+                      canReview={canReview}
+                      reviewForThisIdea={reviewForThisIdea}
+                      reviewLimitReached={reviewLimitReached}
+                      plan={plan}
                       onSubmitReview={
-                        canReview
+                        canReview && !reviewLimitReached
                           ? async (ideaParam, file) => {
                               try {
                                 await handleSubmitReview(ideaParam, file);

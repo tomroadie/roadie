@@ -1,6 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { OnboardingForm } from "./onboarding-form";
+import { OnboardingConversionTracking } from "./onboarding-conversion-tracking";
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
@@ -13,6 +15,10 @@ export default async function OnboardingPage() {
   }
 
   return (
+    <>
+      <Suspense fallback={null}>
+        <OnboardingConversionTracking />
+      </Suspense>
     <div className="flex min-h-full flex-1 flex-col items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm space-y-8">
         <div className="flex justify-center">
@@ -31,5 +37,6 @@ export default async function OnboardingPage() {
         <OnboardingForm />
       </div>
     </div>
+    </>
   );
 }

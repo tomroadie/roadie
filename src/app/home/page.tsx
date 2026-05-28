@@ -13,6 +13,7 @@ import {
   type InstagramLiveMediaRow,
 } from "@/app/insights/live-stats-section";
 import { FullAnalysisCollapsible } from "./full-analysis-collapsible";
+import { ConversionTracker } from "@/components/conversion-tracker";
 import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { getMondayDateString } from "@/lib/week";
@@ -258,7 +259,7 @@ export default async function HomePage({
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, genre, instagram_handle, plan, plan_override, voice_description, posting_frequency, is_managed, instagram_user_id, instagram_access_token"
+      "artist_name, genre, instagram_handle, plan, plan_override, voice_description, posting_frequency, is_managed, instagram_user_id, instagram_access_token, trial_started_at"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -512,6 +513,13 @@ export default async function HomePage({
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
+      {upgraded === "true" ? (
+        <ConversionTracker
+          upgraded={true}
+          plan={plan}
+          isTrial={!!profile?.trial_started_at}
+        />
+      ) : null}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">

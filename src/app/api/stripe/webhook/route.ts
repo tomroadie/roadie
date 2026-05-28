@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import type { RoadiePlan } from "@/lib/stripe-plans";
 import { getMondayDateString } from "@/lib/week";
+import { capiCheckoutEvent } from "@/lib/meta-capi";
 
 const PAID_PLANS: RoadiePlan[] = ["starter", "pro", "label"];
 
@@ -199,6 +200,33 @@ export async function POST(request: Request) {
     if (PAID_PLANS.includes(plan)) {
       await triggerFirstWeeklyPlanIfNeeded(artistId);
     }
+
+    const customerEmail =
+      session.customer_details?.email ?? session.customer_email ?? "";
+    const planName = session.metadata?.plan ?? "starter";
+    const planValues: Record<string, number> = {
+      starter: 29,
+      pro: 59,
+      label: 149,
+    };
+    const value = planValues[planName] ?? 29;
+    const eventId = `stripe-${session.id}`;
+
+    await capiCheckoutEvent(
+      "StartTrial",
+      customerEmail,
+      planName,
+      value,
+      eventId
+    );
+
+    await capiCheckoutEvent(
+      "Subscribe",
+      customerEmail,
+      planName,
+      value,
+      `${eventId}-subscribe`
+    );
 
     return NextResponse.json({ ok: true });
   }

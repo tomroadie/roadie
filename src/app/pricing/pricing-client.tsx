@@ -4,10 +4,17 @@ import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { trackBeginCheckout } from "@/lib/analytics";
 import { normalizePlan, type RoadiePlan } from "@/lib/plan-limits";
 
 type PriceIds = { starter: string; pro: string; label: string };
 type PaidPlanKey = keyof PriceIds;
+
+const planValues: Record<PaidPlanKey, number> = {
+  starter: 29,
+  pro: 59,
+  label: 149,
+};
 
 const PLANS: Array<{
   key: PaidPlanKey;
@@ -73,6 +80,7 @@ export default function PricingClient({
   const normalizedCurrent = normalizePlan(currentPlan);
 
   async function startCheckout(plan: PaidPlanKey) {
+    trackBeginCheckout(plan, planValues[plan] ?? 0);
     setError(null);
     setLoadingPlan(plan);
 

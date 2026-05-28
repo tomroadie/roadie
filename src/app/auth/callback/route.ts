@@ -1,5 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
+import { generateEventId } from "@/lib/analytics";
+import { capiCompleteRegistration } from "@/lib/meta-capi";
 
 async function sendWelcomeEmail(args: {
   apiKey: string;
@@ -77,6 +79,7 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser();
 
   let redirectPath = "/home";
+  let registrationEventId: string | null = null;
 
   if (user?.id) {
     const { data: profiles } = await supabase
@@ -88,12 +91,6 @@ export async function GET(request: Request) {
       Boolean(p.artist_name?.trim())
     );
 
-    if (!hasCompletedProfile) {
-      redirectPath = "/onboarding";
-    }
-  }
-
-  if (user?.email) {
     const { data: existingProfile } = await supabase
       .from("profiles")
       .select("id")
@@ -101,11 +98,28 @@ export async function GET(request: Request) {
       .limit(1)
       .maybeSingle();
 
-    if (!existingProfile) {
+    const isNewUser = !existingProfile;
+
+    if (!hasCompletedProfile) {
+      if (isNewUser) {
+        registrationEventId = generateEventId();
+        redirectPath = `/onboarding?new=true&event_id=${encodeURIComponent(registrationEventId)}`;
+      } else {
+        redirectPath = "/onboarding";
+      }
+    }
+
+    if (isNewUser && user.email) {
+      const eventId = registrationEventId ?? generateEventId();
+      await capiCompleteRegistration(user.email, eventId);
+
       const resendKey = process.env.RESEND_API_KEY;
       const baseUrl =
-        process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "https://app.roadie.media";
-      const onboardingUrl = `${baseUrl}/onboarding`;
+        process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
+        "https://app.roadie.media";
+      const onboardingUrl = registrationEventId
+        ? `${baseUrl}/onboarding?new=true&event_id=${encodeURIComponent(registrationEventId)}`
+        : `${baseUrl}/onboarding`;
 
       if (resendKey) {
         const sent = await sendWelcomeEmail({

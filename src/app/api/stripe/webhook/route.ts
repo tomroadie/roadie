@@ -266,7 +266,11 @@ export async function POST(request: Request) {
     const supabase = createServiceRoleClient();
     const { error } = await supabase
       .from("profiles")
-      .update({ plan, stripe_customer_id: stripeCustomerIdValue })
+      .update({
+        plan,
+        stripe_customer_id: stripeCustomerIdValue,
+        trial_started_at: new Date().toISOString(),
+      })
       .eq("owner_user_id", userId)
       .eq("id", artistId);
 

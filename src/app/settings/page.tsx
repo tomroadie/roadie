@@ -8,6 +8,7 @@ import { InstagramHandleForm } from "./instagram-handle-form";
 import { InstagramConnectSection } from "./instagram-connect-section";
 import { VoiceForm } from "./voice-form";
 import { PostingGoalForm } from "./posting-goal-form";
+import { EmailPreferencesSection } from "./email-preferences-section";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { canDo, getPlanForGating } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
@@ -36,7 +37,7 @@ export default async function SettingsPage() {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, instagram_handle, instagram_user_id, voice_description, posting_frequency, plan, plan_override"
+      "artist_name, instagram_handle, instagram_user_id, voice_description, posting_frequency, plan, plan_override, marketing_unsubscribed, all_emails_paused"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -86,6 +87,14 @@ export default async function SettingsPage() {
       />
 
       <AddArtistForm />
+
+      <EmailPreferencesSection
+        artistId={activeArtistId}
+        initialMarketingUnsubscribed={
+          profile.marketing_unsubscribed ?? false
+        }
+        initialAllEmailsPaused={profile.all_emails_paused ?? false}
+      />
     </div>
   );
 }

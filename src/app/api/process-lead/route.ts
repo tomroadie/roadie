@@ -426,6 +426,20 @@ Be specific, warm, and actionable. Max 300 words total.`;
     );
   }
 
+  if (profileLookup?.id) {
+    const { error: auditTimestampError } = await supabase
+      .from("profiles")
+      .update({ audit_completed_at: new Date().toISOString() })
+      .eq("id", profileLookup.id);
+
+    if (auditTimestampError) {
+      console.error("process-lead: failed to set audit_completed_at", {
+        artist_id: profileLookup.id,
+        error: auditTimestampError.message,
+      });
+    }
+  }
+
   if (profileLookup?.owner_user_id && profileLookup?.id) {
     await trackUsage({
       supabase,

@@ -127,23 +127,47 @@ export function unsubscribeFooter(artistId: string): string {
   const pauseUrl = unsubscribeUrl(artistId, "all");
 
   return `
-<div style="margin-top:32px;padding-top:16px;border-top:1px solid #333;text-align:center;font-family:sans-serif;font-size:12px;color:#666;line-height:1.6">
-  <p style="margin:0 0 8px">
-    You're receiving this because you have a Tempo account.
-  </p>
-  <p style="margin:0">
-    <a href="${marketingUrl}" style="color:#666;text-decoration:underline">
-      Unsubscribe from marketing emails
-    </a>
-    &nbsp;·&nbsp;
-    <a href="${pauseUrl}" style="color:#666;text-decoration:underline">
-      Pause all emails
-    </a>
-  </p>
-  <p style="margin:8px 0 0;color:#555">
-    You'll still receive emails about your account and content plans.
-  </p>
-</div>`;
+<table width="100%" cellpadding="0"
+  cellspacing="0" border="0"
+  style="margin-top:32px;
+    border-top:1px solid #333333">
+  <tr>
+    <td align="center"
+      style="padding-top:16px">
+      <p style="font-size:12px;color:#666666;
+        line-height:1.6;margin:0 0 8px;
+        font-family:-apple-system,
+        BlinkMacSystemFont,'Segoe UI',
+        sans-serif">
+        You're receiving this because you
+        have a Tempo account.
+      </p>
+      <p style="font-size:12px;color:#666666;
+        margin:0;font-family:-apple-system,
+        BlinkMacSystemFont,'Segoe UI',
+        sans-serif">
+        <a href="${marketingUrl}"
+          style="color:#666666;
+            text-decoration:underline">
+          Unsubscribe from marketing emails
+        </a>
+        &nbsp;·&nbsp;
+        <a href="${pauseUrl}"
+          style="color:#666666;
+            text-decoration:underline">
+          Pause all emails
+        </a>
+      </p>
+      <p style="font-size:12px;color:#555555;
+        margin:8px 0 0;font-family:-apple-system,
+        BlinkMacSystemFont,'Segoe UI',
+        sans-serif">
+        You'll still receive emails about
+        your account and content plans.
+      </p>
+    </td>
+  </tr>
+</table>`;
 }
 
 export async function sendEmail({

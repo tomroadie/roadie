@@ -111,7 +111,11 @@ export async function GET(request: Request) {
 
     if (isNewUser && user.email) {
       const eventId = registrationEventId ?? generateEventId();
-      await capiCompleteRegistration(user.email, eventId);
+      try {
+        await capiCompleteRegistration(user.email, eventId);
+      } catch (e) {
+        console.error("CAPI CompleteRegistration failed in auth callback", e);
+      }
 
       const resendKey = process.env.RESEND_API_KEY;
       const baseUrl =

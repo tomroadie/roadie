@@ -36,23 +36,24 @@ export async function sendCAPIEvent(
 ): Promise<void> {
   if (!PIXEL_ID || !CAPI_TOKEN) return;
 
-  const hashedEmail = event.email ? await hashEmail(event.email) : undefined;
-
-  const payload = {
-    data: [
-      {
-        ...event,
-        action_source: "website" as const,
-        user_data: {
-          ...event.user_data,
-          em: hashedEmail,
-        },
-      },
-    ],
-    access_token: CAPI_TOKEN,
-  };
-
   try {
+    const { email, ...capiEvent } = event;
+    const hashedEmail = email ? await hashEmail(email) : undefined;
+
+    const payload = {
+      data: [
+        {
+          ...capiEvent,
+          action_source: "website" as const,
+          user_data: {
+            ...capiEvent.user_data,
+            em: hashedEmail,
+          },
+        },
+      ],
+      access_token: CAPI_TOKEN,
+    };
+
     await fetch(CAPI_URL, {
       method: "POST",
       headers: {

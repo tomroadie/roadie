@@ -2,6 +2,8 @@ import { unsubscribeFooter } from "@/lib/email";
 
 const H1 =
   "font-size:28px;font-weight:900;text-transform:uppercase;letter-spacing:-0.02em;line-height:1.1;margin:0 0 16px;color:#ffffff";
+const H1_SOFT =
+  "font-size:28px;font-weight:900;text-transform:none;letter-spacing:-0.02em;line-height:1.1;margin:0 0 16px;color:#ffffff";
 const P =
   "font-size:15px;line-height:1.6;color:#aaaaaa;margin:0 0 16px";
 const HIGHLIGHT = "color:#ffffff;font-weight:600";
@@ -279,7 +281,7 @@ export function trialWelcomeEmail(data: {
 }): { subject: string; html: string } {
   const subject = "Welcome to Tempo — here's how to get started";
   const content = `
-<h1 style="${H1}">You're in. Here's what to do first.</h1>
+<h1 style="${H1_SOFT}">You're in. Here's what to do first.</h1>
 
 <p style="${P}">Hi ${data.artistName},</p>
 
@@ -375,7 +377,7 @@ export function firstPlanGeneratedEmail(data: {
 }): { subject: string; html: string } {
   const subject = `${data.artistName} — your first Tempo plan is ready`;
   const content = `
-<h1 style="${H1}">Your first plan is ready.</h1>
+<h1 style="${H1_SOFT}">Your first plan is ready.</h1>
 
 <p style="${P}">Hi ${data.artistName},</p>
 
@@ -426,7 +428,7 @@ export function trialEngagedDay5Email(data: {
 }): { subject: string; html: string } {
   const subject = "You're building something here";
   const content = `
-<h1 style="${H1}">This is how the system works.</h1>
+<h1 style="${H1_SOFT}">This is how the system works.</h1>
 
 <p style="${P}">Hi ${data.artistName},</p>
 
@@ -620,7 +622,7 @@ export function winbackDay1Email(data: {
 }): { subject: string; html: string } {
   const subject = "You've cancelled — your data is safe";
   const content = `
-<h1 style="${H1}">Sorry to see you go.</h1>
+<h1 style="${H1_SOFT}">Sorry to see you go.</h1>
 
 <p style="${P}">Hi ${data.artistName},</p>
 
@@ -650,7 +652,7 @@ export function winbackDay7Email(data: {
 }): { subject: string; html: string } {
   const subject = "A lot can happen in a week";
   const content = `
-<h1 style="${H1}">In case you're reconsidering.</h1>
+<h1 style="${H1_SOFT}">In case you're reconsidering.</h1>
 
 <p style="${P}">Hi ${data.artistName},</p>
 
@@ -684,7 +686,7 @@ export function winbackDay30Email(data: {
 }): { subject: string; html: string } {
   const subject = "Come back to Tempo — 2 weeks on us";
   const content = `
-<h1 style="${H1}">We'd love to have you back.</h1>
+<h1 style="${H1_SOFT}">We'd love to have you back.</h1>
 
 <p style="${P}">Hi ${data.artistName},</p>
 

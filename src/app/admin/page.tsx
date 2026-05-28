@@ -77,7 +77,7 @@ export default async function AdminPage() {
   const { data: profiles, error: profilesError } = await adminSupabase
     .from("profiles")
     .select(
-      "id, artist_name, genre, instagram_handle, plan, plan_override, cron_active, owner_user_id, created_at, similar_artists, sound_description, voice_description, is_admin, stripe_customer_id, is_managed"
+      "id, artist_name, genre, instagram_handle, plan, plan_override, cron_active, is_private, owner_user_id, created_at, is_managed, is_admin, stripe_customer_id, tiktok_waitlist"
     )
     .not("artist_name", "is", null)
     .neq("artist_name", "")
@@ -88,6 +88,10 @@ export default async function AdminPage() {
       <AdminPageError message={`Could not load profiles: ${profilesError.message}`} />
     );
   }
+
+  const tiktokWaitlistCount = (profiles ?? []).filter(
+    (p) => p.tiktok_waitlist === true
+  ).length;
 
   const { data: artistsRows, error: artistsError } = await adminSupabase
     .from("artists")
@@ -176,6 +180,7 @@ export default async function AdminPage() {
           : null,
       cron_active: p.cron_active !== false,
       is_managed: p.is_managed === true,
+      is_private: p.is_private === true,
       last_plan_at: lastPlanByArtistId.get(p.id) ?? null,
     };
     });
@@ -408,7 +413,10 @@ export default async function AdminPage() {
 
       <AdminCreateClientArtistForm />
 
-      <AdminArtistsTable rows={rows} />
+      <AdminArtistsTable
+        rows={rows}
+        tiktokWaitlistCount={tiktokWaitlistCount}
+      />
     </div>
   );
 }

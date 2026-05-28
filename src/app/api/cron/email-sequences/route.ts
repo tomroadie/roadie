@@ -13,6 +13,7 @@ import {
   type EmailRecipient,
   type EmailType,
 } from "@/lib/email";
+import { PUBLIC_PROFILES_OR_FILTER } from "@/lib/public-profiles-filter";
 import {
   auditReadyEmail,
   freeDay14Email,
@@ -79,7 +80,8 @@ async function runFreeToPaidSequence(
     .eq("plan", "free")
     .not("audit_completed_at", "is", null)
     .eq("marketing_unsubscribed", false)
-    .eq("all_emails_paused", false);
+    .eq("all_emails_paused", false)
+    .or(PUBLIC_PROFILES_OR_FILTER);
 
   if (error) {
     console.error("email-sequences: free sequence query failed", error.message);
@@ -237,7 +239,8 @@ async function runTrialOnboardingSequence(
     )
     .in("plan", ["starter", "pro", "label"])
     .not("trial_started_at", "is", null)
-    .eq("all_emails_paused", false);
+    .eq("all_emails_paused", false)
+    .or(PUBLIC_PROFILES_OR_FILTER);
 
   if (error) {
     console.error(
@@ -340,7 +343,8 @@ async function runTrialEndingSequence(
     )
     .in("plan", ["starter", "pro", "label"])
     .not("trial_started_at", "is", null)
-    .eq("all_emails_paused", false);
+    .eq("all_emails_paused", false)
+    .or(PUBLIC_PROFILES_OR_FILTER);
 
   if (error) {
     console.error("email-sequences: trial ending query failed", error.message);
@@ -437,7 +441,8 @@ async function runWinbackSequence(
     .not("cancelled_at", "is", null)
     .eq("plan", "free")
     .eq("all_emails_paused", false)
-    .eq("marketing_unsubscribed", false);
+    .eq("marketing_unsubscribed", false)
+    .or(PUBLIC_PROFILES_OR_FILTER);
 
   if (error) {
     console.error("email-sequences: winback query failed", error.message);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { getMondayDateString } from "@/lib/week";
+import { PUBLIC_PROFILES_OR_FILTER } from "@/lib/public-profiles-filter";
 
 const ELIGIBLE_PROFILES_FILTER =
   "is_managed.eq.true,and(is_managed.eq.false,plan.in.(starter,pro,label))";
@@ -42,6 +43,7 @@ export async function GET(request: Request) {
       .from("profiles")
       .select("id, artist_name")
       .or(ELIGIBLE_PROFILES_FILTER)
+      .or(PUBLIC_PROFILES_OR_FILTER)
       .eq("cron_active", true);
 
     if (profilesError) {

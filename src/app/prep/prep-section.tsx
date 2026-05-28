@@ -1,6 +1,17 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import type { ContentIdea } from "@/types/content-plan";
+
+export type PrepResearchAudit = {
+  ai_pattern_analysis: string;
+  ai_full_analysis: string;
+  followers: number;
+};
+
+export type PrepResearchPlan = {
+  ideas: ContentIdea[];
+};
 
 export type PrepArtist = {
   id: string;
@@ -9,6 +20,8 @@ export type PrepArtist = {
   instagram_handle: string;
   followers: number | null;
   has_audit: boolean;
+  researchAudit: PrepResearchAudit | null;
+  researchPlan: PrepResearchPlan | null;
 };
 
 type CallBrief = {
@@ -161,6 +174,28 @@ export function PrepSection({ artists }: PrepSectionProps) {
   const [error, setError] = useState<string | null>(null);
   const [copiedFull, setCopiedFull] = useState(false);
   const [copiedOpener, setCopiedOpener] = useState(false);
+  const [researchOpen, setResearchOpen] = useState<Set<string>>(new Set());
+  const [researchAudits, setResearchAudits] = useState<
+    Record<string, PrepResearchAudit>
+  >(() => {
+    const initial: Record<string, PrepResearchAudit> = {};
+    for (const artist of artists) {
+      if (artist.researchAudit) initial[artist.id] = artist.researchAudit;
+    }
+    return initial;
+  });
+  const [researchPlans, setResearchPlans] = useState<
+    Record<string, PrepResearchPlan>
+  >(() => {
+    const initial: Record<string, PrepResearchPlan> = {};
+    for (const artist of artists) {
+      if (artist.researchPlan) initial[artist.id] = artist.researchPlan;
+    }
+    return initial;
+  });
+  const [auditLoading, setAuditLoading] = useState<string | null>(null);
+  const [planLoading, setPlanLoading] = useState<string | null>(null);
+  const [researchError, setResearchError] = useState<string | null>(null);
 
   const selectedArtist = useMemo(
     () => artists.find((artist) => artist.id === selectedArtistId) ?? null,
@@ -234,12 +269,81 @@ export function PrepSection({ artists }: PrepSectionProps) {
     }
   }
 
+  function toggleResearch(artistId: string) {
+    setResearchOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(artistId)) next.delete(artistId);
+      else next.add(artistId);
+      return next;
+    });
+  }
+
+  async function runResearchAudit(artist: PrepArtist) {
+    setResearchError(null);
+    setAuditLoading(artist.id);
+    try {
+      const res = await fetch("/api/admin/research-audit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ artist_id: artist.id }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? "Could not start research audit.");
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not start research audit.";
+      setResearchError(msg);
+    } finally {
+      setAuditLoading(null);
+    }
+  }
+
+  async function runResearchPlan(artist: PrepArtist) {
+    setResearchError(null);
+    setPlanLoading(artist.id);
+    try {
+      const res = await fetch("/api/admin/research-plan", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ artist_id: artist.id }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ideas?: ContentIdea[];
+        error?: string;
+        details?: string;
+      };
+      if (!res.ok) {
+        throw new Error(
+          data.details
+            ? `${data.error ?? "Request failed"}: ${data.details}`
+            : data.error ?? "Could not generate research plan."
+        );
+      }
+      if (data.ideas && Array.isArray(data.ideas)) {
+        setResearchPlans((prev) => ({
+          ...prev,
+          [artist.id]: { ideas: data.ideas as ContentIdea[] },
+        }));
+      }
+    } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : "Could not generate research plan.";
+      setResearchError(msg);
+    } finally {
+      setPlanLoading(null);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {artists.map((artist) => {
           const isSelected = selectedArtistId === artist.id;
           const isBusy = loading && isSelected;
+          const isResearchExpanded = researchOpen.has(artist.id);
+          const researchAudit = researchAudits[artist.id] ?? null;
+          const researchPlan = researchPlans[artist.id] ?? null;
 
           return (
             <article
@@ -290,6 +394,88 @@ export function PrepSection({ artists }: PrepSectionProps) {
               >
                 {isBusy ? "Generating…" : "Prepare brief"}
               </button>
+
+              <div className="mt-4 border-t border-card-border pt-4">
+                <button
+                  type="button"
+                  onClick={() => toggleResearch(artist.id)}
+                  className="text-xs font-bold uppercase tracking-wide text-brand hover:underline"
+                >
+                  {isResearchExpanded ? "Hide research ▲" : "Research tools ▼"}
+                </button>
+
+                {isResearchExpanded ? (
+                  <div className="mt-3 space-y-3">
+                    <div className="rounded-lg border border-card-border bg-input p-4">
+                      <p className="text-xs font-bold uppercase tracking-wide text-foreground">
+                        Research audit
+                      </p>
+                      <p className="mt-1 text-xs text-muted">
+                        Generates a fresh audit for research purposes only. Does
+                        not affect the artist&apos;s live dashboard.
+                      </p>
+                      {researchAudit?.ai_pattern_analysis ? (
+                        <div className="mt-3">
+                          <p className="mb-1 text-xs font-semibold text-brand">
+                            Pattern analysis
+                          </p>
+                          <p className="text-xs leading-relaxed text-muted-strong">
+                            {researchAudit.ai_pattern_analysis}
+                          </p>
+                        </div>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => void runResearchAudit(artist)}
+                        disabled={auditLoading === artist.id}
+                        className="mt-3 rounded-lg border border-card-border bg-input px-3 py-1.5 text-xs font-semibold text-muted hover:text-foreground disabled:opacity-50"
+                      >
+                        {auditLoading === artist.id
+                          ? "Running..."
+                          : researchAudit
+                            ? "Refresh audit"
+                            : "Run research audit"}
+                      </button>
+                    </div>
+
+                    <div className="rounded-lg border border-card-border bg-input p-4">
+                      <p className="text-xs font-bold uppercase tracking-wide text-foreground">
+                        Research plan
+                      </p>
+                      <p className="mt-1 text-xs text-muted">
+                        Generates a content plan for research purposes only. Does
+                        not affect the artist&apos;s live dashboard.
+                      </p>
+                      {researchPlan?.ideas?.length ? (
+                        <div className="mt-3 space-y-2">
+                          {researchPlan.ideas.slice(0, 3).map((idea, i) => (
+                            <div key={`${idea.hook}-${i}`} className="rounded bg-card p-2">
+                              <p className="text-xs font-bold text-brand">
+                                {idea.format}
+                              </p>
+                              <p className="mt-0.5 text-xs text-foreground">
+                                {idea.hook}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => void runResearchPlan(artist)}
+                        disabled={planLoading === artist.id}
+                        className="mt-3 rounded-lg border border-card-border bg-input px-3 py-1.5 text-xs font-semibold text-muted hover:text-foreground disabled:opacity-50"
+                      >
+                        {planLoading === artist.id
+                          ? "Generating..."
+                          : researchPlan
+                            ? "Refresh plan"
+                            : "Generate research plan"}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </article>
           );
         })}
@@ -298,6 +484,12 @@ export function PrepSection({ artists }: PrepSectionProps) {
       {artists.length === 0 ? (
         <p className="rounded-xl border border-dashed border-card-border bg-input p-10 text-center text-sm text-muted">
           No artists available.
+        </p>
+      ) : null}
+
+      {researchError ? (
+        <p className="text-sm text-red-400" role="alert">
+          {researchError}
         </p>
       ) : null}
 

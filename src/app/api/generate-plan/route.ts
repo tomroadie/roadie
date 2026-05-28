@@ -296,11 +296,22 @@ function parseIdeaRatingsFromDb(raw: unknown): Record<string, "up" | "down"> {
   return out;
 }
 
+function parseIdeaFeedbackFromDb(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === "string" && v.trim()) out[k] = v.trim();
+  }
+  return out;
+}
+
+type DislikedIdea = { hook: string; reason?: string };
+
 function formatIdeaRatingsPromptSection(
   uplikedHooks: string[],
-  dislikedHooks: string[]
+  dislikedIdeas: DislikedIdea[]
 ): string {
-  if (uplikedHooks.length === 0 && dislikedHooks.length === 0) return "";
+  if (uplikedHooks.length === 0 && dislikedIdeas.length === 0) return "";
 
   const parts: string[] = ["## Artist content feedback (last 4 weeks)", ""];
 
@@ -312,10 +323,12 @@ function formatIdeaRatingsPromptSection(
     );
   }
 
-  if (dislikedHooks.length > 0) {
+  if (dislikedIdeas.length > 0) {
     parts.push(
       "### Ideas the artist did not want to pursue",
-      ...dislikedHooks.map((hook) => `- ${hook}`),
+      ...dislikedIdeas.map(({ hook, reason }) =>
+        reason ? `- "${hook}" — reason: ${reason}` : `- "${hook}" (no reason given)`
+      ),
       ""
     );
   }
@@ -489,12 +502,14 @@ export async function POST(request: Request) {
   let avoid = "";
   let focus = "";
   let forcePendingReview = false;
+  let isResearch = false;
   try {
     const body = (await request.json()) as Record<string, unknown>;
     vibe = optionalBodyString(body.vibe);
     avoid = optionalBodyString(body.avoid);
     focus = optionalBodyString(body.focus);
     forcePendingReview = body.force_pending_review === "true";
+    isResearch = body.is_research === true;
   } catch {
     /* no JSON body or invalid JSON — optional inputs stay empty */
   }
@@ -591,7 +606,7 @@ export async function POST(request: Request) {
   if (profile.is_managed === true) {
     isManaged = true;
   }
-  const treatAsManaged = isManaged || forcePendingReview;
+  const treatAsManaged = !isResearch && (isManaged || forcePendingReview);
 
   const { data: audit, error: auditError } = await supabase
     .from("audits")
@@ -614,7 +629,7 @@ export async function POST(request: Request) {
   try {
     const { data: recentPlans, error: recentPlansError } = await supabase
       .from("weekly_plans")
-      .select("ideas, idea_ratings, week_start, created_at")
+      .select("ideas, idea_ratings, idea_feedback, week_start, created_at")
       .eq("artist_id", activeArtistId)
       .order("created_at", { ascending: false })
       .limit(4);
@@ -626,19 +641,28 @@ export async function POST(request: Request) {
       });
     } else {
       const uplikedHooks: string[] = [];
-      const dislikedHooks: string[] = [];
+      const dislikedByHook = new Map<string, DislikedIdea>();
 
       for (const plan of recentPlans ?? []) {
         const ratings = parseIdeaRatingsFromDb(plan.idea_ratings);
+        const feedback = parseIdeaFeedbackFromDb(plan.idea_feedback);
         for (const [hook, rating] of Object.entries(ratings)) {
-          if (rating === "up") uplikedHooks.push(hook);
-          else if (rating === "down") dislikedHooks.push(hook);
+          if (rating === "up") {
+            uplikedHooks.push(hook);
+          } else if (rating === "down") {
+            if (!dislikedByHook.has(hook)) {
+              dislikedByHook.set(hook, {
+                hook,
+                reason: feedback[hook],
+              });
+            }
+          }
         }
       }
 
       ideaRatingsSection = formatIdeaRatingsPromptSection(
         [...new Set(uplikedHooks)],
-        [...new Set(dislikedHooks)]
+        [...dislikedByHook.values()]
       );
     }
   } catch (e) {
@@ -951,18 +975,58 @@ No markdown fences, no commentary outside the JSON object.`;
         status: "pending_review" as const,
         ideas: null,
         created_at: nowIso,
+        is_research: false,
       }
     : {
         ideas: pickSafeIdeasFromSlots(planSlots.slots),
         status: "published" as const,
         created_at: nowIso,
+        is_research: isResearch,
       };
 
+  if (isResearch) {
+    const { data: existingResearch } = await supabase
+      .from("weekly_plans")
+      .select("id")
+      .eq("artist_id", activeArtistId)
+      .eq("is_research", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingResearch?.id) {
+      const { error: updateError } = await supabase
+        .from("weekly_plans")
+        .update({ ...planPayload, week_start: weekStart })
+        .eq("id", existingResearch.id);
+
+      if (updateError) {
+        return NextResponse.json(
+          { error: "Failed to save plan", details: updateError.message },
+          { status: 500 }
+        );
+      }
+    } else {
+      const { error: insertError } = await supabase.from("weekly_plans").insert({
+        artist_id: activeArtistId,
+        week_start: weekStart,
+        ...planPayload,
+      });
+
+      if (insertError) {
+        return NextResponse.json(
+          { error: "Failed to save plan", details: insertError.message },
+          { status: 500 }
+        );
+      }
+    }
+  } else {
   const { data: existing } = await supabase
     .from("weekly_plans")
     .select("id")
     .eq("artist_id", activeArtistId)
     .eq("week_start", weekStart)
+    .eq("is_research", false)
     .maybeSingle();
 
   if (existing?.id) {
@@ -991,8 +1055,9 @@ No markdown fences, no commentary outside the JSON object.`;
       );
     }
   }
+  }
 
-  if (isManaged) {
+  if (isManaged && !isResearch) {
     const resendKey = process.env.RESEND_API_KEY;
     if (resendKey) {
       const hdrHost =
@@ -1029,7 +1094,7 @@ No markdown fences, no commentary outside the JSON object.`;
       ? profile.owner_user_id.trim()
       : null);
 
-  if (!isManaged && !treatAsManaged) {
+  if (!isManaged && !treatAsManaged && !isResearch) {
     const adminSupabase = isInternalPlan
       ? supabase
       : createServiceRoleClient();
@@ -1091,7 +1156,7 @@ No markdown fences, no commentary outside the JSON object.`;
     }
   }
 
-  if (usageUserId) {
+  if (usageUserId && !isResearch) {
     await trackUsage({
       supabase,
       userId: usageUserId,
@@ -1122,10 +1187,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export async function PATCH(request: Request) {
   let hook = "";
   let rating: string | undefined;
+  let reason: string | null = null;
   try {
     const body = (await request.json()) as Record<string, unknown>;
     hook = typeof body.hook === "string" ? body.hook.trim() : "";
     rating = typeof body.rating === "string" ? body.rating.trim() : undefined;
+    if (body.reason === null) {
+      reason = null;
+    } else if (typeof body.reason === "string") {
+      const trimmed = body.reason.trim();
+      reason = trimmed || null;
+    }
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -1167,7 +1239,7 @@ export async function PATCH(request: Request) {
 
   const { data: row, error: fetchError } = await supabase
     .from("weekly_plans")
-    .select("id, idea_ratings")
+    .select("id, idea_ratings, idea_feedback")
     .eq("artist_id", activeArtistId)
     .eq("week_start", weekStart)
     .maybeSingle();
@@ -1189,9 +1261,19 @@ export async function PATCH(request: Request) {
   const prev = isRecord(row.idea_ratings) ? row.idea_ratings : {};
   const next = { ...prev, [hook]: rating } as Record<string, string>;
 
+  const updatePayload: Record<string, unknown> = { idea_ratings: next };
+
+  if (rating === "down" && reason) {
+    const existingFeedback = parseIdeaFeedbackFromDb(row.idea_feedback);
+    updatePayload.idea_feedback = {
+      ...existingFeedback,
+      [hook]: reason,
+    };
+  }
+
   const { error: updateError } = await supabase
     .from("weekly_plans")
-    .update({ idea_ratings: next })
+    .update(updatePayload)
     .eq("id", row.id);
 
   if (updateError) {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 export function CheckinForm({
@@ -60,10 +61,21 @@ export function CheckinForm({
 
   if (submitted) {
     return (
-      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
-        <p className="text-base font-semibold text-emerald-200">
-          Thanks — we&apos;ll factor this into your plan.
+      <div className="text-center">
+        <p className="text-2xl">✓</p>
+        <h2 className="mt-3 text-xl font-black uppercase tracking-tight text-foreground">
+          You&apos;re all set.
+        </h2>
+        <p className="mt-2 text-sm text-muted">
+          Your check-in has been saved. Your content plan will be ready Monday
+          morning.
         </p>
+        <Link
+          href="/home"
+          className="mt-6 inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95"
+        >
+          Go to your dashboard →
+        </Link>
       </div>
     );
   }

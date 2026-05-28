@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
+import { PUBLIC_PROFILES_OR_FILTER } from "@/lib/public-profiles-filter";
 
 type ProfileRow = {
   id: string;
@@ -375,6 +376,7 @@ export async function GET(request: Request) {
       )
       .in("plan", ["pro", "label"])
       .not("instagram_user_id", "is", null)
+      .or(PUBLIC_PROFILES_OR_FILTER)
       .or("cron_active.eq.true,cron_active.is.null");
 
     if (profilesError) {

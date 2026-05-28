@@ -15,6 +15,7 @@ export async function PATCH(request: Request) {
   let planOverride: string | null | undefined;
   let plan: string | undefined;
   let isManaged: boolean | undefined;
+  let isPrivate: boolean | undefined;
 
   try {
     const body = (await request.json()) as Record<string, unknown>;
@@ -24,6 +25,9 @@ export async function PATCH(request: Request) {
     }
     if (typeof body.is_managed === "boolean") {
       isManaged = body.is_managed;
+    }
+    if (typeof body.is_private === "boolean") {
+      isPrivate = body.is_private;
     }
     if (body.plan_override === null) {
       planOverride = null;
@@ -45,13 +49,14 @@ export async function PATCH(request: Request) {
     cronActive !== undefined ||
     planOverride !== undefined ||
     plan !== undefined ||
-    isManaged !== undefined;
+    isManaged !== undefined ||
+    isPrivate !== undefined;
 
   if (!hasUpdate) {
     return NextResponse.json(
       {
         error:
-          "Expected cron_active, plan_override, plan, and/or is_managed",
+          "Expected cron_active, plan_override, plan, is_managed, and/or is_private",
       },
       { status: 400 }
     );
@@ -95,6 +100,9 @@ export async function PATCH(request: Request) {
   }
   if (isManaged !== undefined) {
     updates.is_managed = isManaged;
+  }
+  if (isPrivate !== undefined) {
+    updates.is_private = isPrivate;
   }
 
   let adminSupabase: ReturnType<typeof createServiceRoleClient>;

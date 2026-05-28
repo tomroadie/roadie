@@ -76,9 +76,23 @@ function formatRelativeTime(iso: string): string {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
+const FEEDBACK_REASONS = [
+  "Not my style",
+  "Already done this",
+  "Wrong timing",
+  "Too generic",
+  "Other",
+] as const;
+
 function IdeaCard({
   idea,
-  onRate,
+  onRateUp,
+  onThumbsDownClick,
+  onSubmitFeedback,
+  onSkipFeedback,
+  showFeedbackPrompt = false,
+  selectedReason = "",
+  onSelectReason,
   initialRating = null,
   onSubmitReview,
   canReview = false,
@@ -87,7 +101,13 @@ function IdeaCard({
   plan = "pro",
 }: {
   idea: ContentIdea;
-  onRate: (hook: string, rating: "up" | "down") => void;
+  onRateUp: (hook: string) => void;
+  onThumbsDownClick: (hook: string) => void;
+  onSubmitFeedback: (hook: string) => void;
+  onSkipFeedback: (hook: string) => void;
+  showFeedbackPrompt?: boolean;
+  selectedReason?: string;
+  onSelectReason?: (hook: string, reason: string) => void;
   initialRating?: "up" | "down" | null;
   onSubmitReview?: (idea: ContentIdea, file: File | null) => Promise<void>;
   canReview?: boolean;
@@ -104,6 +124,10 @@ function IdeaCard({
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [reviewFile, setReviewFile] = useState<File | null>(null);
   const accent = useMemo(() => getAccent(idea.format), [idea.format]);
+
+  useEffect(() => {
+    setRating(initialRating ?? null);
+  }, [initialRating]);
 
   async function handleCopy() {
     try {
@@ -186,7 +210,7 @@ function IdeaCard({
             aria-label="Thumbs up"
             onClick={() => {
               setRating("up");
-              onRate(idea.hook, "up");
+              onRateUp(idea.hook);
             }}
             className={[
               "inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-lg transition-colors hover:border-brand sm:flex-initial sm:min-w-[5rem]",
@@ -201,7 +225,7 @@ function IdeaCard({
             aria-label="Thumbs down"
             onClick={() => {
               setRating("down");
-              onRate(idea.hook, "down");
+              onThumbsDownClick(idea.hook);
             }}
             className={[
               "inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-lg transition-colors hover:border-brand sm:flex-initial sm:min-w-[5rem]",
@@ -212,7 +236,47 @@ function IdeaCard({
           </button>
         </div>
 
-        {rating !== null ? (
+        {showFeedbackPrompt ? (
+          <div className="mt-3 rounded-lg border border-card-border bg-input p-3">
+            <p className="mb-2 text-xs font-semibold text-muted">
+              What didn&apos;t work about this idea?
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {FEEDBACK_REASONS.map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  onClick={() => onSelectReason?.(idea.hook, reason)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    selectedReason === reason
+                      ? "bg-brand text-brand-foreground"
+                      : "border border-card-border bg-card text-muted hover:text-foreground"
+                  }`}
+                >
+                  {reason}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => onSubmitFeedback(idea.hook)}
+                className="rounded-lg border border-card-border bg-input px-3 py-1.5 text-xs font-semibold text-muted hover:text-foreground"
+              >
+                Submit
+              </button>
+              <button
+                type="button"
+                onClick={() => onSkipFeedback(idea.hook)}
+                className="text-xs text-muted hover:text-foreground"
+              >
+                Skip
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {rating !== null && !showFeedbackPrompt ? (
           <p className="mt-2 text-xs text-muted">Thanks for the feedback</p>
         ) : null}
 
@@ -394,6 +458,13 @@ export function WeeklyPlanSection({
   const [revisionNote, setRevisionNote] = useState("");
   const [revisionSubmitting, setRevisionSubmitting] = useState(false);
   const [revisionSent, setRevisionSent] = useState(false);
+  const [showFeedback, setShowFeedback] = useState<Set<string>>(new Set());
+  const [selectedReasons, setSelectedReasons] = useState<Record<string, string>>(
+    {}
+  );
+  const [savedRatingHooks, setSavedRatingHooks] = useState<Set<string>>(
+    () => new Set(Object.keys(initialIdeaRatings))
+  );
   const refreshedApprovedRevisionId = useRef<string | null>(null);
   const normalizedPlan = normalizePlan(plan);
   const canGenerate = canDo(normalizedPlan, "canGeneratePlan", isAdmin);
@@ -730,21 +801,74 @@ export function WeeklyPlanSection({
     }
   }
 
-  async function handleRate(hook: string, rating: "up" | "down") {
+  useEffect(() => {
+    setSavedRatingHooks(new Set(Object.keys(initialIdeaRatings)));
+  }, [initialIdeaRatings]);
+
+  async function saveRating(
+    hook: string,
+    rating: "up" | "down",
+    reason?: string | null
+  ) {
     try {
+      const body: Record<string, string> = { hook, rating };
+      if (rating === "down" && reason) {
+        body.reason = reason;
+      }
       const res = await fetch("/api/generate-plan", {
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hook, rating }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
         setError(data.error ?? "Could not save rating.");
+        return false;
       }
+      setSavedRatingHooks((prev) => new Set(prev).add(hook));
+      setShowFeedback((prev) => {
+        const next = new Set(prev);
+        next.delete(hook);
+        return next;
+      });
+      setSelectedReasons((prev) => {
+        const next = { ...prev };
+        delete next[hook];
+        return next;
+      });
+      return true;
     } catch {
       setError("Network error. Try again.");
+      return false;
     }
+  }
+
+  function handleRateUp(hook: string) {
+    void saveRating(hook, "up");
+  }
+
+  function handleThumbsDownClick(hook: string) {
+    const hasExistingRating =
+      initialIdeaRatings[hook] != null || savedRatingHooks.has(hook);
+    if (hasExistingRating) {
+      void saveRating(hook, "down");
+      return;
+    }
+    setShowFeedback((prev) => new Set(prev).add(hook));
+  }
+
+  function handleSelectReason(hook: string, reason: string) {
+    setSelectedReasons((prev) => ({ ...prev, [hook]: reason }));
+  }
+
+  function handleSubmitFeedback(hook: string) {
+    const reason = selectedReasons[hook];
+    void saveRating(hook, "down", reason || null);
+  }
+
+  function handleSkipFeedback(hook: string) {
+    void saveRating(hook, "down", null);
   }
 
   function requestGenerate() {
@@ -894,7 +1018,13 @@ export function WeeklyPlanSection({
                   return (
                     <IdeaCard
                       idea={idea}
-                      onRate={handleRate}
+                      onRateUp={handleRateUp}
+                      onThumbsDownClick={handleThumbsDownClick}
+                      onSubmitFeedback={handleSubmitFeedback}
+                      onSkipFeedback={handleSkipFeedback}
+                      showFeedbackPrompt={showFeedback.has(idea.hook)}
+                      selectedReason={selectedReasons[idea.hook] ?? ""}
+                      onSelectReason={handleSelectReason}
                       initialRating={initialIdeaRatings[idea.hook] ?? null}
                       canReview={canReview}
                       reviewForThisIdea={reviewForThisIdea}

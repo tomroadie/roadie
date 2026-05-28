@@ -133,6 +133,27 @@ function IconChart(props: { className?: string }) {
   );
 }
 
+function IconTikTok(props: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={props.className}
+      fill="none"
+    >
+      <path
+        d="M9 18V6l11-3v3L9 9"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="6" cy="18" r="3" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="17" cy="9" r="3" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
 function IconArrowRight(props: { className?: string }) {
   return (
     <svg
@@ -826,30 +847,48 @@ export function LandingPage() {
                   body: "As Tempo learns what content resonates with your audience, your plans get more targeted. The longer you use it, the better it gets.",
                   icon: <IconChart className="h-5 w-5" />,
                 },
-              ].map((f) => (
-                <div
-                  key={f.title}
-                  className="group rounded-2xl border p-8 transition-colors hover:bg-white/[0.03]"
-                  style={{ backgroundColor: CARD_BG, borderColor: CARD_BORDER }}
-                >
+                {
+                  title: "TikTok (coming soon)",
+                  body: "Native TikTok content plans, built for how each platform actually works.",
+                  icon: <IconTikTok className="h-5 w-5" />,
+                  comingSoon: true,
+                },
+              ].map((f) => {
+                const card = (
                   <div
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border transition-colors"
-                    style={{
-                      borderColor: "rgba(0,255,135,0.28)",
-                      backgroundColor: "rgba(0,255,135,0.06)",
-                      color: BRAND_GREEN,
-                    }}
+                    className="group rounded-2xl border p-8 transition-colors hover:bg-white/[0.03]"
+                    style={{ backgroundColor: CARD_BG, borderColor: CARD_BORDER }}
                   >
-                    {f.icon}
+                    <div
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border transition-colors"
+                      style={{
+                        borderColor: "rgba(0,255,135,0.28)",
+                        backgroundColor: "rgba(0,255,135,0.06)",
+                        color: BRAND_GREEN,
+                      }}
+                    >
+                      {f.icon}
+                    </div>
+                    <h3 className="mt-5 text-lg font-black uppercase tracking-tight text-white">
+                      {f.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-7 text-gray-400">{f.body}</p>
                   </div>
-                  <h3 className="mt-5 text-lg font-black uppercase tracking-tight text-white">
-                    {f.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-7 text-gray-400">
-                    {f.body}
-                  </p>
-                </div>
-              ))}
+                );
+
+                if ("comingSoon" in f && f.comingSoon) {
+                  return (
+                    <div key={f.title} className="relative opacity-75">
+                      <span className="absolute top-0 right-0 z-10 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-bold text-amber-400">
+                        Coming soon
+                      </span>
+                      {card}
+                    </div>
+                  );
+                }
+
+                return <div key={f.title}>{card}</div>;
+              })}
             </div>
           </div>
         </section>

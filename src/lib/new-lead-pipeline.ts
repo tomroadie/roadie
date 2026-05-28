@@ -62,6 +62,7 @@ export type EnqueueNewLeadInput = {
   email: string;
   artist_name: string;
   instagram_input: string;
+  is_research?: boolean;
 };
 
 export async function enqueueNewLead(input: EnqueueNewLeadInput): Promise<void> {
@@ -102,6 +103,7 @@ export async function enqueueNewLead(input: EnqueueNewLeadInput): Promise<void> 
     apify_posts_run_id,
     apify_profile_run_id,
     status: "processing",
+    is_research: input.is_research === true,
   });
 
   if (insertError) {

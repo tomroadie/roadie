@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
+import { PUBLIC_PROFILES_OR_FILTER } from "@/lib/public-profiles-filter";
 import { getMondayDateString } from "@/lib/week";
 import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 
@@ -158,7 +159,8 @@ export async function GET(request: Request) {
       .from("profiles")
       .select("id, instagram_user_id, instagram_access_token")
       .not("instagram_access_token", "is", null)
-      .not("instagram_user_id", "is", null);
+      .not("instagram_user_id", "is", null)
+      .or(PUBLIC_PROFILES_OR_FILTER);
 
     if (profilesError) {
       return NextResponse.json(

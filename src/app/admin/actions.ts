@@ -121,6 +121,9 @@ export async function adminCreateClientArtist(
     similar_artists: similarArtists || null,
     voice_description: null,
     instagram_handle: instagramHandle.replace(/^@/, "") || null,
+    is_managed: true,
+    is_private: true,
+    cron_active: false,
   });
 
   if (profileError) {

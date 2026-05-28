@@ -34,6 +34,7 @@ type PendingLeadRow = {
   apify_posts_run_id: string | null;
   apify_profile_run_id: string | null;
   status: string | null;
+  is_research: boolean | null;
 };
 
 type ApifyProfileItem = {
@@ -234,7 +235,9 @@ export async function POST(request: Request) {
 
   const { data: pending, error: pendingError } = await supabase
     .from("pending_leads")
-    .select("id, email, instagram_handle, artist_name, apify_posts_run_id, apify_profile_run_id, status")
+    .select(
+      "id, email, instagram_handle, artist_name, apify_posts_run_id, apify_profile_run_id, status, is_research"
+    )
     .eq("id", pending_lead_id.trim())
     .maybeSingle();
 
@@ -404,6 +407,8 @@ Be specific, warm, and actionable. Max 300 words total.`;
     .eq("instagram_handle", lead.instagram_handle.trim())
     .maybeSingle();
 
+  const isResearchLead = lead.is_research === true;
+
   const { error: auditInsertError } = await supabase.from("audits").insert({
     user_id: profileLookup?.owner_user_id ?? null,
     artist_id: profileLookup?.id ?? null,
@@ -417,6 +422,7 @@ Be specific, warm, and actionable. Max 300 words total.`;
     recent_posts_raw: formattedPosts,
     ai_pattern_analysis,
     ai_full_analysis,
+    is_research: isResearchLead,
   });
 
   if (auditInsertError) {
@@ -426,7 +432,7 @@ Be specific, warm, and actionable. Max 300 words total.`;
     );
   }
 
-  if (profileLookup?.id) {
+  if (profileLookup?.id && !isResearchLead) {
     const { error: auditTimestampError } = await supabase
       .from("profiles")
       .update({ audit_completed_at: new Date().toISOString() })
@@ -440,7 +446,7 @@ Be specific, warm, and actionable. Max 300 words total.`;
     }
   }
 
-  if (profileLookup?.owner_user_id && profileLookup?.id) {
+  if (profileLookup?.owner_user_id && profileLookup?.id && !isResearchLead) {
     await trackUsage({
       supabase,
       userId: profileLookup.owner_user_id,
@@ -465,15 +471,16 @@ Be specific, warm, and actionable. Max 300 words total.`;
     );
   }
 
-  // Auto-generate first plan if none exists
+  // Auto-generate first plan if none exists (skip for research audits)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
   const planWebhookSecret = process.env.WEBHOOK_SECRET;
-  if (appUrl && profileLookup?.id && planWebhookSecret) {
+  if (appUrl && profileLookup?.id && planWebhookSecret && !isResearchLead) {
     try {
       const { data: existingPlan } = await supabase
         .from("weekly_plans")
         .select("id")
         .eq("artist_id", profileLookup.id)
+        .eq("is_research", false)
         .limit(1)
         .maybeSingle();
 
@@ -493,41 +500,43 @@ Be specific, warm, and actionable. Max 300 words total.`;
     }
   }
 
-  const teaser = firstSentence(ai_pattern_analysis);
-  const insightsUrl = "https://app.roadie.media/insights";
+  if (!isResearchLead) {
+    const teaser = firstSentence(ai_pattern_analysis);
+    const insightsUrl = "https://app.roadie.media/insights";
 
-  const emailText = generateAuditEmailPlainText({
-    artist_name: artistName,
-    followers: followers ?? "—",
-    following: following ?? "—",
-    post_count: post_count ?? "—",
-    teaser,
-    cta_url: insightsUrl,
-  });
-
-  const emailHtml = generateAuditEmail({
-    artist_name: artistName,
-    followers: followers ?? "—",
-    following: following ?? "—",
-    post_count: post_count ?? "—",
-    teaser,
-    cta_url: insightsUrl,
-  });
-
-  const emailSend = await sendResendEmail({
-    apiKey: resendKey,
-    to: lead.email.trim().toLowerCase(),
-    subject: getAuditEmailSubject(artistName),
-    text: emailText,
-    html: emailHtml,
-  });
-
-  if (!emailSend.ok) {
-    console.error("Resend send failed", {
-      pending_lead_id: lead.id,
-      status: emailSend.status,
-      error: emailSend.error,
+    const emailText = generateAuditEmailPlainText({
+      artist_name: artistName,
+      followers: followers ?? "—",
+      following: following ?? "—",
+      post_count: post_count ?? "—",
+      teaser,
+      cta_url: insightsUrl,
     });
+
+    const emailHtml = generateAuditEmail({
+      artist_name: artistName,
+      followers: followers ?? "—",
+      following: following ?? "—",
+      post_count: post_count ?? "—",
+      teaser,
+      cta_url: insightsUrl,
+    });
+
+    const emailSend = await sendResendEmail({
+      apiKey: resendKey,
+      to: lead.email.trim().toLowerCase(),
+      subject: getAuditEmailSubject(artistName),
+      text: emailText,
+      html: emailHtml,
+    });
+
+    if (!emailSend.ok) {
+      console.error("Resend send failed", {
+        pending_lead_id: lead.id,
+        status: emailSend.status,
+        error: emailSend.error,
+      });
+    }
   }
 
   return NextResponse.json({

@@ -3,6 +3,7 @@ import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { createCheckinToken } from "@/lib/checkin-token";
 import { buildEmailRecipient, sendEmail } from "@/lib/email";
 import { checkinFridayEmail } from "@/lib/email-templates";
+import { PUBLIC_PROFILES_OR_FILTER } from "@/lib/public-profiles-filter";
 
 function escapeHtml(value: string): string {
   return value
@@ -168,6 +169,7 @@ export async function GET(request: Request) {
         "id, artist_name, owner_user_id, is_managed, plan, marketing_unsubscribed, all_emails_paused"
       )
       .or(ELIGIBLE_PROFILES_FILTER)
+      .or(PUBLIC_PROFILES_OR_FILTER)
       .eq("cron_active", true);
 
     if (profilesError) {

@@ -15,6 +15,7 @@ export type AdminArtistDirectoryRow = {
   plan_override: string | null;
   cron_active: boolean;
   is_managed: boolean;
+  is_private: boolean;
   last_plan_at: string | null;
 };
 
@@ -49,6 +50,7 @@ type ArtistPatch = {
   plan_override?: string | null;
   plan?: string;
   is_managed?: boolean;
+  is_private?: boolean;
 };
 
 async function patchArtist(
@@ -74,7 +76,13 @@ async function patchArtist(
   return {};
 }
 
-export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] }) {
+export function AdminArtistsTable({
+  rows,
+  tiktokWaitlistCount = 0,
+}: {
+  rows: AdminArtistDirectoryRow[];
+  tiktokWaitlistCount?: number;
+}) {
   const [localRows, setLocalRows] = useState<AdminArtistDirectoryRow[]>(() => rows);
   const [q, setQ] = useState("");
   const [auditBusy, setAuditBusy] = useState<string | null>(null);
@@ -82,6 +90,7 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
   const [planBusy, setPlanBusy] = useState<string | null>(null);
   const [managedBusy, setManagedBusy] = useState<string | null>(null);
   const [planOverrideBusy, setPlanOverrideBusy] = useState<string | null>(null);
+  const [privateBusy, setPrivateBusy] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [savedHint, setSavedHint] = useState<string | null>(null);
@@ -120,6 +129,7 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
         r.plan_override ?? "",
         r.is_managed ? "managed" : "self-serve",
         r.cron_active ? "active" : "inactive",
+        r.is_private ? "private" : "public",
       ]
         .join(" ")
         .toLowerCase();
@@ -186,6 +196,23 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
     flashSaved(artistId);
   }
 
+  async function handleTogglePrivate(artistId: string, nextPrivate: boolean) {
+    setControlsError(null);
+    setPrivateBusy(artistId);
+    const res = await patchArtist(artistId, { is_private: nextPrivate });
+    setPrivateBusy(null);
+    if (res.error) {
+      setControlsError(res.error);
+      return;
+    }
+    setLocalRows((prev) =>
+      prev.map((row) =>
+        row.id === artistId ? { ...row, is_private: nextPrivate } : row
+      )
+    );
+    flashSaved(artistId);
+  }
+
   async function handlePlanOverrideChange(artistId: string, value: string) {
     setControlsError(null);
     setPlanOverrideBusy(artistId);
@@ -240,6 +267,12 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
           <p className="mt-1 text-sm text-muted">
             {localRows.length} artist{localRows.length === 1 ? "" : "s"} in the directory.
           </p>
+          {tiktokWaitlistCount > 0 ? (
+            <p className="mt-1 text-xs text-amber-400">
+              {tiktokWaitlistCount} artist
+              {tiktokWaitlistCount !== 1 ? "s" : ""} on TikTok waitlist
+            </p>
+          ) : null}
         </div>
         <div className="w-full sm:max-w-xs">
           <label
@@ -280,6 +313,7 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
               <th className="whitespace-nowrap px-4 py-3">Plan override</th>
               <th className="whitespace-nowrap px-4 py-3">Managed</th>
               <th className="whitespace-nowrap px-4 py-3">Weekly crons</th>
+              <th className="whitespace-nowrap px-4 py-3">Private</th>
               <th className="whitespace-nowrap px-4 py-3">Instagram</th>
               <th className="whitespace-nowrap px-4 py-3">Last plan</th>
               <th className="whitespace-nowrap px-4 py-3 text-right">Actions</th>
@@ -288,7 +322,17 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
           <tbody className="divide-y divide-[#1a1a1a]">
             {filtered.map((r) => (
               <tr key={r.id} className="text-foreground">
-                <td className="px-4 py-3 font-semibold">{r.artist_name.trim()}</td>
+                <td className="px-4 py-3 font-semibold">
+                  <span className="inline-flex items-center">
+                    {r.is_private ? (
+                      <span
+                        className="mr-2 inline-block h-2 w-2 shrink-0 rounded-full bg-amber-400"
+                        title="Private profile"
+                      />
+                    ) : null}
+                    {r.artist_name.trim()}
+                  </span>
+                </td>
                 <td className="px-4 py-3">
                   <label className="sr-only" htmlFor={`plan-${r.id}`}>
                     Plan for {r.artist_name}
@@ -379,6 +423,24 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
                       Weekly crons
                     </span>
                   </div>
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    type="button"
+                    disabled={privateBusy === r.id}
+                    onClick={() => void handleTogglePrivate(r.id, !r.is_private)}
+                    className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-60 ${
+                      r.is_private
+                        ? "bg-amber-500/20 text-amber-400"
+                        : "bg-input text-muted"
+                    }`}
+                  >
+                    {privateBusy === r.id
+                      ? "Saving…"
+                      : r.is_private
+                        ? "Private"
+                        : "Public"}
+                  </button>
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-muted-strong">
                   {r.instagram_handle ? `@${r.instagram_handle.replace(/^@/, "")}` : "—"}

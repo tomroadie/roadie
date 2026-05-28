@@ -10,6 +10,7 @@ import { VoiceForm } from "./voice-form";
 import { PostingGoalForm } from "./posting-goal-form";
 import { EmailPreferencesSection } from "./email-preferences-section";
 import { BillingSection } from "./billing-section";
+import { TikTokWaitlistSection } from "./tiktok-waitlist-section";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { canDo, getPlanForGating } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
@@ -38,7 +39,7 @@ export default async function SettingsPage() {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, instagram_handle, instagram_user_id, voice_description, posting_frequency, plan, plan_override, marketing_unsubscribed, all_emails_paused, stripe_customer_id, trial_started_at"
+      "artist_name, instagram_handle, instagram_user_id, voice_description, posting_frequency, plan, plan_override, marketing_unsubscribed, all_emails_paused, stripe_customer_id, trial_started_at, tiktok_waitlist"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -106,6 +107,10 @@ export default async function SettingsPage() {
       <InstagramConnectSection
         instagramUserId={profile.instagram_user_id ?? null}
         canConnectLiveStats={canConnectLiveStats}
+      />
+
+      <TikTokWaitlistSection
+        initialWaitlisted={profile.tiktok_waitlist === true}
       />
 
       <VoiceForm initialVoice={profile.voice_description ?? null} />

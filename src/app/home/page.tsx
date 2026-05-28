@@ -285,6 +285,7 @@ export default async function HomePage({
     .from("weekly_plans")
     .select("ideas, status, created_at, week_start, admin_note, idea_ratings")
     .eq("artist_id", activeArtistId)
+    .eq("is_research", false)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -308,6 +309,7 @@ export default async function HomePage({
       "followers, following, post_count, bio, ai_pattern_analysis, ai_full_analysis, recent_posts_raw, instagram_handle, created_at"
     )
     .eq("artist_id", activeArtistId)
+    .eq("is_research", false)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -325,6 +327,7 @@ export default async function HomePage({
             "followers, following, post_count, bio, ai_pattern_analysis, ai_full_analysis, recent_posts_raw, instagram_handle, created_at"
           )
           .eq("instagram_handle", profile.instagram_handle)
+          .eq("is_research", false)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -341,6 +344,7 @@ export default async function HomePage({
     .from("audits")
     .select("id, created_at")
     .eq("artist_id", activeArtistId)
+    .eq("is_research", false)
     .gte("created_at", twentyFourHoursAgo)
     .order("created_at", { ascending: false })
     .limit(1)

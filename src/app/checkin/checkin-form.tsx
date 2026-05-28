@@ -20,7 +20,7 @@ export function CheckinForm({
 
     const trimmed = response.trim();
     if (!trimmed) {
-      setError("Please tell us what's happening next week.");
+      setError("Please tell us what's on your radar.");
       return;
     }
 
@@ -72,16 +72,21 @@ export function CheckinForm({
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
       <label className="block">
         <span className="text-sm font-semibold text-foreground">
-          What&apos;s happening next week?
+          What&apos;s on your radar?
         </span>
         <textarea
           rows={6}
           value={response}
           onChange={(e) => setResponse(e.target.value)}
-          placeholder="Show on Friday, new single dropping, studio day with…"
+          placeholder="Upcoming shows, releases in the pipeline, studio time, collabs — anything worth building content around."
           className="mt-2 w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted"
         />
       </label>
+
+      <p className="text-xs text-muted mt-2">
+        Doesn&apos;t have to be this week — tell us anything coming up that&apos;s
+        worth building content around.
+      </p>
 
       {error ? (
         <p className="text-sm text-red-400" role="alert">

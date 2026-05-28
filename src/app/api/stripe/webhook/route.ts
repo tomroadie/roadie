@@ -34,9 +34,14 @@ async function downgradeProfileToFree(
     return;
   }
 
+  const updatePayload: { plan: string; cancelled_at?: string } = { plan: "free" };
+  if (reason === "subscription deleted") {
+    updatePayload.cancelled_at = new Date().toISOString();
+  }
+
   const { error } = await supabase
     .from("profiles")
-    .update({ plan: "free" })
+    .update(updatePayload)
     .eq("id", profile.id);
 
   if (error) {
@@ -50,34 +55,6 @@ async function downgradeProfileToFree(
   console.log(`Downgraded profile ${profile.id} to free (${reason})`);
 }
 
-async function sendResendEmail(args: {
-  apiKey: string;
-  to: string;
-  subject: string;
-  text: string;
-}): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${args.apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      from: "Tempo <hello@roadie.media>",
-      to: [args.to],
-      subject: args.subject,
-      text: args.text,
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    return { ok: false, status: res.status, error: text || res.statusText };
-  }
-
-  return { ok: true };
-}
-
 async function handleTrialWillEnd(subscription: Stripe.Subscription) {
   const stripeCustomerIdValue = stripeCustomerId(subscription.customer);
   if (!stripeCustomerIdValue) {
@@ -85,71 +62,9 @@ async function handleTrialWillEnd(subscription: Stripe.Subscription) {
     return;
   }
 
-  const supabase = createServiceRoleClient();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, owner_user_id")
-    .eq("stripe_customer_id", stripeCustomerIdValue)
-    .maybeSingle();
-
-  if (!profile?.owner_user_id) {
-    console.log(
-      `No profile found for Stripe customer ${stripeCustomerIdValue} (trial_will_end)`
-    );
-    return;
-  }
-
-  const { data: userData, error: userError } = await supabase.auth.admin.getUserById(
-    profile.owner_user_id
+  console.log(
+    `customer.subscription.trial_will_end for ${stripeCustomerIdValue} — handled by email-sequences cron`
   );
-
-  const email = userData?.user?.email?.trim();
-  if (userError || !email) {
-    console.log(
-      `No email found for profile ${profile.id} (trial_will_end)`,
-      userError?.message
-    );
-    return;
-  }
-
-  const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) {
-    console.log("trial_will_end: RESEND_API_KEY not configured");
-    return;
-  }
-
-  const text = [
-    "Hi,",
-    "",
-    "Your 14-day free trial of Tempo ends in 3 days.",
-    "",
-    "Everything you've built — your audit, your content plan, your Instagram insights — stays live as long as your subscription is active.",
-    "",
-    "No action needed if you're happy to continue — you'll be charged automatically when the trial ends.",
-    "",
-    "If you have any questions, just reply to this email.",
-    "",
-    "— Tom at Tempo",
-    "https://app.roadie.media",
-  ].join("\n");
-
-  const emailSend = await sendResendEmail({
-    apiKey: resendKey,
-    to: email,
-    subject: "Your Tempo trial ends in 3 days",
-    text,
-  });
-
-  if (!emailSend.ok) {
-    console.error("trial_will_end: Resend send failed", {
-      profileId: profile.id,
-      status: emailSend.status,
-      error: emailSend.error,
-    });
-    return;
-  }
-
-  console.log(`Sent trial_will_end email to profile ${profile.id}`);
 }
 
 async function triggerFirstWeeklyPlanIfNeeded(artistId: string) {

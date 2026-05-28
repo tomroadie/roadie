@@ -10,6 +10,17 @@ import { NextResponse } from "next/server";
 import { canDo, getPlanForGating } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 import { trackUsage } from "@/lib/track-usage";
+import {
+  appBaseUrl,
+  buildEmailRecipient,
+  everSent,
+  formatWeekLabel,
+  sendEmail,
+} from "@/lib/email";
+import {
+  firstPlanGeneratedEmail,
+  weeklyPlanReadyEmail,
+} from "@/lib/email-templates";
 
 const SYSTEM_PROMPT = `You are a creative content strategist who deeply understands music culture. You write like a human, not like a marketing bot.
 
@@ -557,7 +568,7 @@ export async function POST(request: Request) {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, genre, sound_description, similar_artists, voice_description, instagram_access_token, instagram_user_id, posting_frequency, owner_user_id, is_managed"
+      "artist_name, genre, sound_description, similar_artists, voice_description, instagram_access_token, instagram_user_id, posting_frequency, owner_user_id, is_managed, plan, marketing_unsubscribed, all_emails_paused"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -1015,6 +1026,69 @@ No markdown fences, no commentary outside the JSON object.`;
     (typeof profile.owner_user_id === "string" && profile.owner_user_id.trim()
       ? profile.owner_user_id.trim()
       : null);
+
+  if (!isManaged && !treatAsManaged) {
+    const adminSupabase = isInternalPlan
+      ? supabase
+      : createServiceRoleClient();
+    const recipient = await buildEmailRecipient(adminSupabase, {
+      id: activeArtistId,
+      owner_user_id: profile.owner_user_id,
+      artist_name: profile.artist_name,
+      plan: profile.plan,
+      marketing_unsubscribed: profile.marketing_unsubscribed,
+      all_emails_paused: profile.all_emails_paused,
+    });
+
+    if (recipient) {
+      const appUrl = appBaseUrl();
+      const planValue = String(profile.plan ?? "free").trim();
+      const isPaid = planValue !== "free";
+      const isFirstPlan = !(await everSent(
+        activeArtistId,
+        "first_plan_generated"
+      ));
+
+      if (isFirstPlan && isPaid) {
+        const email = firstPlanGeneratedEmail({
+          artistId: activeArtistId,
+          artistName: recipient.artistName,
+          appUrl,
+        });
+        await sendEmail({
+          to: recipient.email,
+          subject: email.subject,
+          html: email.html,
+          recipient,
+          type: "first_plan_generated",
+        });
+      } else if (!sessionUserId && usageUserId) {
+        const today = new Date().toISOString().slice(0, 10);
+        const { count } = await adminSupabase
+          .from("usage_events")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", usageUserId)
+          .gte("created_at", `${today}T00:00:00Z`);
+
+        if ((count ?? 0) === 0) {
+          const email = weeklyPlanReadyEmail({
+            artistId: activeArtistId,
+            artistName: recipient.artistName,
+            weekLabel: formatWeekLabel(weekStart),
+            appUrl,
+          });
+          await sendEmail({
+            to: recipient.email,
+            subject: email.subject,
+            html: email.html,
+            recipient,
+            type: "weekly_plan_ready",
+          });
+        }
+      }
+    }
+  }
+
   if (usageUserId) {
     await trackUsage({
       supabase,

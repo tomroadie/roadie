@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { createCheckinToken } from "@/lib/checkin-token";
+import { buildEmailRecipient, sendEmail } from "@/lib/email";
+import { checkinFridayEmail } from "@/lib/email-templates";
 
 function escapeHtml(value: string): string {
   return value
@@ -30,51 +32,6 @@ function generateManagedWeeklyCheckinEmail(args: {
     body,
     checkinUrl: args.checkinUrl,
     ctaLabel: "Tell us what's coming →",
-  });
-
-  return { subject, text, html };
-}
-
-function generateSelfServeWeeklyCheckinEmail(args: {
-  artistName: string;
-  checkinUrl: string;
-}): { subject: string; text: string; html: string } {
-  const subject = "Your weekly Tempo check-in 🎸";
-  const greeting = args.artistName.trim() || "there";
-  const body = [
-    `Hi ${greeting},`,
-    "",
-    "Your weekly content plan generates on Monday morning.",
-    "Tell us what's coming up so we can shape it around you.",
-    "",
-    args.checkinUrl,
-    "",
-    "Takes 2 minutes. The more context you give us, the better your plan.",
-    "",
-    "— Tom at Tempo",
-  ].join("\n");
-
-  const text = body;
-
-  const htmlBody = [
-    `Hi ${greeting},`,
-    "",
-    "Your weekly content plan generates on Monday morning.",
-    "Tell us what's coming up so we can shape it around you.",
-    "",
-    "Takes 2 minutes. The more context you give us, the better your plan.",
-    "",
-    "— Tom at Tempo",
-  ]
-    .map((line) => (line === "" ? "<br />" : escapeHtml(line)))
-    .join("<br />");
-
-  const html = buildWeeklyCheckinEmailHtml({
-    subject,
-    body: htmlBody,
-    checkinUrl: args.checkinUrl,
-    ctaLabel: "Share what's coming →",
-    bodyIsHtml: true,
   });
 
   return { subject, text, html };
@@ -207,7 +164,9 @@ export async function GET(request: Request) {
 
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, artist_name, owner_user_id, is_managed")
+      .select(
+        "id, artist_name, owner_user_id, is_managed, plan, marketing_unsubscribed, all_emails_paused"
+      )
       .or(ELIGIBLE_PROFILES_FILTER)
       .eq("cron_active", true);
 
@@ -255,24 +214,61 @@ export async function GET(request: Request) {
       const checkinUrl = `${appUrl}/checkin?artist_id=${encodeURIComponent(artistId)}&token=${encodeURIComponent(token)}`;
       const artistName = String(profile.artist_name ?? "").trim();
       const isManaged = profile.is_managed === true;
-      const emailContent = isManaged
-        ? generateManagedWeeklyCheckinEmail({ artistName, checkinUrl })
-        : generateSelfServeWeeklyCheckinEmail({ artistName, checkinUrl });
 
-      const emailSend = await sendResendEmail({
-        apiKey: resendKey,
-        to: email,
-        subject: emailContent.subject,
-        text: emailContent.text,
-        html: emailContent.html,
+      if (isManaged) {
+        const emailContent = generateManagedWeeklyCheckinEmail({
+          artistName,
+          checkinUrl,
+        });
+
+        const emailSend = await sendResendEmail({
+          apiKey: resendKey,
+          to: email,
+          subject: emailContent.subject,
+          text: emailContent.text,
+          html: emailContent.html,
+        });
+
+        if (!emailSend.ok) {
+          console.error("weekly-checkin: Resend failed", {
+            artist_id: artistId,
+            email,
+            status: emailSend.status,
+            error: emailSend.error,
+          });
+          continue;
+        }
+
+        sent += 1;
+        continue;
+      }
+
+      const recipient = await buildEmailRecipient(supabase, profile);
+      if (!recipient) {
+        console.error("weekly-checkin: could not build recipient", {
+          artist_id: artistId,
+        });
+        continue;
+      }
+
+      const emailContent = checkinFridayEmail({
+        artistId,
+        artistName: recipient.artistName,
+        checkinUrl,
       });
 
-      if (!emailSend.ok) {
-        console.error("weekly-checkin: Resend failed", {
+      const ok = await sendEmail({
+        to: recipient.email,
+        subject: emailContent.subject,
+        html: emailContent.html,
+        recipient,
+        type: "checkin_friday",
+      });
+
+      if (!ok) {
+        console.error("weekly-checkin: send failed", {
           artist_id: artistId,
           email,
-          status: emailSend.status,
-          error: emailSend.error,
         });
         continue;
       }

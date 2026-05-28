@@ -10,14 +10,15 @@ export type EmailType =
   | "free_day14"
   | "trial_welcome"
   | "trial_no_plan_day2"
+  | "first_plan_generated"
   | "trial_engaged_day5"
-  | "trial_ending"
-  | "trial_ended"
+  | "trial_ending_engaged"
+  | "trial_ending_inactive"
   | "weekly_plan_ready"
+  | "checkin_friday"
   | "winback_day1"
   | "winback_day7"
-  | "winback_day30"
-  | "checkin_friday";
+  | "winback_day30";
 
 export type EmailRecipient = {
   userId: string;
@@ -32,9 +33,11 @@ export type EmailRecipient = {
 const TRANSACTIONAL_TYPES: EmailType[] = [
   "audit_ready",
   "trial_welcome",
-  "trial_ending",
+  "trial_ending_engaged",
+  "trial_ending_inactive",
   "weekly_plan_ready",
   "checkin_friday",
+  "first_plan_generated",
 ];
 
 export function isTransactional(type: EmailType): boolean {
@@ -181,4 +184,137 @@ export async function sendEmail({
     console.error(`Failed to send ${type}:`, e);
     return false;
   }
+}
+
+type ServiceRoleClient = ReturnType<typeof createServiceRoleClient>;
+
+export async function buildEmailRecipient(
+  supabase: ServiceRoleClient,
+  profile: {
+    id: string;
+    owner_user_id: string | null;
+    artist_name: string | null;
+    plan: string | null;
+    marketing_unsubscribed?: boolean | null;
+    all_emails_paused?: boolean | null;
+  }
+): Promise<EmailRecipient | null> {
+  const artistId = String(profile.id ?? "").trim();
+  const ownerUserId = String(profile.owner_user_id ?? "").trim();
+  if (!artistId || !ownerUserId) return null;
+
+  const { data: authData, error: authError } =
+    await supabase.auth.admin.getUserById(ownerUserId);
+  if (authError) return null;
+
+  const email = authData.user?.email?.trim();
+  if (!email) return null;
+
+  return {
+    userId: ownerUserId,
+    artistId,
+    email,
+    artistName: String(profile.artist_name ?? "").trim() || "there",
+    plan: String(profile.plan ?? "free").trim() || "free",
+    marketingUnsubscribed: profile.marketing_unsubscribed === true,
+    allEmailsPaused: profile.all_emails_paused === true,
+  };
+}
+
+export function winbackExtensionUrl(artistId: string, userId: string): string {
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
+    "https://app.roadie.media";
+  const token = Buffer.from(
+    JSON.stringify({
+      artistId,
+      userId,
+      ts: Date.now(),
+      type: "winback_extension",
+    })
+  ).toString("base64url");
+  return `${base}/api/email/winback-extension?token=${token}`;
+}
+
+export function planPriceLabel(plan: string): string {
+  switch (plan) {
+    case "starter":
+      return "£29";
+    case "pro":
+      return "£59";
+    case "label":
+      return "£149";
+    default:
+      return "£29";
+  }
+}
+
+export function daysSince(isoDate: string): number {
+  const start = new Date(isoDate);
+  start.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.floor((today.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+}
+
+export function daysUntil(isoDate: string): number {
+  const end = new Date(isoDate);
+  end.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.floor((end.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+}
+
+export function formatLongDate(d: Date): string {
+  const days = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+export function formatWeekLabel(mondayIso: string): string {
+  const d = new Date(`${mondayIso}T12:00:00`);
+  const shortDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  return `${shortDays[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+export function appBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
+    "https://app.roadie.media"
+  );
 }

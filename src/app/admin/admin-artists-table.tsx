@@ -82,6 +82,8 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
   const [planBusy, setPlanBusy] = useState<string | null>(null);
   const [managedBusy, setManagedBusy] = useState<string | null>(null);
   const [planOverrideBusy, setPlanOverrideBusy] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [savedHint, setSavedHint] = useState<string | null>(null);
   const [auditError, setAuditError] = useState<string | null>(null);
   const [controlsError, setControlsError] = useState<string | null>(null);
@@ -200,6 +202,32 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
       )
     );
     flashSaved(artistId);
+  }
+
+  async function handleDelete(artistId: string) {
+    setDeleting(artistId);
+    try {
+      const res = await fetch("/api/admin/delete-artist", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          artist_id: artistId,
+        }),
+      });
+      if (res.ok) {
+        setLocalRows((prev) => prev.filter((row) => row.id !== artistId));
+        setConfirming(null);
+      } else {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        alert(data.error ?? "Delete failed");
+      }
+    } catch {
+      alert("Delete failed");
+    } finally {
+      setDeleting(null);
+    }
   }
 
   return (
@@ -377,6 +405,39 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistDirectoryRow[] })
                     >
                       {auditBusy === r.id ? "Running…" : "Run audit"}
                     </button>
+                    {confirming === r.id ? (
+                      <div className="flex flex-col gap-1.5">
+                        <p className="text-xs font-semibold text-red-400">
+                          Delete {r.artist_name}?
+                        </p>
+                        <p className="text-xs text-muted">This cannot be undone.</p>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleDelete(r.id)}
+                            disabled={deleting === r.id}
+                            className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-black text-white hover:bg-red-600 disabled:opacity-50"
+                          >
+                            {deleting === r.id ? "Deleting..." : "Confirm"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirming(null)}
+                            className="rounded-lg border border-card-border bg-input px-3 py-1.5 text-xs font-semibold text-muted hover:text-foreground"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirming(r.id)}
+                        className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/20"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

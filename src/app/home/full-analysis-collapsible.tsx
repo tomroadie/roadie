@@ -17,14 +17,31 @@ function analysisSeenKey(artistId: string): string {
   return `roadie_analysis_seen_${artistId}`;
 }
 
+function formatRelativeDate(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const days = Math.floor(
+    (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
 type FullAnalysisCollapsibleProps = {
   sections: ParsedAnalysisSection[];
   artistId: string;
+  updatedAt?: string | null;
 };
 
 export function FullAnalysisCollapsible({
   sections,
   artistId,
+  updatedAt = null,
 }: FullAnalysisCollapsibleProps) {
   const [open, setOpen] = useState(false);
 
@@ -49,9 +66,16 @@ export function FullAnalysisCollapsible({
         className="flex w-full items-center justify-between gap-3 text-left"
         aria-expanded={open}
       >
-        <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
-          Full analysis
-        </h2>
+        <div>
+          <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
+            Full analysis
+          </h2>
+          {updatedAt ? (
+            <p className="mt-1 text-xs text-muted">
+              Last updated {formatRelativeDate(updatedAt)}
+            </p>
+          ) : null}
+        </div>
         <span className="shrink-0 text-sm font-semibold text-brand">
           {open ? "Hide full analysis ▴" : "Show full analysis ▾"}
         </span>

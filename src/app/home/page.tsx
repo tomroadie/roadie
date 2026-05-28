@@ -93,6 +93,21 @@ function countRecentPostsRaw(raw: string): number {
     .filter(Boolean).length;
 }
 
+function formatRelativeDate(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const days = Math.floor(
+    (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
 function sumInstagramAccountMetric(insightsPayload: unknown, metric: string): number {
   if (!insightsPayload || typeof insightsPayload !== "object") return 0;
   const data = (insightsPayload as { data?: unknown }).data;
@@ -633,6 +648,9 @@ export default async function HomePage({
             <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
               Your content pattern
             </h2>
+            <p className="mt-1 text-xs text-muted">
+              Last updated {formatRelativeDate(audit.created_at)}
+            </p>
             <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-muted-strong">
               {audit.ai_pattern_analysis}
             </p>
@@ -642,6 +660,7 @@ export default async function HomePage({
             <FullAnalysisCollapsible
               sections={fullAnalysisSections}
               artistId={activeArtistId}
+              updatedAt={audit.created_at}
             />
           </div>
         </>

@@ -21,6 +21,7 @@ import {
   firstPlanGeneratedEmail,
   weeklyPlanReadyEmail,
 } from "@/lib/email-templates";
+import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 
 const SYSTEM_PROMPT = `You are a creative content strategist who deeply understands music culture. You write like a human, not like a marketing bot.
 
@@ -626,6 +627,7 @@ export async function POST(request: Request) {
   }
 
   let ideaRatingsSection = "";
+  let postedIdeasSection = "";
   try {
     const { data: recentPlans, error: recentPlansError } = await supabase
       .from("weekly_plans")
@@ -642,6 +644,26 @@ export async function POST(request: Request) {
     } else {
       const uplikedHooks: string[] = [];
       const dislikedByHook = new Map<string, DislikedIdea>();
+      const postedIdeas = (recentPlans ?? []).flatMap((plan) => {
+        const ideas = normalizeIdeasFromDb(plan.ideas);
+        return (ideas ?? [])
+          .filter((i) => i.posted)
+          .map((i) => ({
+            hook: i.hook,
+            format: i.format,
+            posted_at: i.posted_at,
+            instagram_post_id: i.instagram_post_id,
+          }));
+      });
+
+      postedIdeasSection = `### Ideas the artist has posted
+${
+  postedIdeas.length > 0
+    ? postedIdeas.map((i) => `- "${i.hook}" (${i.format})`).join("\n")
+    : "None recorded yet"
+}
+
+Do not repeat ideas the artist has already posted. Use them as signals of what content they are comfortable creating and executing.`;
 
       for (const plan of recentPlans ?? []) {
         const ratings = parseIdeaRatingsFromDb(plan.idea_ratings);
@@ -858,6 +880,7 @@ If 'In their own words' is provided, treat it as the primary voice reference and
 
 ${auditSection}
 ${ideaRatingsSection}
+${postedIdeasSection}
 ${postPerformanceSection}
 ${instagramLiveSection}
 

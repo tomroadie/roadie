@@ -429,6 +429,30 @@ export default async function HomePage({
       : null;
 
   const hasPlanIdeas = (initialIdeas?.length ?? 0) > 0;
+  const canGeneratePlan = canDo(plan, "canGeneratePlan", isAdmin);
+  const showAuditFirst = hasAudit && !canGeneratePlan && !hasPlanIdeas;
+  const canMarkAsPosted =
+    canDo(plan, "canViewLiveSocialData", isAdmin) &&
+    !!profile?.instagram_user_id?.trim();
+
+  const { data: recentPostsData } = await supabase
+    .from("post_performance")
+    .select(
+      "instagram_post_id, caption, likes, engagement_rate, post_date, post_type"
+    )
+    .eq("artist_id", activeArtistId)
+    .order("post_date", { ascending: false })
+    .limit(5);
+
+  const recentPosts = (recentPostsData ?? []).map((row) => ({
+    instagram_post_id: String(row.instagram_post_id ?? ""),
+    caption: typeof row.caption === "string" ? row.caption : null,
+    likes: typeof row.likes === "number" ? row.likes : 0,
+    engagement_rate: Number(row.engagement_rate ?? 0),
+    post_date: String(row.post_date ?? ""),
+    post_type: typeof row.post_type === "string" ? row.post_type : "",
+  }));
+
   const isManaged = profile?.is_managed ?? false;
   const hasInstagram = Boolean(profile?.instagram_handle?.trim());
   const profileIncomplete = !profile?.genre?.trim();
@@ -511,6 +535,366 @@ export default async function HomePage({
     ? parseFullAnalysisText(audit.ai_full_analysis)
     : [];
 
+  const weeklyPlanSection = (
+    <WeeklyPlanSection
+      initialIdeas={initialIdeas}
+      initialIdeaRatings={initialIdeaRatings}
+      upcomingEventsCount={upcomingEventsCount}
+      lastGeneratedAt={lastGeneratedAt}
+      upcomingThisWeek={upcomingThisWeek}
+      plan={plan}
+      planStatus={(weeklyPlan?.status as string | undefined) ?? null}
+      auditPending={auditPending}
+      hasAudit={hasAudit}
+      isAdmin={isAdmin}
+      canReview={canReview}
+      reviews={reviews}
+      artistId={activeArtistId}
+      hideUpcomingThisWeek
+      isManaged={isManaged}
+      revisionRequest={revisionRequest}
+      hasJustUpgraded={upgraded === "true"}
+      hasJustRegistered={false}
+      hasInstagram={hasInstagram}
+      canMarkAsPosted={canMarkAsPosted}
+      recentPosts={recentPosts}
+    />
+  );
+
+  const auditSnapshotSection = audit ? (
+    <section className="mt-10 rounded-xl border border-card-border bg-card p-7">
+      <p className="text-xs font-bold uppercase tracking-widest text-brand">
+        @{audit.instagram_handle.replace(/^@/, "")}
+      </p>
+      <h2 className="mt-2 text-xl font-black uppercase tracking-tight text-foreground">
+        Artist snapshot
+      </h2>
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-card-border bg-input p-5">
+          <p className="text-xs font-bold uppercase tracking-widest text-brand">
+            Followers
+          </p>
+          <p className="mt-2 text-3xl font-black tracking-tight text-foreground">
+            {audit.followers.toLocaleString()}
+          </p>
+        </div>
+        <div className="rounded-xl border border-card-border bg-input p-5">
+          <p className="text-xs font-bold uppercase tracking-widest text-brand">
+            Following
+          </p>
+          <p className="mt-2 text-3xl font-black tracking-tight text-foreground">
+            {audit.following.toLocaleString()}
+          </p>
+        </div>
+        <div className="rounded-xl border border-card-border bg-input p-5">
+          <p className="text-xs font-bold uppercase tracking-widest text-brand">
+            Posts
+          </p>
+          <p className="mt-2 text-3xl font-black tracking-tight text-foreground">
+            {audit.post_count.toLocaleString()}
+          </p>
+        </div>
+      </div>
+      {audit.bio?.trim() ? (
+        <p className="mt-5 text-sm leading-relaxed text-muted-strong">
+          {audit.bio}
+        </p>
+      ) : null}
+    </section>
+  ) : null;
+
+  const auditAnalysisSections = audit ? (
+    <>
+      <section className="mt-10 rounded-xl border border-card-border bg-card p-7 border-l-4 border-brand">
+        <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
+          Your content pattern
+        </h2>
+        <p className="mt-1 text-xs text-muted">
+          Last updated {formatRelativeDate(audit.created_at)}
+        </p>
+        <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-muted-strong">
+          {audit.ai_pattern_analysis}
+        </p>
+      </section>
+
+      <div className="mt-8">
+        <FullAnalysisCollapsible
+          sections={fullAnalysisSections}
+          artistId={activeArtistId}
+          updatedAt={audit.created_at}
+        />
+      </div>
+    </>
+  ) : null;
+
+  const instagramSection = (
+    <section className="mt-10 rounded-xl border border-card-border bg-card p-7">
+      <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
+        Your Instagram
+      </h2>
+
+      {canViewLiveSocialData && liveSocialStats ? (
+        <div className="mt-5">
+          <LiveStatsSection
+            insights={liveSocialStats.insights}
+            media={liveSocialStats.media}
+            followers={audit?.followers ?? 0}
+            timestamps={liveSocialStats.media.map((m) => m.timestamp)}
+          />
+        </div>
+      ) : hasAudit && !liveSocialStats && audit?.recent_posts_raw?.trim() ? (
+        <div className="mt-5">
+          <p className="mb-3 text-xs text-muted">
+            Showing your last{" "}
+            {countRecentPostsRaw(audit.recent_posts_raw)} posts from your
+            Instagram audit
+          </p>
+          <RecentPostsCards
+            raw={sortRecentPostsRawByDateDesc(audit.recent_posts_raw)}
+            previewCount={10}
+          />
+          <p className="mt-5 text-center text-sm text-muted">
+            <Link
+              href={
+                canViewLiveSocialData
+                  ? "/api/auth/instagram"
+                  : "/pricing"
+              }
+              className="font-semibold text-brand hover:underline"
+            >
+              Connect Instagram for live data →
+            </Link>
+          </p>
+        </div>
+      ) : canViewLiveSocialData ? (
+        <div className="mt-5 rounded-xl border border-card-border bg-input p-6">
+          <p className="text-sm font-semibold leading-relaxed text-foreground">
+            Connect your Instagram account to see real-time performance data
+          </p>
+          <div className="mt-5">
+            <Link
+              href="/api/auth/instagram"
+              className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
+            >
+              Connect Instagram →
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="relative mt-5 overflow-hidden rounded-xl">
+          <div
+            className="pointer-events-none select-none space-y-3 blur-sm opacity-50"
+            aria-hidden="true"
+          >
+            {[
+              {
+                likes: 142,
+                comments: 23,
+                eng: "6.2%",
+                label: "Your most recent post",
+              },
+              {
+                likes: 98,
+                comments: 11,
+                eng: "4.8%",
+                label: "Two days ago",
+              },
+              {
+                likes: 203,
+                comments: 31,
+                eng: "8.1%",
+                label: "Last week",
+              },
+            ].map((post, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between rounded-lg bg-input px-4 py-3"
+              >
+                <p className="text-xs text-muted">{post.label}</p>
+                <div className="flex gap-4 text-xs">
+                  <span className="font-semibold text-foreground">
+                    ♥ {post.likes}
+                  </span>
+                  <span className="font-semibold text-foreground">
+                    💬 {post.comments}
+                  </span>
+                  <span className="font-bold text-brand">{post.eng}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-card/80 backdrop-blur-[2px]">
+            <div className="px-4 text-center">
+              <p className="text-2xl">📊</p>
+              <p className="mt-2 text-sm font-black uppercase tracking-wide text-foreground">
+                Live Instagram stats
+              </p>
+              <p className="mt-1 max-w-xs text-sm text-muted">
+                Connect your Instagram Business account to see real-time
+                performance data feeding into your weekly plan.
+              </p>
+              <Link
+                href="/pricing"
+                className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95"
+              >
+                Unlock with Pro →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+
+  const upcomingSection = (
+    <section className="mt-10 rounded-xl border border-card-border bg-card p-6">
+      <p className="text-xs font-bold uppercase tracking-widest text-brand">
+        Upcoming this week
+      </p>
+      {upcomingThisWeek.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {upcomingThisWeek.map((ev) => (
+            <span
+              key={ev.id}
+              className="inline-flex items-center gap-2 rounded-full bg-input px-3 py-1 text-xs font-medium text-foreground"
+            >
+              <span className="text-muted">
+                {new Date(ev.event_date + "T12:00:00").toLocaleDateString(
+                  "en-GB",
+                  { weekday: "short", day: "numeric", month: "short" }
+                )}
+              </span>
+              <span className="font-semibold text-foreground">{ev.title}</span>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-muted">
+          Nothing scheduled this week —{" "}
+          <Link href="/events" className="font-semibold text-brand hover:underline">
+            Add a date →
+          </Link>
+        </p>
+      )}
+    </section>
+  );
+
+  const engagementLockedSection = !canViewEngagementTrends ? (
+    <section className="relative mt-10 overflow-hidden rounded-xl border border-card-border bg-card p-7">
+      <div
+        className="pointer-events-none select-none blur-sm opacity-60"
+        aria-hidden="true"
+      >
+        <p className="text-xs font-bold uppercase tracking-widest text-brand">
+          Engagement trends
+        </p>
+        <h2 className="mt-2 text-lg font-black uppercase tracking-tight text-foreground">
+          Week-on-week performance
+        </h2>
+        <div className="mt-5 flex h-24 items-end gap-2">
+          {[40, 65, 45, 80, 55, 90, 70].map((h, i) => (
+            <div
+              key={i}
+              className="flex-1 rounded-t bg-brand/40"
+              style={{ height: `${h}%` }}
+            />
+          ))}
+        </div>
+        <div className="mt-2 flex justify-between">
+          <span className="text-xs text-muted">Mon</span>
+          <span className="text-xs text-muted">Sun</span>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          <div className="rounded-lg bg-input p-3">
+            <p className="text-xs text-muted">Avg engagement</p>
+            <p className="text-xl font-black text-foreground">4.2%</p>
+          </div>
+          <div className="rounded-lg bg-input p-3">
+            <p className="text-xs text-muted">Best format</p>
+            <p className="text-xl font-black text-foreground">Reels</p>
+          </div>
+          <div className="rounded-lg bg-input p-3">
+            <p className="text-xs text-muted">Trend</p>
+            <p className="text-xl font-black text-brand">↑ 12%</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-card/80 backdrop-blur-[2px]">
+        <div className="px-6 text-center">
+          <p className="text-2xl">📈</p>
+          <p className="mt-2 text-sm font-black uppercase tracking-wide text-foreground">
+            Engagement trends
+          </p>
+          <p className="mt-1 max-w-xs text-sm text-muted">
+            See how your content is performing week on week — format
+            breakdowns, engagement trends, and what&apos;s working.
+          </p>
+          <Link
+            href="/pricing"
+            className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95"
+          >
+            Unlock with Pro →
+          </Link>
+        </div>
+      </div>
+    </section>
+  ) : null;
+
+  const reviewLockedSection = !canReview ? (
+    <section className="relative mt-10 overflow-hidden rounded-xl border border-card-border bg-card p-7">
+      <div
+        className="pointer-events-none select-none blur-sm opacity-60"
+        aria-hidden="true"
+      >
+        <p className="text-xs font-bold uppercase tracking-widest text-brand">
+          Content review
+        </p>
+        <h2 className="mt-2 text-lg font-black uppercase tracking-tight text-foreground">
+          Expert feedback on your ideas
+        </h2>
+        <div className="mt-5 space-y-3">
+          <div className="rounded-xl border border-card-border bg-input p-4">
+            <p className="text-xs font-bold text-brand">REEL</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              Behind the scenes — recording day
+            </p>
+            <div className="mt-3 rounded-lg bg-card p-3">
+              <p className="mb-1 text-xs font-bold uppercase tracking-wide text-brand">
+                Feedback
+              </p>
+              <p className="text-xs text-muted-strong">
+                Strong concept. Lead with the moment of tension — the take
+                that went wrong before the one that didn&apos;t. That&apos;s
+                the hook. Keep it under 30 seconds.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-card/80 backdrop-blur-[2px]">
+        <div className="px-6 text-center">
+          <p className="text-2xl">✍️</p>
+          <p className="mt-2 text-sm font-black uppercase tracking-wide text-foreground">
+            Content review
+          </p>
+          <p className="mt-1 max-w-xs text-sm text-muted">
+            Submit your plan ideas for expert feedback before you post. 2
+            reviews included per month on Pro.
+          </p>
+          <Link
+            href="/pricing"
+            className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95"
+          >
+            Unlock with Pro →
+          </Link>
+        </div>
+      </div>
+    </section>
+  ) : null;
+
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
       {upgraded === "true" ? (
@@ -542,7 +926,7 @@ export default async function HomePage({
 
       <AppNavWrapper />
 
-      {auditJustCompleted && !hasPlanIdeas && !auditPending ? (
+      {!showAuditFirst && auditJustCompleted && !hasPlanIdeas && !auditPending ? (
         isManaged ? (
           <div className="mt-6 rounded-xl border-2 border-brand bg-brand/10 px-6 py-5">
             <p className="text-xs font-bold uppercase tracking-widest text-brand">
@@ -566,7 +950,7 @@ export default async function HomePage({
         )
       ) : null}
 
-      {registered === "true" && !hasInstagram && !auditPending ? (
+      {!showAuditFirst && registered === "true" && !hasInstagram && !auditPending ? (
         <div className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
           <p className="text-sm leading-relaxed text-amber-100">
             Welcome to Tempo. Add your Instagram handle in{" "}
@@ -581,7 +965,7 @@ export default async function HomePage({
         </div>
       ) : null}
 
-      {!hasAudit ? (
+      {!showAuditFirst && !hasAudit ? (
         <AuditCTASection
           artistId={activeArtistId}
           instagramHandle={profile?.instagram_handle ?? null}
@@ -590,357 +974,17 @@ export default async function HomePage({
         />
       ) : null}
 
-      <WeeklyPlanSection
-        initialIdeas={initialIdeas}
-        initialIdeaRatings={initialIdeaRatings}
-        upcomingEventsCount={upcomingEventsCount}
-        lastGeneratedAt={lastGeneratedAt}
-        upcomingThisWeek={upcomingThisWeek}
-        plan={plan}
-        planStatus={(weeklyPlan?.status as string | undefined) ?? null}
-        auditPending={auditPending}
-        hasAudit={hasAudit}
-        isAdmin={isAdmin}
-        canReview={canReview}
-        reviews={reviews}
-        artistId={activeArtistId}
-        hideUpcomingThisWeek
-        isManaged={isManaged}
-        revisionRequest={revisionRequest}
-        hasJustUpgraded={upgraded === "true"}
-        hasJustRegistered={false}
-        hasInstagram={hasInstagram}
-      />
+      {!showAuditFirst ? weeklyPlanSection : null}
 
-      {audit ? (
-        <section className="mt-10 rounded-xl border border-card-border bg-card p-7">
-          <p className="text-xs font-bold uppercase tracking-widest text-brand">
-            @{audit.instagram_handle.replace(/^@/, "")}
-          </p>
-          <h2 className="mt-2 text-xl font-black uppercase tracking-tight text-foreground">
-            Artist snapshot
-          </h2>
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-card-border bg-input p-5">
-              <p className="text-xs font-bold uppercase tracking-widest text-brand">
-                Followers
-              </p>
-              <p className="mt-2 text-3xl font-black tracking-tight text-foreground">
-                {audit.followers.toLocaleString()}
-              </p>
-            </div>
-            <div className="rounded-xl border border-card-border bg-input p-5">
-              <p className="text-xs font-bold uppercase tracking-widest text-brand">
-                Following
-              </p>
-              <p className="mt-2 text-3xl font-black tracking-tight text-foreground">
-                {audit.following.toLocaleString()}
-              </p>
-            </div>
-            <div className="rounded-xl border border-card-border bg-input p-5">
-              <p className="text-xs font-bold uppercase tracking-widest text-brand">
-                Posts
-              </p>
-              <p className="mt-2 text-3xl font-black tracking-tight text-foreground">
-                {audit.post_count.toLocaleString()}
-              </p>
-            </div>
-          </div>
-          {audit.bio?.trim() ? (
-            <p className="mt-5 text-sm leading-relaxed text-muted-strong">
-              {audit.bio}
-            </p>
-          ) : null}
-        </section>
-      ) : null}
+      {auditSnapshotSection}
+      {auditAnalysisSections}
+      {instagramSection}
 
-      {audit ? (
-        <>
-          <section className="mt-10 rounded-xl border border-card-border bg-card p-7 border-l-4 border-brand">
-            <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
-              Your content pattern
-            </h2>
-            <p className="mt-1 text-xs text-muted">
-              Last updated {formatRelativeDate(audit.created_at)}
-            </p>
-            <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-muted-strong">
-              {audit.ai_pattern_analysis}
-            </p>
-          </section>
+      {showAuditFirst ? weeklyPlanSection : null}
 
-          <div className="mt-8">
-            <FullAnalysisCollapsible
-              sections={fullAnalysisSections}
-              artistId={activeArtistId}
-              updatedAt={audit.created_at}
-            />
-          </div>
-        </>
-      ) : null}
-
-      <section className="mt-10 rounded-xl border border-card-border bg-card p-7">
-        <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
-          Your Instagram
-        </h2>
-
-        {canViewLiveSocialData && liveSocialStats ? (
-          <div className="mt-5">
-            <LiveStatsSection
-              insights={liveSocialStats.insights}
-              media={liveSocialStats.media}
-              followers={audit?.followers ?? 0}
-              timestamps={liveSocialStats.media.map((m) => m.timestamp)}
-            />
-          </div>
-        ) : hasAudit && !liveSocialStats && audit.recent_posts_raw?.trim() ? (
-          <div className="mt-5">
-            <p className="mb-3 text-xs text-muted">
-              Showing your last{" "}
-              {countRecentPostsRaw(audit.recent_posts_raw)} posts from your
-              Instagram audit
-            </p>
-            <RecentPostsCards
-              raw={sortRecentPostsRawByDateDesc(audit.recent_posts_raw)}
-              previewCount={10}
-            />
-            <p className="mt-5 text-center text-sm text-muted">
-              <Link
-                href={
-                  canViewLiveSocialData
-                    ? "/api/auth/instagram"
-                    : "/pricing"
-                }
-                className="font-semibold text-brand hover:underline"
-              >
-                Connect Instagram for live data →
-              </Link>
-            </p>
-          </div>
-        ) : canViewLiveSocialData ? (
-          <div className="mt-5 rounded-xl border border-card-border bg-input p-6">
-            <p className="text-sm font-semibold leading-relaxed text-foreground">
-              Connect your Instagram account to see real-time performance data
-            </p>
-            <div className="mt-5">
-              <Link
-                href="/api/auth/instagram"
-                className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
-              >
-                Connect Instagram →
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="relative mt-5 overflow-hidden rounded-xl">
-            <div
-              className="pointer-events-none select-none space-y-3 blur-sm opacity-50"
-              aria-hidden="true"
-            >
-              {[
-                {
-                  likes: 142,
-                  comments: 23,
-                  eng: "6.2%",
-                  label: "Your most recent post",
-                },
-                {
-                  likes: 98,
-                  comments: 11,
-                  eng: "4.8%",
-                  label: "Two days ago",
-                },
-                {
-                  likes: 203,
-                  comments: 31,
-                  eng: "8.1%",
-                  label: "Last week",
-                },
-              ].map((post, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between rounded-lg bg-input px-4 py-3"
-                >
-                  <p className="text-xs text-muted">{post.label}</p>
-                  <div className="flex gap-4 text-xs">
-                    <span className="font-semibold text-foreground">
-                      ♥ {post.likes}
-                    </span>
-                    <span className="font-semibold text-foreground">
-                      💬 {post.comments}
-                    </span>
-                    <span className="font-bold text-brand">{post.eng}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-card/80 backdrop-blur-[2px]">
-              <div className="px-4 text-center">
-                <p className="text-2xl">📊</p>
-                <p className="mt-2 text-sm font-black uppercase tracking-wide text-foreground">
-                  Live Instagram stats
-                </p>
-                <p className="mt-1 max-w-xs text-sm text-muted">
-                  Connect your Instagram Business account to see real-time
-                  performance data feeding into your weekly plan.
-                </p>
-                <Link
-                  href="/pricing"
-                  className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95"
-                >
-                  Unlock with Pro →
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {!canViewEngagementTrends ? (
-        <section className="relative mt-10 overflow-hidden rounded-xl border border-card-border bg-card p-7">
-          <div
-            className="pointer-events-none select-none blur-sm opacity-60"
-            aria-hidden="true"
-          >
-            <p className="text-xs font-bold uppercase tracking-widest text-brand">
-              Engagement trends
-            </p>
-            <h2 className="mt-2 text-lg font-black uppercase tracking-tight text-foreground">
-              Week-on-week performance
-            </h2>
-            <div className="mt-5 flex h-24 items-end gap-2">
-              {[40, 65, 45, 80, 55, 90, 70].map((h, i) => (
-                <div
-                  key={i}
-                  className="flex-1 rounded-t bg-brand/40"
-                  style={{ height: `${h}%` }}
-                />
-              ))}
-            </div>
-            <div className="mt-2 flex justify-between">
-              <span className="text-xs text-muted">Mon</span>
-              <span className="text-xs text-muted">Sun</span>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              <div className="rounded-lg bg-input p-3">
-                <p className="text-xs text-muted">Avg engagement</p>
-                <p className="text-xl font-black text-foreground">4.2%</p>
-              </div>
-              <div className="rounded-lg bg-input p-3">
-                <p className="text-xs text-muted">Best format</p>
-                <p className="text-xl font-black text-foreground">Reels</p>
-              </div>
-              <div className="rounded-lg bg-input p-3">
-                <p className="text-xs text-muted">Trend</p>
-                <p className="text-xl font-black text-brand">↑ 12%</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-card/80 backdrop-blur-[2px]">
-            <div className="px-6 text-center">
-              <p className="text-2xl">📈</p>
-              <p className="mt-2 text-sm font-black uppercase tracking-wide text-foreground">
-                Engagement trends
-              </p>
-              <p className="mt-1 max-w-xs text-sm text-muted">
-                See how your content is performing week on week — format
-                breakdowns, engagement trends, and what&apos;s working.
-              </p>
-              <Link
-                href="/pricing"
-                className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95"
-              >
-                Unlock with Pro →
-              </Link>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {!canReview ? (
-        <section className="relative mt-10 overflow-hidden rounded-xl border border-card-border bg-card p-7">
-          <div
-            className="pointer-events-none select-none blur-sm opacity-60"
-            aria-hidden="true"
-          >
-            <p className="text-xs font-bold uppercase tracking-widest text-brand">
-              Content review
-            </p>
-            <h2 className="mt-2 text-lg font-black uppercase tracking-tight text-foreground">
-              Expert feedback on your ideas
-            </h2>
-            <div className="mt-5 space-y-3">
-              <div className="rounded-xl border border-card-border bg-input p-4">
-                <p className="text-xs font-bold text-brand">REEL</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  Behind the scenes — recording day
-                </p>
-                <div className="mt-3 rounded-lg bg-card p-3">
-                  <p className="mb-1 text-xs font-bold uppercase tracking-wide text-brand">
-                    Feedback
-                  </p>
-                  <p className="text-xs text-muted-strong">
-                    Strong concept. Lead with the moment of tension — the take
-                    that went wrong before the one that didn&apos;t. That&apos;s
-                    the hook. Keep it under 30 seconds.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-card/80 backdrop-blur-[2px]">
-            <div className="px-6 text-center">
-              <p className="text-2xl">✍️</p>
-              <p className="mt-2 text-sm font-black uppercase tracking-wide text-foreground">
-                Content review
-              </p>
-              <p className="mt-1 max-w-xs text-sm text-muted">
-                Submit your plan ideas for expert feedback before you post. 2
-                reviews included per month on Pro.
-              </p>
-              <Link
-                href="/pricing"
-                className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95"
-              >
-                Unlock with Pro →
-              </Link>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="mt-10 rounded-xl border border-card-border bg-card p-6">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand">
-          Upcoming this week
-        </p>
-        {upcomingThisWeek.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {upcomingThisWeek.map((ev) => (
-              <span
-                key={ev.id}
-                className="inline-flex items-center gap-2 rounded-full bg-input px-3 py-1 text-xs font-medium text-foreground"
-              >
-                <span className="text-muted">
-                  {new Date(ev.event_date + "T12:00:00").toLocaleDateString(
-                    "en-GB",
-                    { weekday: "short", day: "numeric", month: "short" }
-                  )}
-                </span>
-                <span className="font-semibold text-foreground">{ev.title}</span>
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-muted">
-            Nothing scheduled this week —{" "}
-            <Link href="/events" className="font-semibold text-brand hover:underline">
-              Add a date →
-            </Link>
-          </p>
-        )}
-      </section>
+      {engagementLockedSection}
+      {reviewLockedSection}
+      {upcomingSection}
     </div>
   );
 }

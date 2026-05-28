@@ -84,6 +84,146 @@ const FEEDBACK_REASONS = [
   "Other",
 ] as const;
 
+function formatRelativeDate(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const days = Math.floor(
+    (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+type RecentPostPerformance = {
+  instagram_post_id: string;
+  caption: string | null;
+  likes: number;
+  engagement_rate: number;
+  post_date: string;
+  post_type: string;
+};
+
+function MarkAsPostedSection({
+  idea,
+  recentPosts,
+  onMarkPosted,
+}: {
+  idea: ContentIdea;
+  recentPosts: RecentPostPerformance[];
+  onMarkPosted: (hook: string, instagramPostId: string | null) => Promise<void>;
+}) {
+  const [showPostPicker, setShowPostPicker] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const postedPostPerformance = idea.instagram_post_id
+    ? recentPosts.find((p) => p.instagram_post_id === idea.instagram_post_id)
+    : null;
+
+  async function handleMarkPosted(instagramPostId: string | null) {
+    setSubmitting(true);
+    try {
+      await onMarkPosted(idea.hook, instagramPostId);
+      setShowPostPicker(false);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (idea.posted) {
+    return (
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-brand">✓ Posted</span>
+        {idea.posted_at ? (
+          <span className="text-xs text-muted">
+            {formatRelativeDate(idea.posted_at)}
+          </span>
+        ) : null}
+        {postedPostPerformance ? (
+          <span className="text-xs text-muted">
+            · {postedPostPerformance.likes} likes ·{" "}
+            {postedPostPerformance.engagement_rate}% engagement
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3">
+      {!showPostPicker ? (
+        <button
+          type="button"
+          onClick={() => setShowPostPicker(true)}
+          className="text-xs text-muted transition-colors hover:text-foreground"
+        >
+          Did you post this? Mark as posted →
+        </button>
+      ) : (
+        <div className="mt-2 rounded-lg border border-card-border bg-input p-3">
+          <p className="mb-2 text-xs font-semibold text-foreground">
+            How did you post it?
+          </p>
+
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={() => void handleMarkPosted(null)}
+            className="mb-2 w-full rounded-lg border border-card-border bg-card px-3 py-2 text-left text-xs text-muted hover:text-foreground disabled:opacity-60"
+          >
+            ✓ Yes, I posted it
+          </button>
+
+          {recentPosts.length > 0 ? (
+            <>
+              <p className="mb-2 text-xs text-muted">
+                Or link to a specific post:
+              </p>
+              <div className="space-y-1.5">
+                {recentPosts.map((post) => (
+                  <button
+                    key={post.instagram_post_id}
+                    type="button"
+                    disabled={submitting}
+                    onClick={() =>
+                      void handleMarkPosted(post.instagram_post_id)
+                    }
+                    className="w-full rounded-lg border border-card-border bg-card px-3 py-2 text-left transition-colors hover:border-brand/50 disabled:opacity-60"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="mr-3 line-clamp-1 flex-1 text-xs text-foreground">
+                        {post.caption?.slice(0, 60) ?? "No caption"}
+                      </p>
+                      <span className="shrink-0 text-xs font-semibold text-brand">
+                        {post.engagement_rate}%
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted">
+                      {post.post_type} · {formatRelativeDate(post.post_date)}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => setShowPostPicker(false)}
+            className="mt-2 text-xs text-muted hover:text-foreground"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function IdeaCard({
   idea,
   onRateUp,
@@ -99,6 +239,9 @@ function IdeaCard({
   reviewForThisIdea = null,
   reviewLimitReached = false,
   plan = "pro",
+  canMarkAsPosted = false,
+  recentPosts = [],
+  onMarkPosted,
 }: {
   idea: ContentIdea;
   onRateUp: (hook: string) => void;
@@ -117,6 +260,12 @@ function IdeaCard({
   } | null;
   reviewLimitReached?: boolean;
   plan?: string;
+  canMarkAsPosted?: boolean;
+  recentPosts?: RecentPostPerformance[];
+  onMarkPosted?: (
+    hook: string,
+    instagramPostId: string | null
+  ) => Promise<void>;
 }) {
   const [copied, setCopied] = useState(false);
   const [rating, setRating] = useState<null | "up" | "down">(initialRating ?? null);
@@ -280,6 +429,14 @@ function IdeaCard({
           <p className="mt-2 text-xs text-muted">Thanks for the feedback</p>
         ) : null}
 
+        {canMarkAsPosted && onMarkPosted ? (
+          <MarkAsPostedSection
+            idea={idea}
+            recentPosts={recentPosts}
+            onMarkPosted={onMarkPosted}
+          />
+        ) : null}
+
         {canReview ? (
           <div className="mt-4 border-t border-card-border pt-4">
             {reviewForThisIdea ? (
@@ -413,6 +570,8 @@ type WeeklyPlanSectionProps = {
   hasJustUpgraded?: boolean;
   hasJustRegistered?: boolean;
   hasInstagram?: boolean;
+  canMarkAsPosted?: boolean;
+  recentPosts?: RecentPostPerformance[];
 };
 
 type PlanAnswers = {
@@ -441,6 +600,8 @@ export function WeeklyPlanSection({
   hasJustUpgraded = false,
   hasJustRegistered = false,
   hasInstagram = false,
+  canMarkAsPosted = false,
+  recentPosts = [],
 }: WeeklyPlanSectionProps) {
   const router = useRouter();
   const [ideas, setIdeas] = useState<ContentIdea[] | null>(initialIdeas);
@@ -871,6 +1032,42 @@ export function WeeklyPlanSection({
     void saveRating(hook, "down", null);
   }
 
+  async function handleMarkPosted(
+    hook: string,
+    instagramPostId: string | null
+  ) {
+    try {
+      const res = await fetch("/api/mark-idea-posted", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          artist_id: artistId,
+          idea_hook: hook,
+          instagram_post_id: instagramPostId,
+        }),
+      });
+      if (res.ok) {
+        setIdeas(
+          (prev) =>
+            prev?.map((i) =>
+              i.hook === hook
+                ? {
+                    ...i,
+                    posted: true,
+                    posted_at: new Date().toISOString(),
+                    instagram_post_id: instagramPostId,
+                  }
+                : i
+            ) ?? null
+        );
+      }
+    } catch (e) {
+      console.error("Failed to mark as posted:", e);
+    }
+  }
+
   function requestGenerate() {
     if (loading) return;
     if (!canGenerate) return;
@@ -894,7 +1091,7 @@ export function WeeklyPlanSection({
         </button>
       );
       headerRightIsButton = true;
-    } else if (freePlanNoIdeasYet) {
+    } else if (freePlanNoIdeasYet && hasAudit) {
       headerRight = auditPending ? (
         <Link
           href="/pricing"
@@ -902,23 +1099,16 @@ export function WeeklyPlanSection({
         >
           Upgrade
         </Link>
-      ) : hasAudit ? (
+      ) : (
         <Link
           href="/pricing"
           className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
         >
           Upgrade
         </Link>
-      ) : (
-        <Link
-          href="/settings"
-          className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-card px-5 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
-        >
-          Go to settings
-        </Link>
       );
       headerRightIsButton = true;
-    } else if (!(canGenerate && hasPlanIdeas)) {
+    } else if (!(canGenerate && hasPlanIdeas) && (hasAudit || canGenerate)) {
       headerRight = (
         <Link
           href="/pricing"
@@ -993,13 +1183,15 @@ export function WeeklyPlanSection({
               month
             </p>
           ) : null}
-          <p className="mt-2 text-sm text-muted">
-            {upcomingEventsCount > 0 ? (
-              <>Plan shaped by {upcomingEventsCount} upcoming events.</>
-            ) : (
-              <>No upcoming dates — add some to get more specific ideas.</>
-            )}
-          </p>
+          {hasAudit ? (
+            <p className="mt-2 text-sm text-muted">
+              {upcomingEventsCount > 0 ? (
+                <>Plan shaped by {upcomingEventsCount} upcoming events.</>
+              ) : (
+                <>No upcoming dates — add some to get more specific ideas.</>
+              )}
+            </p>
+          ) : null}
           {!headerRightIsButton && headerRight ? (
             <div className="mt-3">{headerRight}</div>
           ) : null}
@@ -1046,6 +1238,9 @@ export function WeeklyPlanSection({
                             }
                           : undefined
                       }
+                      canMarkAsPosted={canMarkAsPosted}
+                      recentPosts={recentPosts}
+                      onMarkPosted={handleMarkPosted}
                     />
                   );
                 })()}
@@ -1076,76 +1271,96 @@ export function WeeklyPlanSection({
           </div>
         </div>
       ) : !loading ? (
-        <div className="mt-6 rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
-          <p className="text-sm leading-relaxed text-muted">
-            {freePlanNoIdeasYet ? (
-              auditPending ? (
-                "Your audit is running — upgrade to get your personalised plan when it's ready."
-              ) : hasAudit ? (
-                "Your audit is ready! Upgrade to generate your personalised content plan."
-              ) : (
-                "Complete your profile to get started."
-              )
-            ) : !auditPending && !hasAudit && !hasPlanIdeas ? (
-              hasInstagram
-                ? "Run your audit above to get a personalised content plan."
-                : "Add your Instagram handle in Settings to get started."
-            ) : (
-              "No plan for this week yet. Generate tailored ideas from your profile, dates, and Instagram audit."
-            )}
-          </p>
-          <div className="mt-6 flex justify-center">
-            {freePlanNoIdeasYet ? (
-              auditPending || hasAudit ? (
-                <Link
-                  href="/pricing"
-                  className={
-                    hasAudit
-                      ? "inline-flex h-11 min-w-[200px] items-center justify-center rounded-lg bg-brand px-8 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
-                      : "inline-flex h-11 min-w-[200px] items-center justify-center rounded-lg border border-card-border bg-card px-8 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
-                  }
-                >
-                  Upgrade
-                </Link>
-              ) : (
-                <Link
-                  href="/settings"
-                  className="inline-flex h-11 min-w-[200px] items-center justify-center rounded-lg border border-card-border bg-card px-8 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
-                >
-                  Go to settings
-                </Link>
-              )
-            ) : canGenerate ? (
-              <button
-                type="button"
-                onClick={requestGenerate}
-                disabled={loading}
-                className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Generate my weekly plan
-              </button>
-            ) : (
-              <Link
-                href="/pricing"
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-card-border bg-card px-5 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
-              >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="h-4 w-4"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.5 8V6a4.5 4.5 0 1 1 9 0v2h.5A1.5 1.5 0 0 1 16.5 9.5v6A1.5 1.5 0 0 1 15 17H5A1.5 1.5 0 0 1 3.5 15.5v-6A1.5 1.5 0 0 1 5 8h.5Zm2-2a2.5 2.5 0 0 1 5 0v2h-5V6Z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                Upgrade to generate your plan
-              </Link>
-            )}
-          </div>
-        </div>
+        (() => {
+          let emptyCopy: string | null =
+            "No plan for this week yet. Generate tailored ideas from your profile, dates, and Instagram audit.";
+          let showEmptyActions = true;
+
+          if (freePlanNoIdeasYet) {
+            if (hasAudit) {
+              emptyCopy = auditPending
+                ? "Your plan will be ready once your audit is complete."
+                : "Your audit is ready! Upgrade to generate your personalised content plan.";
+            } else if (auditPending) {
+              emptyCopy =
+                "Your audit is running — your plan will be generated once it's ready.";
+              showEmptyActions = false;
+            } else if (!canGenerate) {
+              emptyCopy = null;
+              showEmptyActions = false;
+            } else {
+              emptyCopy = "Run your audit above to unlock your plan.";
+              showEmptyActions = false;
+            }
+          } else if (!auditPending && !hasAudit && !hasPlanIdeas) {
+            if (canGenerate) {
+              emptyCopy = "Run your audit above to unlock your plan.";
+              showEmptyActions = false;
+            } else if (hasInstagram) {
+              emptyCopy =
+                "Run your Instagram audit above to get your personalised content plan.";
+            } else {
+              emptyCopy =
+                "Run your Instagram audit above to get your personalised content plan.";
+            }
+          }
+
+          if (emptyCopy === null && !showEmptyActions) {
+            return null;
+          }
+
+          return (
+            <div className="mt-6 rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
+              {emptyCopy ? (
+                <p className="text-sm leading-relaxed text-muted">{emptyCopy}</p>
+              ) : null}
+              {showEmptyActions ? (
+                <div className="mt-6 flex justify-center">
+                  {freePlanNoIdeasYet && hasAudit ? (
+                    <Link
+                      href="/pricing"
+                      className={
+                        auditPending
+                          ? "inline-flex h-11 min-w-[200px] items-center justify-center rounded-lg border border-card-border bg-card px-8 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
+                          : "inline-flex h-11 min-w-[200px] items-center justify-center rounded-lg bg-brand px-8 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
+                      }
+                    >
+                      Upgrade
+                    </Link>
+                  ) : canGenerate ? (
+                    <button
+                      type="button"
+                      onClick={requestGenerate}
+                      disabled={loading}
+                      className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Generate my weekly plan
+                    </button>
+                  ) : (
+                    <Link
+                      href="/pricing"
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-card-border bg-card px-5 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        className="h-4 w-4"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M5.5 8V6a4.5 4.5 0 1 1 9 0v2h.5A1.5 1.5 0 0 1 16.5 9.5v6A1.5 1.5 0 0 1 15 17H5A1.5 1.5 0 0 1 3.5 15.5v-6A1.5 1.5 0 0 1 5 8h.5Zm2-2a2.5 2.5 0 0 1 5 0v2h-5V6Z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      Upgrade to generate your plan
+                    </Link>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          );
+        })()
       ) : (
         <div className="mt-6 flex flex-col gap-5">
           <p className="text-sm text-muted animate-pulse">

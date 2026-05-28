@@ -6,6 +6,7 @@ import {
 } from "@/lib/active-artist";
 import { userIsAdmin } from "@/lib/is-admin";
 import { AppNav, type AppNavArtist } from "./app-nav";
+import { FeedbackButton } from "./feedback-button";
 
 export async function AppNavWrapper() {
   const supabase = await createClient();
@@ -50,10 +51,13 @@ export async function AppNavWrapper() {
   }
 
   return (
-    <AppNav
-      artists={artists}
-      activeArtistId={activeArtistId}
-      showAdminLink={showAdminLink}
-    />
+    <>
+      <AppNav
+        artists={artists}
+        activeArtistId={activeArtistId}
+        showAdminLink={showAdminLink}
+      />
+      <FeedbackButton />
+    </>
   );
 }

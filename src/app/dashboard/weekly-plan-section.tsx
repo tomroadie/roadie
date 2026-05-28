@@ -351,14 +351,6 @@ type WeeklyPlanSectionProps = {
   hasInstagram?: boolean;
 };
 
-function hoursSince(iso: string): number {
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return Number.POSITIVE_INFINITY;
-  return (Date.now() - t) / (1000 * 60 * 60);
-}
-
-type ConfirmKind = "no-dates" | "recent-plan";
-
 type PlanAnswers = {
   vibe: string;
   avoid: string;
@@ -391,7 +383,6 @@ export function WeeklyPlanSection({
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<ConfirmKind | null>(null);
   const [showQuestionsModal, setShowQuestionsModal] = useState(false);
   const [answers, setAnswers] = useState<PlanAnswers>({
     vibe: "",
@@ -759,19 +750,6 @@ export function WeeklyPlanSection({
   function requestGenerate() {
     if (loading) return;
     if (!canGenerate) return;
-    if (upcomingEventsCount === 0) {
-      setConfirm("no-dates");
-      return;
-    }
-    if (lastGeneratedAt && hoursSince(lastGeneratedAt) < 24) {
-      setConfirm("recent-plan");
-      return;
-    }
-    setShowQuestionsModal(true);
-  }
-
-  function confirmGenerateAnyway() {
-    setConfirm(null);
     setShowQuestionsModal(true);
   }
 
@@ -1166,53 +1144,6 @@ export function WeeklyPlanSection({
                 className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
               >
                 Generate my plan
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {confirm ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-xl border border-card-border bg-card p-6 shadow-[0_18px_70px_rgba(0,0,0,0.65)]">
-            <h3 className="text-base font-semibold text-foreground">
-              {confirm === "no-dates"
-                ? "Your dates are empty"
-                : "Generate your plan?"}
-            </h3>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              {confirm === "no-dates"
-                ? "Content ideas will be more generic without dates. Add dates first or continue anyway?"
-                : "You generated a plan today. Generate again with updated info?"}
-            </p>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-              {confirm === "no-dates" ? (
-                <Link
-                  href="/events"
-                  onClick={() => {
-                    setConfirm(null);
-                  }}
-                  className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
-                >
-                  Add dates
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setConfirm(null);
-                  }}
-                  className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
-                >
-                  Cancel
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={confirmGenerateAnyway}
-                className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
-              >
-                {confirm === "no-dates" ? "Generate anyway" : "Generate anyway"}
               </button>
             </div>
           </div>

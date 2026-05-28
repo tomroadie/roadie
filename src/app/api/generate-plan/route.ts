@@ -865,6 +865,8 @@ The slots should directly address what the audit says is missing and amplify wha
 
 Use the CORE PROBLEM and OPPORTUNITY above to shape at least **3 of the 5** slots directly.
 
+CAPTION STYLE: Do not include hashtags in any captions or caption suggestions. In 2026, hashtags on Instagram have minimal impact on reach and make captions feel generic and spammy. Write captions that sound natural and human — the algorithm rewards content quality and engagement, not hashtag volume.
+
 Respond with ONLY valid JSON in this exact structure:
 {
   "slots": [

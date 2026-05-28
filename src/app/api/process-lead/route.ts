@@ -349,7 +349,7 @@ CRITICAL TONE RULES:
 - Sound like a conversation, not a report
 - Never reference posts by number (e.g. "Post 3", "Post 5", "the third post"). Reference posts by their content instead (e.g. "your Boomtown announcement", "the behind-the-scenes clip", "your most recent release post"). The artist cannot see a numbered list — make every reference self-evident from context.
 
-TONE CALIBRATION: Study the artist's actual captions carefully. Note their sentence length, punctuation style, emoji usage, whether they use lowercase or proper case, their vocabulary level, and personality markers. Every insight and caption suggestion must feel natural to their voice.
+TONE CALIBRATION: Study the artist's actual captions carefully. Note their sentence length, punctuation style, emoji usage, whether they use lowercase or proper case, their vocabulary level, and personality markers. Every insight and caption suggestion must feel natural to their voice. Do not include hashtags in any caption examples — write captions that sound natural and human.
 
 Artist: ${artistName}. Below is a structured summary of their Instagram profile and recent posts.${noPostsNote}${formattedProfile}
 

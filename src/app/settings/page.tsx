@@ -9,6 +9,7 @@ import { InstagramConnectSection } from "./instagram-connect-section";
 import { VoiceForm } from "./voice-form";
 import { PostingGoalForm } from "./posting-goal-form";
 import { EmailPreferencesSection } from "./email-preferences-section";
+import { BillingSection } from "./billing-section";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { canDo, getPlanForGating } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
@@ -37,7 +38,7 @@ export default async function SettingsPage() {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, instagram_handle, instagram_user_id, voice_description, posting_frequency, plan, plan_override, marketing_unsubscribed, all_emails_paused"
+      "artist_name, instagram_handle, instagram_user_id, voice_description, posting_frequency, plan, plan_override, marketing_unsubscribed, all_emails_paused, stripe_customer_id, trial_started_at"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -53,6 +54,36 @@ export default async function SettingsPage() {
   const isAdmin = await userIsAdmin(supabase, user.id);
   const plan = getPlanForGating(profile ?? {});
   const canConnectLiveStats = canDo(plan, "canViewLiveSocialData", isAdmin);
+
+  const stripeCustomerId = profile?.stripe_customer_id?.trim() ?? "";
+  const showBilling = plan !== "free" && stripeCustomerId.length > 0;
+
+  let trialActive = false;
+  let trialEndDate: string | null = null;
+  const trialStartedAt = profile?.trial_started_at;
+  if (trialStartedAt) {
+    const trialEnd = new Date(trialStartedAt);
+    trialEnd.setDate(trialEnd.getDate() + 14);
+    if (trialEnd.getTime() > Date.now()) {
+      trialActive = true;
+      const shortDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const months = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      trialEndDate = `${shortDays[trialEnd.getDay()]} ${trialEnd.getDate()} ${months[trialEnd.getMonth()]}`;
+    }
+  }
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
@@ -95,6 +126,14 @@ export default async function SettingsPage() {
         }
         initialAllEmailsPaused={profile.all_emails_paused ?? false}
       />
+
+      {showBilling ? (
+        <BillingSection
+          plan={plan}
+          trialActive={trialActive}
+          trialEndDate={trialEndDate}
+        />
+      ) : null}
     </div>
   );
 }

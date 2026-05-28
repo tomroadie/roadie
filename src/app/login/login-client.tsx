@@ -45,12 +45,24 @@ export default function LoginClient() {
           setLoading(false);
           return;
         }
+
+        // Sign in immediately after signup so the session is active before redirecting to onboarding
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (signInError) {
+          setError(signInError.message);
+          setLoading(false);
+          return;
+        }
+
         router.refresh();
         const redirectParam = searchParams.get("redirect");
         const redirectTo =
           redirectParam && redirectParam.startsWith("/")
             ? redirectParam
-            : "/onboarding";
+            : "/onboarding?new=true";
         router.push(redirectTo);
         return;
       }

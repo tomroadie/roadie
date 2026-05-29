@@ -58,14 +58,40 @@ export async function POST(request: Request) {
     );
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("artist_name, stripe_customer_id")
+    .eq("id", activeArtistId)
+    .maybeSingle();
+
+  const customerName =
+    profile?.artist_name?.trim() ||
+    user.email?.split("@")[0] ||
+    "Artist";
+
   const stripe = new Stripe(stripeSecretKey);
+
+  const existingCustomerId = profile?.stripe_customer_id?.trim();
+  const customer = existingCustomerId
+    ? await stripe.customers.update(existingCustomerId, {
+        name: customerName,
+        email: user.email ?? undefined,
+      })
+    : await stripe.customers.create({
+        name: customerName,
+        email: user.email ?? undefined,
+        metadata: {
+          userId: user.id,
+          artistId: activeArtistId,
+        },
+      });
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: priceId.trim(), quantity: 1 }],
     success_url: `${origin}/home?upgraded=true`,
     cancel_url: `${origin}/pricing`,
-    customer_email: user.email ?? undefined,
+    customer: customer.id,
     subscription_data: {
       trial_period_days: 14,
     },

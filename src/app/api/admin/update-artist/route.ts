@@ -5,6 +5,8 @@ import { userIsAdmin } from "@/lib/is-admin";
 import { normalizePlan, type RoadiePlan } from "@/lib/plan-limits";
 
 const PLAN_VALUES: RoadiePlan[] = ["free", "starter", "pro", "label"];
+const ACCOUNT_TYPE_VALUES = ["artist", "venue"] as const;
+type AccountType = (typeof ACCOUNT_TYPE_VALUES)[number];
 
 const ARTIST_ID_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -16,6 +18,7 @@ export async function PATCH(request: Request) {
   let plan: string | undefined;
   let isManaged: boolean | undefined;
   let isPrivate: boolean | undefined;
+  let accountType: AccountType | undefined;
 
   try {
     const body = (await request.json()) as Record<string, unknown>;
@@ -37,6 +40,9 @@ export async function PATCH(request: Request) {
     if (typeof body.plan === "string") {
       plan = body.plan.trim().toLowerCase();
     }
+    if (typeof body.account_type === "string") {
+      accountType = body.account_type.trim().toLowerCase() as AccountType;
+    }
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -50,13 +56,14 @@ export async function PATCH(request: Request) {
     planOverride !== undefined ||
     plan !== undefined ||
     isManaged !== undefined ||
-    isPrivate !== undefined;
+    isPrivate !== undefined ||
+    accountType !== undefined;
 
   if (!hasUpdate) {
     return NextResponse.json(
       {
         error:
-          "Expected cron_active, plan_override, plan, is_managed, and/or is_private",
+          "Expected cron_active, plan_override, plan, is_managed, is_private, and/or account_type",
       },
       { status: 400 }
     );
@@ -72,6 +79,13 @@ export async function PATCH(request: Request) {
 
   if (plan !== undefined && !PLAN_VALUES.includes(normalizePlan(plan))) {
     return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+  }
+
+  if (
+    accountType !== undefined &&
+    !ACCOUNT_TYPE_VALUES.includes(accountType)
+  ) {
+    return NextResponse.json({ error: "Invalid account_type" }, { status: 400 });
   }
 
   const supabase = await createClient();
@@ -103,6 +117,9 @@ export async function PATCH(request: Request) {
   }
   if (isPrivate !== undefined) {
     updates.is_private = isPrivate;
+  }
+  if (accountType !== undefined) {
+    updates.account_type = accountType;
   }
 
   let adminSupabase: ReturnType<typeof createServiceRoleClient>;

@@ -142,6 +142,108 @@ function formatPosts(items: ApifyPostItem[]): string {
     .join("");
 }
 
+function buildArtistPattern1Prompt(
+  formattedProfile: string,
+  formattedPosts: string,
+  hasPosts: boolean,
+  noPostsNote: string,
+  postsRes: { items: ApifyPostItem[] }
+): string {
+  return (
+    "You are a supportive music industry strategist analysing Instagram data for an artist. Below is a structured summary of their profile and recent posts. Your job is to identify the single most important pattern in how they show up online.\n\n" +
+    "Focus on: what their bio suggests they want to be known for, what their recent content actually shows, and whether there is a gap between the two.\n\n" +
+    "Write in a warm, direct tone — like a trusted advisor who sees both the potential and the opportunity. Never use language that implies the artist is failing or desperate. Frame everything as an observation and an opportunity.\n\n" +
+    "Do not reference posts by number. Reference them by their content (e.g. 'your most recent post about X').\n\n" +
+    "Return 2-3 sentences maximum. Start with what is working or what is clear about their identity, then note the opportunity.\n\n" +
+    `${formattedProfile}${noPostsNote}` +
+    (hasPosts ? `\n\n${formatPosts(postsRes.items.slice(0, 3))}` : "")
+  );
+}
+
+function buildArtistFullAnalysisPrompt(
+  artistName: string,
+  formattedProfile: string,
+  formattedPosts: string,
+  noPostsNote: string
+): string {
+  return `You are a trusted music industry strategist giving a private, honest review of an artist's Instagram presence. Your tone is warm, direct, and encouraging — like a manager who genuinely believes in the artist and wants to help them grow.
+
+CRITICAL TONE RULES:
+- Never use words like desperate, frantic, struggling, fighting, pleading, begging, or any language that implies the artist is failing
+- Never frame the artist's behaviour as a character flaw
+- Always acknowledge what IS working first, specifically
+- Frame every problem as an untapped opportunity
+- Use 'you could' and 'what works even better is' instead of 'you don't' or 'the problem is'
+- Be specific and use real data points from their posts
+- Sound like a conversation, not a report
+- Never reference posts by number (e.g. "Post 3", "Post 5", "the third post"). Reference posts by their content instead (e.g. "your Boomtown announcement", "the behind-the-scenes clip", "your most recent release post"). The artist cannot see a numbered list — make every reference self-evident from context.
+
+TONE CALIBRATION: Study the artist's actual captions carefully. Note their sentence length, punctuation style, emoji usage, whether they use lowercase or proper case, their vocabulary level, and personality markers. Every insight and caption suggestion must feel natural to their voice. Do not include hashtags in any caption examples — write captions that sound natural and human.
+
+Artist: ${artistName}. Below is a structured summary of their Instagram profile and recent posts.${noPostsNote}${formattedProfile}
+
+${formattedPosts}
+
+Provide a strategic analysis with these exact sections:
+**POSITIONING** — what makes this artist distinct and what they are already doing well
+**CONTENT PATTERN** — what the data shows about how they show up, specific observations
+**ENGAGEMENT REALITY** — what is actually connecting with their audience and why
+**CORE OPPORTUNITY** — the single biggest lever they could pull (not 'core problem')
+**YOUR NEXT MOVE** — 2-3 specific, immediately actionable suggestions in their voice
+
+Be specific, warm, and actionable. Max 300 words total.`;
+}
+
+function buildVenuePattern1Prompt(
+  formattedProfile: string,
+  formattedPosts: string,
+  hasPosts: boolean,
+  noPostsNote: string,
+  postsRes: { items: ApifyPostItem[] }
+): string {
+  return (
+    "You are a live music marketing strategist analysing social media data for a music venue. Below is a structured summary of their profile and recent posts. Your job is to identify the single most important pattern in how they promote shows online.\n\n" +
+    "Focus on: how consistently they announce shows, whether ticket links are prominent, whether content varies across the show lifecycle (announce → on-sale → push → urgency), and whether there is a gap between what they post and what would actually sell tickets.\n\n" +
+    "Write in a direct, practical tone — like a senior marketing consultant who understands both the venue business and digital advertising.\n\n" +
+    "Do not reference posts by number. Reference them by their content (e.g. 'your announcement post for the June show').\n\n" +
+    "Return 2-3 sentences maximum. Start with what is working or consistent, then note the most important opportunity.\n\n" +
+    `${formattedProfile}${noPostsNote}` +
+    (hasPosts ? `\n\n${formatPosts(postsRes.items.slice(0, 3))}` : "")
+  );
+}
+
+function buildVenueFullAnalysisPrompt(
+  venueName: string,
+  formattedProfile: string,
+  formattedPosts: string,
+  noPostsNote: string
+): string {
+  return `You are a live music marketing strategist giving a private, honest review of a venue's social media presence. Your tone is direct, practical, and commercially focused — like a consultant who understands ticket sales, show promotion, and the operational realities of running a live music venue.
+
+CRITICAL TONE RULES:
+- Never imply the venue is failing — frame everything as an opportunity
+- Always lead with what IS working
+- Be specific — reference actual posts and content patterns observed
+- Think in terms of the show promotion lifecycle: announce, on-sale, mid-campaign, final push, show day
+- Flag anything that would waste ad spend or undermine ticket sales
+- Sound like a strategic review, not a generic social media audit
+
+CONTEXT: This is a music venue, not an artist. Their primary goal is selling tickets to individual shows. Secondary goals are building a loyal local audience and growing their owned data (email list). Instagram and Facebook are promotional channels for their gig calendar, not personal brand building.
+
+Venue: ${venueName}. Below is a structured summary of their social profile and recent posts.${noPostsNote}${formattedProfile}
+
+${formattedPosts}
+
+Provide a strategic analysis with these exact sections:
+**SHOW PROMOTION** — how effectively are individual shows being promoted, with specific observations
+**CONTENT PATTERN** — what the posting data shows about consistency, format mix, and timing relative to shows
+**AUDIENCE & REACH** — what is connecting with their audience and what the engagement data suggests
+**CORE OPPORTUNITY** — the single highest-impact change they could make to sell more tickets
+**IMMEDIATE ACTIONS** — 3 specific, actionable recommendations a venue marketing manager could action this week
+
+Be specific, commercially focused, and actionable. Max 350 words total.`;
+}
+
 async function sendResendEmail(args: {
   apiKey: string;
   to: string;
@@ -327,45 +429,24 @@ export async function POST(request: Request) {
     ? ""
     : "\n\nNote: No post data was available for this artist. Base your analysis on the profile information only and note this limitation clearly.\n\n";
 
+  const { data: profileLookup } = await supabase
+    .from("profiles")
+    .select("id, owner_user_id, account_type")
+    .eq("instagram_handle", lead.instagram_handle.trim())
+    .maybeSingle();
+
+  const isVenue = profileLookup?.account_type === "venue";
+
   const anthropic = new Anthropic({ apiKey: anthropicKey });
 
-  const analysis1Prompt =
-    "You are a supportive music industry strategist analysing Instagram data for an artist. Below is a structured summary of their profile and recent posts. Your job is to identify the single most important pattern in how they show up online.\n\n" +
-    "Focus on: what their bio suggests they want to be known for, what their recent content actually shows, and whether there is a gap between the two.\n\n" +
-    "Write in a warm, direct tone — like a trusted advisor who sees both the potential and the opportunity. Never use language that implies the artist is failing or desperate. Frame everything as an observation and an opportunity.\n\n" +
-    "Do not reference posts by number. Reference them by their content (e.g. 'your most recent post about X').\n\n" +
-    "Return 2-3 sentences maximum. Start with what is working or what is clear about their identity, then note the opportunity.\n\n" +
-    `${formattedProfile}${noPostsNote}` +
-    (hasPosts ? `\n\n${formatPosts(postsRes.items.slice(0, 3))}` : "");
-
   const artistName = lead.artist_name?.trim() || "Unknown artist";
-  const analysis2Prompt =
-    `You are a trusted music industry strategist giving a private, honest review of an artist's Instagram presence. Your tone is warm, direct, and encouraging — like a manager who genuinely believes in the artist and wants to help them grow.
+  const analysis1Prompt = isVenue
+    ? buildVenuePattern1Prompt(formattedProfile, formattedPosts, hasPosts, noPostsNote, postsRes)
+    : buildArtistPattern1Prompt(formattedProfile, formattedPosts, hasPosts, noPostsNote, postsRes);
 
-CRITICAL TONE RULES:
-- Never use words like desperate, frantic, struggling, fighting, pleading, begging, or any language that implies the artist is failing
-- Never frame the artist's behaviour as a character flaw
-- Always acknowledge what IS working first, specifically
-- Frame every problem as an untapped opportunity
-- Use 'you could' and 'what works even better is' instead of 'you don't' or 'the problem is'
-- Be specific and use real data points from their posts
-- Sound like a conversation, not a report
-- Never reference posts by number (e.g. "Post 3", "Post 5", "the third post"). Reference posts by their content instead (e.g. "your Boomtown announcement", "the behind-the-scenes clip", "your most recent release post"). The artist cannot see a numbered list — make every reference self-evident from context.
-
-TONE CALIBRATION: Study the artist's actual captions carefully. Note their sentence length, punctuation style, emoji usage, whether they use lowercase or proper case, their vocabulary level, and personality markers. Every insight and caption suggestion must feel natural to their voice. Do not include hashtags in any caption examples — write captions that sound natural and human.
-
-Artist: ${artistName}. Below is a structured summary of their Instagram profile and recent posts.${noPostsNote}${formattedProfile}
-
-${formattedPosts}
-
-Provide a strategic analysis with these exact sections:
-**POSITIONING** — what makes this artist distinct and what they are already doing well
-**CONTENT PATTERN** — what the data shows about how they show up, specific observations
-**ENGAGEMENT REALITY** — what is actually connecting with their audience and why
-**CORE OPPORTUNITY** — the single biggest lever they could pull (not 'core problem')
-**YOUR NEXT MOVE** — 2-3 specific, immediately actionable suggestions in their voice
-
-Be specific, warm, and actionable. Max 300 words total.`;
+  const analysis2Prompt = isVenue
+    ? buildVenueFullAnalysisPrompt(artistName, formattedProfile, formattedPosts, noPostsNote)
+    : buildArtistFullAnalysisPrompt(artistName, formattedProfile, formattedPosts, noPostsNote);
 
   let ai_pattern_analysis: string;
   let ai_full_analysis: string;
@@ -400,12 +481,6 @@ Be specific, warm, and actionable. Max 300 words total.`;
   const following = asNumberOrNull((profileItem as ApifyProfileItem).followsCount);
   const post_count = asNumberOrNull((profileItem as ApifyProfileItem).postsCount);
   const bio = asString((profileItem as ApifyProfileItem).biography);
-
-  const { data: profileLookup } = await supabase
-    .from("profiles")
-    .select("id, owner_user_id")
-    .eq("instagram_handle", lead.instagram_handle.trim())
-    .maybeSingle();
 
   const isResearchLead = lead.is_research === true;
 

@@ -77,7 +77,7 @@ export default async function AdminPage() {
   const { data: profiles, error: profilesError } = await adminSupabase
     .from("profiles")
     .select(
-      "id, artist_name, genre, instagram_handle, plan, plan_override, cron_active, is_private, owner_user_id, created_at, is_managed, is_admin, stripe_customer_id, tiktok_waitlist"
+      "id, artist_name, genre, instagram_handle, plan, plan_override, cron_active, is_private, owner_user_id, created_at, is_managed, is_admin, stripe_customer_id, tiktok_waitlist, account_type"
     )
     .not("artist_name", "is", null)
     .neq("artist_name", "")
@@ -181,6 +181,7 @@ export default async function AdminPage() {
       cron_active: p.cron_active !== false,
       is_managed: p.is_managed === true,
       is_private: p.is_private === true,
+      account_type: p.account_type === "venue" ? "venue" : "artist",
       last_plan_at: lastPlanByArtistId.get(p.id) ?? null,
     };
     });

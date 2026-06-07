@@ -16,6 +16,7 @@ export type AdminArtistDirectoryRow = {
   cron_active: boolean;
   is_managed: boolean;
   is_private: boolean;
+  account_type: "artist" | "venue";
   last_plan_at: string | null;
 };
 
@@ -51,6 +52,7 @@ type ArtistPatch = {
   plan?: string;
   is_managed?: boolean;
   is_private?: boolean;
+  account_type?: "artist" | "venue";
 };
 
 async function patchArtist(
@@ -91,6 +93,7 @@ export function AdminArtistsTable({
   const [managedBusy, setManagedBusy] = useState<string | null>(null);
   const [planOverrideBusy, setPlanOverrideBusy] = useState<string | null>(null);
   const [privateBusy, setPrivateBusy] = useState<string | null>(null);
+  const [accountTypeBusy, setAccountTypeBusy] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [savedHint, setSavedHint] = useState<string | null>(null);
@@ -130,6 +133,7 @@ export function AdminArtistsTable({
         r.is_managed ? "managed" : "self-serve",
         r.cron_active ? "active" : "inactive",
         r.is_private ? "private" : "public",
+        r.account_type === "venue" ? "venue" : "artist",
       ]
         .join(" ")
         .toLowerCase();
@@ -231,6 +235,26 @@ export function AdminArtistsTable({
     flashSaved(artistId);
   }
 
+  async function handleToggleAccountType(
+    artistId: string,
+    nextType: "artist" | "venue"
+  ) {
+    setControlsError(null);
+    setAccountTypeBusy(artistId);
+    const res = await patchArtist(artistId, { account_type: nextType });
+    setAccountTypeBusy(null);
+    if (res.error) {
+      setControlsError(res.error);
+      return;
+    }
+    setLocalRows((prev) =>
+      prev.map((row) =>
+        row.id === artistId ? { ...row, account_type: nextType } : row
+      )
+    );
+    flashSaved(artistId);
+  }
+
   async function handleDelete(artistId: string) {
     setDeleting(artistId);
     try {
@@ -312,6 +336,7 @@ export function AdminArtistsTable({
               <th className="whitespace-nowrap px-4 py-3">Plan</th>
               <th className="whitespace-nowrap px-4 py-3">Plan override</th>
               <th className="whitespace-nowrap px-4 py-3">Managed</th>
+              <th className="whitespace-nowrap px-4 py-3">Account type</th>
               <th className="whitespace-nowrap px-4 py-3">Weekly crons</th>
               <th className="whitespace-nowrap px-4 py-3">Private</th>
               <th className="whitespace-nowrap px-4 py-3">Instagram</th>
@@ -396,6 +421,30 @@ export function AdminArtistsTable({
                       : r.is_managed
                         ? "Managed"
                         : "Self-serve"}
+                  </button>
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    type="button"
+                    disabled={accountTypeBusy === r.id}
+                    onClick={() =>
+                      void handleToggleAccountType(
+                        r.id,
+                        r.account_type === "venue" ? "artist" : "venue"
+                      )
+                    }
+                    className={[
+                      "rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-60",
+                      r.account_type === "venue"
+                        ? "bg-blue-500/20 text-blue-400"
+                        : "bg-input text-muted",
+                    ].join(" ")}
+                  >
+                    {accountTypeBusy === r.id
+                      ? "Saving…"
+                      : r.account_type === "venue"
+                        ? "Venue"
+                        : "Artist"}
                   </button>
                 </td>
                 <td className="px-4 py-3">

@@ -230,6 +230,8 @@ CRITICAL TONE RULES:
 
 CONTEXT: This is a music venue, not an artist. Their primary goal is selling tickets to individual shows. Secondary goals are building a loyal local audience and growing their owned data (email list). Instagram and Facebook are promotional channels for their gig calendar, not personal brand building.
 
+CREATIVE STRATEGY: Where recurring shows or club nights are identified, consider what a smart content plan would look like for that specific event. Think about creative angles that go beyond announcements — social proof, atmosphere, audience identity, FOMO. If a recurring show appears to be underperforming or lacks creative variety, suggest a content approach tailored to that night's audience and identity. Every show should have a content arc, not just an announcement post.
+
 Venue: ${venueName}. Below is a structured summary of their social profile and recent posts.${noPostsNote}${formattedProfile}
 
 ${formattedPosts}
@@ -239,7 +241,7 @@ Provide a strategic analysis with these exact sections:
 **CONTENT PATTERN** — what the posting data shows about consistency, format mix, and timing relative to shows
 **AUDIENCE & REACH** — what is connecting with their audience and what the engagement data suggests
 **CORE OPPORTUNITY** — the single highest-impact change they could make to sell more tickets
-**IMMEDIATE ACTIONS** — 3 specific, actionable recommendations a venue marketing manager could action this week
+**IMMEDIATE ACTIONS** — 3 specific, actionable recommendations a venue marketing manager could action this week. Where relevant, include a suggested content plan outline for a specific upcoming or recurring show, with format and timing recommendations.
 
 Be specific, commercially focused, and actionable. Max 350 words total.`;
 }

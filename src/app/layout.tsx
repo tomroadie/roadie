@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Tempo",
     description: "Weekly content planning for music artists",
-    url: "https://app.roadie.media",
+    url: "https://tempo.roadie.media",
     siteName: "Tempo",
   },
 };

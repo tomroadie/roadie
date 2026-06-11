@@ -115,7 +115,7 @@ export function unsubscribeUrl(
 ): string {
   const base =
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-    "https://app.roadie.media";
+    "https://tempo.roadie.media";
   const token = Buffer.from(
     JSON.stringify({ artistId, type, ts: Date.now() })
   ).toString("base64url");
@@ -248,7 +248,7 @@ export async function buildEmailRecipient(
 export function winbackExtensionUrl(artistId: string, userId: string): string {
   const base =
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-    "https://app.roadie.media";
+    "https://tempo.roadie.media";
   const token = Buffer.from(
     JSON.stringify({
       artistId,
@@ -339,6 +339,6 @@ export function formatWeekLabel(mondayIso: string): string {
 export function appBaseUrl(): string {
   return (
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-    "https://app.roadie.media"
+    "https://tempo.roadie.media"
   );
 }

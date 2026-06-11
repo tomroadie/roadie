@@ -87,7 +87,7 @@ function buildWeeklyCheckinEmailHtml(args: {
               <tr>
                 <td style="background:#0A0A0F;padding:18px 32px 28px 32px;text-align:left;">
                   <div style="color:#71717A;font-size:12px;line-height:1.6;margin:0;">
-                    You&apos;re receiving this because you use Tempo at app.roadie.media
+                    You&apos;re receiving this because you use Tempo at tempo.roadie.media
                   </div>
                 </td>
               </tr>

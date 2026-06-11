@@ -145,10 +145,10 @@ export default function PrivacyPage() {
           </a>
           <br />
           <a
-            href="https://app.roadie.media"
+            href="https://tempo.roadie.media"
             className="font-semibold text-foreground underline underline-offset-4 hover:text-brand hover:no-underline"
           >
-            app.roadie.media
+            tempo.roadie.media
           </a>
         </p>
       </section>

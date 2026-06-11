@@ -10,10 +10,10 @@ export type GenerateAuditEmailInput = {
 const AUDIT_CONTENT_FOOTER =
   "Your audit includes positioning analysis, content pattern insights, engagement reality, and your top opportunities.";
 
-const DELIVERABILITY_FOOTER_HTML = `<p style="font-size:12px;color:#666;margin-top:40px;text-align:center;">You're receiving this because you signed up at app.roadie.media</p>`;
+const DELIVERABILITY_FOOTER_HTML = `<p style="font-size:12px;color:#666;margin-top:40px;text-align:center;">You're receiving this because you signed up at tempo.roadie.media</p>`;
 
 const DELIVERABILITY_FOOTER_TEXT =
-  "You're receiving this because you signed up at app.roadie.media";
+  "You're receiving this because you signed up at tempo.roadie.media";
 
 export function getAuditEmailSubject(artistName: string): string {
   const name = (artistName || "there").trim();

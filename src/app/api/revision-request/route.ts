@@ -151,7 +151,7 @@ export async function POST(request: Request) {
         `Artist: ${artistName}`,
         `Week: ${weekStart}`,
         `Note: ${artistNote}`,
-        "Review at: https://app.roadie.media/admin",
+        "Review at: https://tempo.roadie.media/admin",
       ].join("\n"),
     });
 

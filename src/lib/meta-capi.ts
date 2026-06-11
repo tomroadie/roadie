@@ -74,7 +74,7 @@ export async function capiCompleteRegistration(
     event_name: "CompleteRegistration",
     event_time: Math.floor(Date.now() / 1000),
     event_id: eventId,
-    event_source_url: "https://app.roadie.media/onboarding",
+    event_source_url: "https://tempo.roadie.media/onboarding",
     email,
     user_data: {},
   });
@@ -91,7 +91,7 @@ export async function capiCheckoutEvent(
     event_name: eventName,
     event_time: Math.floor(Date.now() / 1000),
     event_id: eventId,
-    event_source_url: "https://app.roadie.media/pricing",
+    event_source_url: "https://tempo.roadie.media/pricing",
     email,
     user_data: {},
     custom_data: {

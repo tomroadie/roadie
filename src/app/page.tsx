@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LandingPage } from "@/components/landing-page";
 
-const SITE_URL = "https://app.roadie.media";
+const SITE_URL = "https://tempo.roadie.media";
 
 const PAGE_TITLE = "Tempo — Weekly Content Planning for Music Artists";
 const PAGE_DESCRIPTION =

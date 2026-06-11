@@ -7,7 +7,7 @@ import {
 } from "@/lib/instagram-account-selection";
 
 const GRAPH_VERSION = "v19.0";
-const REDIRECT_URI = "https://app.roadie.media/api/auth/instagram/callback";
+const REDIRECT_URI = "https://tempo.roadie.media/api/auth/instagram/callback";
 
 function redirect(request: Request, path: string) {
   return NextResponse.redirect(new URL(path, request.url));

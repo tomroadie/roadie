@@ -28,7 +28,7 @@ export async function GET() {
   }
 
   const redirectUri =
-    "https://app.roadie.media/api/auth/instagram/callback";
+    "https://tempo.roadie.media/api/auth/instagram/callback";
   const params = new URLSearchParams({
     client_id: process.env.FACEBOOK_APP_ID!,
     redirect_uri: redirectUri,

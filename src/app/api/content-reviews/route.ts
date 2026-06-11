@@ -189,7 +189,7 @@ export async function POST(request: Request) {
     emailLines.push("", "Submitted files:", ...file_urls.map((u) => `- ${u}`));
   }
 
-  emailLines.push("", "Review in admin: https://app.roadie.media/admin");
+  emailLines.push("", "Review in admin: https://tempo.roadie.media/admin");
 
   const emailText = emailLines.join("\n");
 
@@ -391,7 +391,7 @@ export async function PATCH(request: Request) {
 
         <div style="padding:18px 24px;border-top:1px solid rgba(255,255,255,0.08);">
           <div style="font-size:13px;line-height:1.5;color:rgba(255,255,255,0.8);">
-            View your dashboard → <a href="https://app.roadie.media/dashboard" style="color:#00ff87;text-decoration:underline;">https://app.roadie.media/dashboard</a>
+            View your dashboard → <a href="https://tempo.roadie.media/dashboard" style="color:#00ff87;text-decoration:underline;">https://tempo.roadie.media/dashboard</a>
           </div>
         </div>
       </div>

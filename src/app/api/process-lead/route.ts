@@ -579,7 +579,7 @@ export async function POST(request: Request) {
 
   if (!isResearchLead) {
     const teaser = firstSentence(ai_pattern_analysis);
-    const insightsUrl = "https://app.roadie.media/insights";
+    const insightsUrl = "https://tempo.roadie.media/insights";
 
     const emailText = generateAuditEmailPlainText({
       artist_name: artistName,

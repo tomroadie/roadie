@@ -11,7 +11,7 @@ async function sendWelcomeEmail(args: {
   const bodyCopy =
     "Welcome to Tempo. You're one step away from your first content plan. Complete your profile to get started.";
   const footerCopy =
-    "You're receiving this because you signed up at app.roadie.media";
+    "You're receiving this because you signed up at tempo.roadie.media";
 
   const text = [
     bodyCopy,
@@ -120,7 +120,7 @@ export async function GET(request: Request) {
       const resendKey = process.env.RESEND_API_KEY;
       const baseUrl =
         process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-        "https://app.roadie.media";
+        "https://tempo.roadie.media";
       const onboardingUrl = registrationEventId
         ? `${baseUrl}/onboarding?new=true&event_id=${encodeURIComponent(registrationEventId)}`
         : `${baseUrl}/onboarding`;

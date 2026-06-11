@@ -9,7 +9,7 @@ async function sendWelcomeEmail(args: {
   onboardingUrl: string;
 }): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   const bodyCopy =
-    "Welcome to Tempo. You're one step away from your first AI content plan. Complete your profile to get started.";
+    "Welcome to Tempo. You're one step away from your first content plan. Complete your profile to get started.";
   const footerCopy =
     "You're receiving this because you signed up at app.roadie.media";
 

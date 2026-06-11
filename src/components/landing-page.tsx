@@ -204,7 +204,7 @@ const FAQ_ITEMS = [
   {
     question: "What is Tempo?",
     answer:
-      "Tempo is an AI-powered content planning tool built specifically for music artists, managers, and labels. It analyses your Instagram presence, learns your voice and style, and delivers five specific post ideas every week — shaped by your sound, your upcoming shows, and what's actually working for your audience.",
+      "Tempo is a content planning tool built specifically for music artists, managers, and labels. It analyses your Instagram presence, learns your voice and style, and delivers five specific post ideas every week — shaped by your sound, your upcoming shows, and what's actually working for your audience.",
   },
   {
     question: "How does the free Instagram audit work?",
@@ -214,7 +214,7 @@ const FAQ_ITEMS = [
   {
     question: "How is Tempo different from ChatGPT or other AI tools?",
     answer:
-      "Generic AI tools aren't built for music. Tempo combines AI with music industry expertise and your real Instagram data — so every idea feels made for you, not generated for anyone. Your plans also get smarter over time as Tempo learns what performs for your specific audience.",
+      "Generic content tools aren't built for music. Unlike general AI tools, Tempo combines music industry expertise with your real Instagram data — so every idea feels made for you, not generated for anyone. Your plans also get smarter over time as Tempo learns what performs for your specific audience.",
   },
   {
     question: "How does the weekly plan work?",
@@ -483,7 +483,7 @@ export function LandingPage() {
                 }}
               >
                 <IconWaveform className="h-4 w-4" />
-                AI content planning for music artists
+                Weekly content planning for music artists
               </p>
 
               <h1 className="text-balance text-6xl font-black uppercase tracking-tight text-white md:text-8xl">
@@ -625,7 +625,7 @@ export function LandingPage() {
                   <IconTarget className="h-5 w-5" />
                 </div>
                 <h3 className="mt-5 text-lg font-black uppercase tracking-tight text-white">
-                  Generic AI doesn&apos;t understand music
+                  Generic tools don&apos;t understand music
                 </h3>
                 <p className="mt-2 text-sm leading-7 text-gray-400">
                   Tools built for coffee shops and fitness brands give you advice

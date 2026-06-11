@@ -3,11 +3,11 @@ import { LandingPage } from "@/components/landing-page";
 
 const SITE_URL = "https://app.roadie.media";
 
-const PAGE_TITLE = "Tempo — AI Content Planning for Music Artists";
+const PAGE_TITLE = "Tempo — Weekly Content Planning for Music Artists";
 const PAGE_DESCRIPTION =
   "Tempo analyses your Instagram, learns your voice, and delivers 5 specific post ideas every week — shaped by your sound, your shows, and what's actually working for you. Free Instagram audit included.";
 
-const OG_TITLE = "Tempo — AI Content Planning for Music Artists";
+const OG_TITLE = "Tempo — Weekly Content Planning for Music Artists";
 const OG_DESCRIPTION =
   "Weekly content plans built for independent artists and labels. Free Instagram audit. 14-day free trial.";
 
@@ -35,7 +35,7 @@ const FAQ_JSON_LD = {
       name: "What is Tempo?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Tempo is an AI-powered content planning tool built specifically for music artists, managers, and labels. It analyses your Instagram presence, learns your voice and style, and delivers five specific post ideas every week — shaped by your sound, your upcoming shows, and what's actually working for your audience.",
+        text: "Tempo is a content planning tool built specifically for music artists, managers, and labels. It analyses your Instagram presence, learns your voice and style, and delivers five specific post ideas every week — shaped by your sound, your upcoming shows, and what's actually working for your audience.",
       },
     },
     {
@@ -51,7 +51,7 @@ const FAQ_JSON_LD = {
       name: "How is Tempo different from ChatGPT or other AI tools?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Generic AI tools aren't built for music. Tempo combines AI with music industry expertise and your real Instagram data — so every idea feels made for you, not generated for anyone. Your plans also get smarter over time as Tempo learns what performs for your specific audience.",
+        text: "Generic content tools aren't built for music. Unlike general AI tools, Tempo combines music industry expertise with your real Instagram data — so every idea feels made for you, not generated for anyone. Your plans also get smarter over time as Tempo learns what performs for your specific audience.",
       },
     },
     {
@@ -102,7 +102,7 @@ const SOFTWARE_APPLICATION_JSON_LD = {
   "@type": "SoftwareApplication",
   name: "Tempo",
   description:
-    "AI content planning for music artists. Weekly content plans shaped by your Instagram data, your shows, and your voice.",
+    "Weekly content planning for music artists. Content plans shaped by your Instagram data, your shows, and your voice.",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   offers: [

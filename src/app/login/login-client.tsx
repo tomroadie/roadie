@@ -99,7 +99,7 @@ export default function LoginClient() {
             {isSignup ? "Create your Tempo account" : "Sign in to Tempo"}
           </h1>
           <p className="mt-2 text-sm text-muted">
-            AI-powered content planning for music artists
+            Content planning built for music artists
           </p>
         </div>
 

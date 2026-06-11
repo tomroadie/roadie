@@ -23,7 +23,7 @@ export default function PrivacyPage() {
       <section>
         <h2 className={h2Class}>Who we are</h2>
         <p className={pClass}>
-          Tempo is a product of Roadie Media. We provide AI-powered content
+          Tempo is a product of Roadie Media. We provide weekly content
           planning for music artists. Contact:{" "}
           <a
             href="mailto:hello@roadie.media"

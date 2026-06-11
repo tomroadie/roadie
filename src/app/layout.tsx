@@ -19,14 +19,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Tempo",
-  description: "AI content planning for music artists",
+  description: "Weekly content planning for music artists",
   icons: {
     icon: "/favicon.png",
     apple: "/favicon.png",
   },
   openGraph: {
     title: "Tempo",
-    description: "AI content planning for music artists",
+    description: "Weekly content planning for music artists",
     url: "https://app.roadie.media",
     siteName: "Tempo",
   },

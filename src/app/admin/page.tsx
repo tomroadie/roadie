@@ -18,6 +18,10 @@ import {
   RevisionRequestsSection,
   type RevisionRequestRow,
 } from "./revision-requests-section";
+import {
+  UserAccountsTable,
+  type AdminUserAccountRow,
+} from "./user-accounts-table";
 
 function AdminPageError({ message }: { message: string }) {
   return (
@@ -77,10 +81,8 @@ export default async function AdminPage() {
   const { data: profiles, error: profilesError } = await adminSupabase
     .from("profiles")
     .select(
-      "id, artist_name, genre, instagram_handle, plan, plan_override, cron_active, is_private, owner_user_id, created_at, is_managed, is_admin, stripe_customer_id, tiktok_waitlist, account_type"
+      "id, artist_name, genre, instagram_handle, plan, plan_override, cron_active, is_private, owner_user_id, created_at, is_managed, is_admin, stripe_customer_id, tiktok_waitlist, account_type, all_emails_paused"
     )
-    .not("artist_name", "is", null)
-    .neq("artist_name", "")
     .order("created_at", { ascending: false });
 
   if (profilesError) {
@@ -108,6 +110,12 @@ export default async function AdminPage() {
   );
 
   const emailByUserId = new Map<string, string>();
+  const authUsers: Array<{
+    id: string;
+    email: string;
+    created_at: string;
+    last_sign_in_at: string | null;
+  }> = [];
   let listPage = 1;
   for (;;) {
     const {
@@ -125,10 +133,57 @@ export default async function AdminPage() {
     const users = listData?.users ?? [];
     for (const u of users) {
       if (u.email) emailByUserId.set(u.id, u.email);
+      authUsers.push({
+        id: u.id,
+        email: u.email ?? "(no email)",
+        created_at: u.created_at ?? new Date(0).toISOString(),
+        last_sign_in_at: u.last_sign_in_at ?? null,
+      });
     }
     if (!users.length || users.length < 200) break;
     listPage += 1;
   }
+
+  const profilesByOwner = new Map<string, NonNullable<typeof profiles>>();
+  for (const p of profiles ?? []) {
+    const ownerId = String(p.owner_user_id ?? "");
+    if (!ownerId) continue;
+    const list = profilesByOwner.get(ownerId);
+    if (list) {
+      list.push(p);
+    } else {
+      profilesByOwner.set(ownerId, [p]);
+    }
+  }
+
+  const userAccountRows: AdminUserAccountRow[] = authUsers
+    .map((u) => {
+      const ownedProfiles = profilesByOwner.get(u.id) ?? [];
+      return {
+        user_id: u.id,
+        email: u.email,
+        created_at: u.created_at,
+        last_sign_in_at: u.last_sign_in_at,
+        is_admin: ownedProfiles.some((p) => p.is_admin === true),
+        all_emails_paused:
+          ownedProfiles.length > 0 &&
+          ownedProfiles.every((p) => p.all_emails_paused === true),
+        artists: ownedProfiles.map((p) => ({
+          id: String(p.id),
+          artist_name: String(p.artist_name ?? "").trim(),
+          instagram_handle: String(p.instagram_handle ?? "").replace(/^@/, ""),
+          plan: String(p.plan ?? "free"),
+          is_managed: p.is_managed === true,
+          is_private: p.is_private === true,
+          account_type:
+            p.account_type === "venue" ? ("venue" as const) : ("artist" as const),
+        })),
+      };
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
 
   const { data: weeklyPlanRows, error: weeklyPlansError } = await adminSupabase
     .from("weekly_plans")
@@ -411,6 +466,8 @@ export default async function AdminPage() {
       <UsageAnalytics totalCounts={totalCounts} recentEvents={recentEvents} />
 
       <ContentReviewsTable reviews={contentReviewRows} artistNames={artistNames} />
+
+      <UserAccountsTable rows={userAccountRows} />
 
       <AdminCreateClientArtistForm />
 

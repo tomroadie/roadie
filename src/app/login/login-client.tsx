@@ -4,6 +4,9 @@ import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import Turnstile from "react-turnstile";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
 export default function LoginClient() {
   const router = useRouter();
@@ -15,6 +18,7 @@ export default function LoginClient() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (mode === "signup") setIsSignup(true);
@@ -30,18 +34,32 @@ export default function LoginClient() {
       return;
     }
 
+    if (isSignup && TURNSTILE_SITE_KEY && !turnstileToken) {
+      setError("Please complete the verification challenge.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const supabase = createClient();
 
       if (isSignup) {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
+        const res = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            email,
+            password,
+            turnstile_token: turnstileToken ?? "",
+          }),
         });
-        if (signUpError) {
-          setError(signUpError.message);
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          setError(data.error ?? "Could not create your account. Please try again.");
+          setTurnstileToken(null);
           setLoading(false);
           return;
         }
@@ -110,6 +128,7 @@ export default function LoginClient() {
             onClick={() => {
               setIsSignup(false);
               setError(null);
+              setTurnstileToken(null);
             }}
             className={`flex-1 rounded-lg py-2 text-sm font-bold uppercase tracking-wide transition disabled:cursor-not-allowed disabled:opacity-60 ${
               !isSignup
@@ -199,6 +218,15 @@ export default function LoginClient() {
                   placeholder="••••••••"
                 />
               </div>
+            ) : null}
+            {isSignup && TURNSTILE_SITE_KEY ? (
+              <Turnstile
+                sitekey={TURNSTILE_SITE_KEY}
+                theme="dark"
+                onVerify={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken(null)}
+                onError={() => setTurnstileToken(null)}
+              />
             ) : null}
           </div>
 

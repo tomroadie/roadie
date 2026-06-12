@@ -3,7 +3,7 @@
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { trackBeginCheckout } from "@/lib/analytics";
 import {
   FREE_PLAN_CARD,
@@ -14,6 +14,51 @@ import {
 import { normalizePlan, type RoadiePlan } from "@/lib/plan-limits";
 
 type PriceIds = { starter: string; pro: string; label: string };
+
+function PlanBadgeSlot({ children }: { children: ReactNode }) {
+  return <div className="mb-4 min-h-7">{children}</div>;
+}
+
+function PlanBadge({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex rounded-full bg-brand px-3 py-1 text-xs font-black uppercase tracking-wide text-brand-foreground">
+      {children}
+    </span>
+  );
+}
+
+function PlanHeader({
+  name,
+  price,
+  blurb,
+}: {
+  name: string;
+  price: string;
+  blurb: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <h2 className="text-xl font-black uppercase tracking-tight text-foreground">
+        {name}
+      </h2>
+      <p className="text-3xl font-black tracking-tight text-foreground">{price}</p>
+      <p className="min-h-[4.5rem] text-sm leading-relaxed text-muted">{blurb}</p>
+    </div>
+  );
+}
+
+function PlanFeatures({ features }: { features: string[] }) {
+  return (
+    <ul className="mt-5 flex-1 space-y-2 text-sm text-muted-strong">
+      {features.map((f) => (
+        <li key={f} className="flex items-start gap-2">
+          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
+          <span>{f}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function PricingClient({
   priceIds,
@@ -79,7 +124,7 @@ export default function PricingClient({
   const isOnFree = normalizedCurrent === "free";
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
+    <div className="mx-auto flex min-h-full w-full max-w-5xl flex-1 flex-col px-4 py-10 sm:px-6">
       <div className="flex flex-col gap-2">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">
           Pricing
@@ -111,30 +156,17 @@ export default function PricingClient({
         <span>Cancels anytime</span>
       </div>
 
-      <div className="mt-10 grid gap-5 md:grid-cols-3">
-        <div className="relative flex h-full min-w-0 flex-col rounded-xl border border-card-border bg-card p-6 shadow-sm">
-          <div className="space-y-2">
-            {isOnFree ? (
-              <div className="mb-2 inline-flex w-fit rounded-full bg-brand px-3 py-1 text-xs font-black uppercase tracking-wide text-brand-foreground">
-                Current plan
-              </div>
-            ) : null}
-            <h2 className="text-xl font-black uppercase tracking-tight text-foreground">
-              {FREE_PLAN_CARD.name}
-            </h2>
-            <p className="text-3xl font-black tracking-tight text-foreground">
-              {FREE_PLAN_CARD.price}
-            </p>
-            <p className="text-sm leading-relaxed text-muted">{FREE_PLAN_CARD.blurb}</p>
-          </div>
-          <ul className="mt-5 space-y-2 text-sm text-muted-strong">
-            {FREE_PLAN_CARD.features.map((f) => (
-              <li key={f} className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-                <span>{f}</span>
-              </li>
-            ))}
-          </ul>
+      <div className="mt-10 grid items-stretch gap-6 md:grid-cols-3">
+        <div className="flex h-full min-w-0 flex-col rounded-xl border border-card-border bg-card p-6 shadow-sm">
+          <PlanBadgeSlot>
+            {isOnFree ? <PlanBadge>Current plan</PlanBadge> : null}
+          </PlanBadgeSlot>
+          <PlanHeader
+            name={FREE_PLAN_CARD.name}
+            price={FREE_PLAN_CARD.price}
+            blurb={FREE_PLAN_CARD.blurb}
+          />
+          <PlanFeatures features={FREE_PLAN_CARD.features} />
           <div className="mt-auto pt-6">
             {isOnFree ? (
               <div className="flex h-11 w-full items-center justify-center rounded-lg border border-card-border px-4 text-sm font-black uppercase tracking-wide text-muted">
@@ -155,7 +187,7 @@ export default function PricingClient({
           const isPopular = p.key === "pro";
           const isCurrent = normalizedCurrent === p.key;
 
-          const ctaLabel = isCurrent ? "Current plan" : "Start your 14-day free trial";
+          const ctaLabel = isCurrent ? "Current plan" : "Start free trial";
 
           const ctaButtonClass = [
             "flex h-11 w-full items-center justify-center rounded-lg px-4 text-sm font-black uppercase tracking-wide shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
@@ -168,36 +200,19 @@ export default function PricingClient({
             <div
               key={p.key}
               className={[
-                "relative flex h-full min-w-0 flex-col rounded-xl border border-card-border bg-card p-6 shadow-sm",
-                isPopular ? "ring-1 ring-brand/20" : "",
+                "flex h-full min-w-0 flex-col rounded-xl border border-card-border bg-card p-6 shadow-sm",
+                isPopular ? "ring-1 ring-brand/30" : "",
               ].join(" ")}
             >
-              {p.highlight ? (
-                <div className="absolute right-6 top-6 rounded-full bg-brand px-3 py-1 text-xs font-black uppercase tracking-wide text-brand-foreground">
-                  {p.highlight}
-                </div>
-              ) : null}
-              <div className="space-y-2">
+              <PlanBadgeSlot>
                 {isCurrent ? (
-                  <div className="mb-2 inline-flex w-fit rounded-full bg-brand px-3 py-1 text-xs font-black uppercase tracking-wide text-brand-foreground">
-                    Current plan
-                  </div>
+                  <PlanBadge>Current plan</PlanBadge>
+                ) : p.highlight ? (
+                  <PlanBadge>{p.highlight}</PlanBadge>
                 ) : null}
-                <h2 className="text-xl font-black uppercase tracking-tight text-foreground">
-                  {p.name}
-                </h2>
-                <p className="text-3xl font-black tracking-tight text-foreground">{p.price}</p>
-                <p className="text-sm leading-relaxed text-muted">{p.blurb}</p>
-              </div>
-
-              <ul className="mt-5 space-y-2 text-sm text-muted-strong">
-                {p.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
+              </PlanBadgeSlot>
+              <PlanHeader name={p.name} price={p.price} blurb={p.blurb} />
+              <PlanFeatures features={p.features} />
 
               <div className="mt-auto pt-6">
                 <button

@@ -18,6 +18,7 @@ import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { getMondayDateString } from "@/lib/week";
 import { parseFullAnalysisText } from "@/lib/parse-full-analysis";
+import { cleanInstagramHandle } from "@/lib/new-lead-pipeline";
 import { canDo, getPlanForGating } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 import type { EventRow } from "@/types/event";
@@ -292,10 +293,15 @@ export default async function HomePage({
     .limit(1)
     .maybeSingle();
 
+  const normalizedInstagramHandle =
+    cleanInstagramHandle(profile?.instagram_handle ?? "") ??
+    profile?.instagram_handle?.trim().toLowerCase() ??
+    "";
+
   const { data: pendingAudit } = await supabase
     .from("pending_leads")
     .select("id, created_at")
-    .eq("instagram_handle", profile?.instagram_handle ?? "")
+    .eq("instagram_handle", normalizedInstagramHandle)
     .eq("status", "processing")
     .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
     .limit(1)
@@ -321,14 +327,14 @@ export default async function HomePage({
   }
 
   const { data: auditByHandle, error: auditByHandleError } =
-    auditByArtistId || !profile?.instagram_handle?.trim()
+    auditByArtistId || !normalizedInstagramHandle
       ? { data: null, error: null }
       : await supabase
           .from("audits")
           .select(
             "followers, following, post_count, bio, ai_pattern_analysis, ai_full_analysis, recent_posts_raw, instagram_handle, created_at"
           )
-          .eq("instagram_handle", profile.instagram_handle)
+          .ilike("instagram_handle", normalizedInstagramHandle)
           .eq("is_research", false)
           .order("created_at", { ascending: false })
           .limit(1)

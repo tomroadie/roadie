@@ -11,6 +11,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getPlanForGating, maxArtistsAllowed, type RoadiePlan } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
+import { cleanInstagramHandle } from "@/lib/new-lead-pipeline";
 
 export type AddArtistState =
   | { error?: string; upgrade?: { plan: RoadiePlan; maxArtists: number } }
@@ -125,7 +126,7 @@ export async function updateInstagramHandle(
   }
 
   const raw = String(formData.get("instagram_handle") ?? "").trim();
-  const normalized = raw.replace(/^@/, "").trim() || null;
+  const normalized = cleanInstagramHandle(raw);
 
   const cookieStore = await cookies();
   const activeArtistId = await getActiveArtistIdForUser(

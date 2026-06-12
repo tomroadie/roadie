@@ -2,7 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { ACTIVE_ARTIST_COOKIE } from "@/lib/active-artist";
-import { enqueueNewLead } from "@/lib/new-lead-pipeline";
+import { enqueueNewLead, cleanInstagramHandle } from "@/lib/new-lead-pipeline";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { GENRES } from "./genres";
@@ -31,7 +31,7 @@ export async function completeOnboarding(
   const similarArtists = String(formData.get("similar_artists") ?? "").trim();
   const voiceDescription = String(formData.get("voice_description") ?? "").trim();
   const instagramRaw = String(formData.get("instagram_handle") ?? "").trim();
-  const instagramHandle = instagramRaw.replace(/^@+/, "") || null;
+  const instagramHandle = cleanInstagramHandle(instagramRaw);
   const postingFrequencyRaw = String(
     formData.get("posting_frequency") ?? ""
   ).trim();

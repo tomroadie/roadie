@@ -3,6 +3,7 @@ import { timingSafeEqual } from "crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { trackUsage } from "@/lib/track-usage";
+import { resolveProfileForAudit } from "@/lib/resolve-audit-profile";
 
 function verifyWebhookSecret(headerValue: string | null, secret: string): boolean {
   if (!headerValue || !secret) return false;
@@ -414,11 +415,10 @@ export async function POST(request: Request) {
     ? ""
     : "\n\nNote: No post data was available for this artist. Base your analysis on the profile information only and note this limitation clearly.\n\n";
 
-  const { data: profileLookup } = await supabase
-    .from("profiles")
-    .select("id, owner_user_id, account_type, genre")
-    .eq("instagram_handle", lead.instagram_handle.trim())
-    .maybeSingle();
+  const profileLookup = await resolveProfileForAudit(supabase, {
+    instagramHandle: lead.instagram_handle.trim(),
+    email: lead.email.trim(),
+  });
 
   const isVenue = profileLookup?.account_type === "venue";
 

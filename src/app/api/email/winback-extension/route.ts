@@ -2,7 +2,7 @@ import Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
-import { planFromPriceId } from "@/lib/stripe-plans";
+import { planFromPriceId, priceIdForPlan } from "@/lib/stripe-plans";
 
 const TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -21,19 +21,6 @@ function decodeToken(raw: string | null): WinbackToken | null {
     return parsed && typeof parsed === "object" ? parsed : null;
   } catch {
     return null;
-  }
-}
-
-function priceIdForPlan(plan: string): string | null {
-  switch (plan) {
-    case "starter":
-      return process.env.STRIPE_STARTER_PRICE_ID ?? null;
-    case "pro":
-      return process.env.STRIPE_PRO_PRICE_ID ?? null;
-    case "label":
-      return process.env.STRIPE_LABEL_PRICE_ID ?? null;
-    default:
-      return process.env.STRIPE_STARTER_PRICE_ID ?? null;
   }
 }
 

@@ -13,8 +13,6 @@ import {
 } from "@/lib/plan-display";
 import { normalizePlan, type RoadiePlan } from "@/lib/plan-limits";
 
-type PriceIds = { starter: string; pro: string; label: string };
-
 function PlanBadgeSlot({ children }: { children: ReactNode }) {
   return <div className="mb-4 min-h-7">{children}</div>;
 }
@@ -61,10 +59,8 @@ function PlanFeatures({ features }: { features: string[] }) {
 }
 
 export default function PricingClient({
-  priceIds,
   currentPlan,
 }: {
-  priceIds: PriceIds;
   currentPlan: RoadiePlan;
 }) {
   const router = useRouter();
@@ -88,18 +84,10 @@ export default function PricingClient({
       return;
     }
 
-    // Internal Stripe keys: Tempo Pro → pro, Teams → label. Starter removed from public checkout.
-    const priceId = priceIds[plan];
-    if (!priceId) {
-      setError("Missing Stripe price ID for this plan.");
-      setLoadingPlan(null);
-      return;
-    }
-
     const res = await fetch("/api/stripe/checkout", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ priceId }),
+      body: JSON.stringify({ plan }),
     });
 
     if (!res.ok) {

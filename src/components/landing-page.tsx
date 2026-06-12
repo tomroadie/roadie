@@ -224,12 +224,12 @@ const FAQ_ITEMS = [
   {
     question: "Can I use Tempo for multiple artists?",
     answer:
-      "Yes. Pro plans support up to 3 artist profiles and Label plans support up to 10. Each artist gets their own audit, their own voice profile, and their own weekly plan.",
+      "Yes. Tempo Pro supports up to 3 artist projects and Teams supports up to 10. Each artist gets their own audit, their own voice profile, and their own weekly plan.",
   },
   {
     question: "What Instagram data does Tempo use?",
     answer:
-      "Tempo analyses your public Instagram posts via your handle — no login required for the free audit. For live performance stats and week-on-week tracking, you can optionally connect your Instagram Business account via the Pro plan.",
+      "Tempo analyses your public Instagram posts via your handle — no login required for the free audit. For live performance stats and week-on-week tracking, you can optionally connect your Instagram Business account with Tempo Pro.",
   },
   {
     question: "Is there a free trial?",
@@ -521,7 +521,7 @@ export function LandingPage() {
               </div>
 
               <p className="mt-4 text-center text-xs text-white/55">
-                Free audit · No card required · 14-day trial to unlock your plan
+                Free audit · No card required · 14-day trial on paid plans
               </p>
             </div>
           </div>
@@ -904,60 +904,60 @@ export function LandingPage() {
                 Simple pricing. No surprises.
               </h2>
               <p className="mt-5 text-lg leading-8 text-gray-400">
-                Start with a free Instagram audit. Upgrade when you&apos;re ready
-                to unlock your weekly content plan.
+                Start with a free Instagram audit. Upgrade to Tempo Pro when
+                you&apos;re ready to turn that diagnosis into a weekly plan.
               </p>
             </div>
 
             <div className="mt-12 grid gap-6 md:grid-cols-3">
               {[
                 {
-                  name: "Starter",
-                  price: "£29",
-                  note: "/mo",
+                  name: "Free",
+                  price: "£0",
+                  note: "",
                   highlight: false,
                   badge: null,
                   description:
-                    "For independent artists who want to show up consistently every week.",
+                    "A powerful Instagram audit that shows you exactly what your audience responds to.",
                   features: [
-                    "Free Instagram audit",
-                    "Weekly content plan (every Monday)",
-                    "Plan shaped by your weekly check-in",
-                    "14-day free trial",
-                    "1 artist profile",
+                    "Full Instagram audit",
+                    "Artist snapshot & content pattern",
+                    "Strategic diagnosis with specific data",
+                    "No card required",
                   ],
                 },
                 {
-                  name: "Pro",
-                  price: "£59",
+                  name: "Tempo Pro",
+                  price: "£39",
                   note: "/mo",
                   highlight: true,
                   badge: "Most popular",
                   description:
-                    "For artists serious about growth. Live data, performance tracking, and room to scale.",
+                    "Turn your audit into a clear weekly strategy — built around what's already working.",
                   features: [
-                    "Everything in Starter",
-                    "Live Instagram performance stats",
-                    "Week-on-week engagement tracking",
-                    "2 content reviews per month",
-                    "Up to 3 artist profiles",
+                    "Weekly content plan every Monday",
+                    "Live Instagram data",
+                    "Monthly audit refresh",
+                    "Events calendar & weekly focus questions",
+                    "Content reviews",
+                    "Up to 3 artist projects",
+                    "14-day free trial",
                   ],
                 },
                 {
-                  name: "Label",
+                  name: "Teams",
                   price: "£149",
                   note: "/mo",
                   highlight: false,
                   badge: null,
                   description:
-                    "For managers and labels who want expert-reviewed content plans across a roster.",
+                    "Full-service strategy for managers and rosters across multiple artists.",
                   features: [
-                    "Everything in Pro",
-                    "Expert-reviewed content plans",
-                    "Monthly strategy call",
-                    "8 content reviews per month",
-                    "Up to 10 artist profiles",
+                    "Everything in Tempo Pro",
+                    "Up to 10 artists",
                     "Priority support",
+                    "Monthly strategy call",
+                    "14-day free trial",
                   ],
                 },
               ].map((plan) => (
@@ -1074,8 +1074,8 @@ export function LandingPage() {
             </div>
 
             <p className="mt-10 text-center text-sm text-gray-400">
-              All plans start with a free Instagram audit and a 14-day trial.
-              Cancel anytime — your data is always yours.
+              Start with a free Instagram audit. Paid plans include a 14-day
+              trial. Cancel anytime — your data is always yours.
             </p>
           </div>
         </section>
@@ -1161,7 +1161,7 @@ export function LandingPage() {
                     backgroundColor: "rgba(10,10,15,0.60)",
                   }}
                 >
-                  Get started with Label →
+                  Get started with Teams →
                 </Link>
               </div>
 
@@ -1284,7 +1284,7 @@ export function LandingPage() {
                   Get your free audit →
                 </Link>
                 <span className="text-xs text-white/55">
-                  Free audit · No card required · 14-day trial to unlock your plan
+                  Free audit · No card required · 14-day trial on paid plans
                 </span>
               </div>
             </div>

@@ -67,7 +67,7 @@ const FAQ_JSON_LD = {
       name: "Can I use Tempo for multiple artists?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes. Pro plans support up to 3 artist profiles and Label plans support up to 10. Each artist gets their own audit, their own voice profile, and their own weekly plan.",
+        text: "Yes. Tempo Pro supports up to 3 artist projects and Teams supports up to 10. Each artist gets their own audit, their own voice profile, and their own weekly plan.",
       },
     },
     {
@@ -75,7 +75,7 @@ const FAQ_JSON_LD = {
       name: "What Instagram data does Tempo use?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Tempo analyses your public Instagram posts via your handle — no login required for the free audit. For live performance stats and week-on-week tracking, you can optionally connect your Instagram Business account via the Pro plan.",
+        text: "Tempo analyses your public Instagram posts via your handle — no login required for the free audit. For live performance stats and week-on-week tracking, you can optionally connect your Instagram Business account with Tempo Pro.",
       },
     },
     {
@@ -108,21 +108,20 @@ const SOFTWARE_APPLICATION_JSON_LD = {
   offers: [
     {
       "@type": "Offer",
-      name: "Starter",
-      price: "29",
+      name: "Free",
+      price: "0",
+      priceCurrency: "GBP",
+    },
+    {
+      "@type": "Offer",
+      name: "Tempo Pro",
+      price: "39",
       priceCurrency: "GBP",
       billingPeriod: "P1M",
     },
     {
       "@type": "Offer",
-      name: "Pro",
-      price: "59",
-      priceCurrency: "GBP",
-      billingPeriod: "P1M",
-    },
-    {
-      "@type": "Offer",
-      name: "Label",
+      name: "Teams",
       price: "149",
       priceCurrency: "GBP",
       billingPeriod: "P1M",

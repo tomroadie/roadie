@@ -204,12 +204,13 @@ export async function POST(request: Request) {
     const customerEmail =
       session.customer_details?.email ?? session.customer_email ?? "";
     const planName = session.metadata?.plan ?? "starter";
+    // Public display values; update when Stripe price IDs match new pricing (£39 Pro).
     const planValues: Record<string, number> = {
       starter: 29,
-      pro: 59,
+      pro: 39,
       label: 149,
     };
-    const value = planValues[planName] ?? 29;
+    const value = planValues[planName] ?? 0;
     const eventId = `stripe-${session.id}`;
 
     await capiCheckoutEvent(

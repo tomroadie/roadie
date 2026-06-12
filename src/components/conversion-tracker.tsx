@@ -21,12 +21,13 @@ export function ConversionTracker({ upgraded, plan, isTrial }: Props) {
   useEffect(() => {
     if (!upgraded) return;
 
+    // Display values for public pricing. Stripe may still charge legacy amounts until price IDs are updated.
     const planValues: Record<string, number> = {
       starter: 29,
-      pro: 59,
+      pro: 39,
       label: 149,
     };
-    const value = planValues[plan] ?? 29;
+    const value = planValues[plan] ?? 0;
     const eventId = generateEventId();
 
     if (isTrial) {

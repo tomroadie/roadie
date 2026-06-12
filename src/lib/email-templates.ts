@@ -141,9 +141,9 @@ export function auditReadyEmail(data: {
     Read your full audit →
   </a>
 
-  <p style="${P}">Once you've read it, upgrading to Tempo
-  unlocks your weekly content plan — 5 ideas
-  every Monday shaped by this data.</p>
+  <p style="${P}">Once you've read it, Tempo Pro turns this
+  diagnosis into a weekly plan — 5 specific ideas every
+  Monday shaped by what's working on your account.</p>
 
   <p style="${SIG}">
   — Tom at Tempo

@@ -2,7 +2,9 @@ const KNOWN_SECTIONS = [
   "Positioning",
   "Content Pattern",
   "Engagement Reality",
+  "The Hidden Pattern",
   "Biggest Missed Opportunity",
+  "What Happens If Nothing Changes",
   "Your Next Move",
   "Core Problem",
   "Core Opportunity",
@@ -70,4 +72,29 @@ export function parseFullAnalysisText(text: string): ParsedAnalysisSection[] {
   }
 
   return sections;
+}
+
+/** Extract up to 3 teaser actions from the Your Next Move section for upgrade copy. */
+export function extractNextMoveTeasers(
+  sections: ParsedAnalysisSection[]
+): string[] {
+  const nextMove = sections.find((s) =>
+    s.title.toLowerCase().includes("next move")
+  );
+  if (!nextMove?.body.trim()) return [];
+
+  const lines = nextMove.body
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^[-•*]\s*/, "").replace(/^\d+[.)]\s*/, ""));
+
+  if (lines.length >= 2) return lines.slice(0, 3);
+
+  const sentences = nextMove.body
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 20);
+
+  return sentences.slice(0, 3);
 }

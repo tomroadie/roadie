@@ -1097,14 +1097,14 @@ export function WeeklyPlanSection({
           href="/pricing"
           className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-card px-5 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
         >
-          Upgrade
+          Start 14-day free trial
         </Link>
       ) : (
         <Link
           href="/pricing"
           className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
         >
-          Upgrade
+          Start 14-day free trial
         </Link>
       );
       headerRightIsButton = true;
@@ -1126,7 +1126,7 @@ export function WeeklyPlanSection({
               clipRule="evenodd"
             />
           </svg>
-          Upgrade to generate your plan
+          Start 14-day free trial
         </Link>
       );
       headerRightIsButton = true;
@@ -1145,7 +1145,7 @@ export function WeeklyPlanSection({
             >
               Settings
             </Link>{" "}
-            to run your free audit and unlock your content plan.
+            to run your free Instagram audit.
           </p>
         </div>
       ) : null}
@@ -1174,7 +1174,7 @@ export function WeeklyPlanSection({
           </p>
           {canReview && hasPlanIdeas ? (
             <p className="mt-1 text-xs text-muted">
-              Pro includes expert feedback on your ideas before you post.
+              Tempo Pro includes expert feedback on your ideas before you post.
             </p>
           ) : null}
           {canReview ? (
@@ -1282,8 +1282,7 @@ export function WeeklyPlanSection({
                 emptyCopy =
                   "Your plan will be ready once your audit is complete.";
               } else {
-                emptyCopy =
-                  "Your audit is ready. Upgrade to generate your personalised content plan.";
+                emptyCopy = null;
               }
             } else if (auditPending) {
               emptyCopy =
@@ -1293,12 +1292,12 @@ export function WeeklyPlanSection({
               emptyCopy = null;
               showEmptyActions = false;
             } else {
-              emptyCopy = "Run your audit above to unlock your plan.";
+              emptyCopy = "Run your audit above to get your weekly plan.";
               showEmptyActions = false;
             }
           } else if (!auditPending && !hasAudit && !hasPlanIdeas) {
             if (canGenerate) {
-              emptyCopy = "Run your audit above to unlock your plan.";
+              emptyCopy = "Run your audit above to get your weekly plan.";
               showEmptyActions = false;
             } else if (hasInstagram) {
               emptyCopy =
@@ -1320,15 +1319,20 @@ export function WeeklyPlanSection({
             <div className="mt-6 rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
               {showAuditUpgradeCta ? (
                 <div className="py-8 text-center">
-                  <p className="text-sm leading-relaxed text-muted-strong">
-                    Your audit is ready. Upgrade to generate your personalised
-                    content plan.
+                  <p className="text-sm font-semibold leading-relaxed text-foreground">
+                    Your audit found the opportunity. Tempo Pro gives you the
+                    weekly plan to act on it.
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">
+                    Every Monday, get 5 content ideas shaped by your real
+                    Instagram data, upcoming dates, and what is already working
+                    for your audience.
                   </p>
                   <Link
                     href="/pricing"
                     className="mt-4 inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
                   >
-                    Unlock your plan →
+                    Start 14-day free trial
                   </Link>
                 </div>
               ) : (
@@ -1349,7 +1353,7 @@ export function WeeklyPlanSection({
                               : "inline-flex h-11 min-w-[200px] items-center justify-center rounded-lg bg-brand px-8 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
                           }
                         >
-                          Upgrade
+                          Start 14-day free trial
                         </Link>
                       ) : canGenerate ? (
                     <button
@@ -1377,7 +1381,7 @@ export function WeeklyPlanSection({
                           clipRule="evenodd"
                         />
                       </svg>
-                      Upgrade to generate your plan
+                      Start 14-day free trial
                     </Link>
                   )}
                     </div>

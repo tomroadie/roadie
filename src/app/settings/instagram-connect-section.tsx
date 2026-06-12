@@ -63,7 +63,7 @@ export function InstagramConnectSection({
         </a>
       ) : (
         <p className="text-sm text-muted">
-          Live Instagram stats are available on the Pro plan.
+          Live Instagram stats are available on Tempo Pro.
           <Link
             href="/pricing"
             className="ml-1 font-semibold text-brand hover:underline"

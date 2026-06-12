@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { planDisplayName } from "@/lib/plan-display";
 
 function formatLongDateWithYear(iso: string): string {
   const d = new Date(iso);
@@ -89,8 +90,8 @@ export function BillingSection({
 
       <div className="mt-4 flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold capitalize text-foreground">
-            {plan} plan
+          <p className="text-sm font-semibold text-foreground">
+            {planDisplayName(plan)} plan
           </p>
           <p className="mt-0.5 text-xs text-muted">
             {trialActive && trialEndDate

@@ -263,13 +263,13 @@ export function winbackExtensionUrl(artistId: string, userId: string): string {
 export function planPriceLabel(plan: string): string {
   switch (plan) {
     case "starter":
-      return "£29";
+      return "£29"; // Legacy tier — no longer sold publicly
     case "pro":
-      return "£59";
+      return "£39"; // Public "Tempo Pro" price; Stripe price ID may still charge legacy amount
     case "label":
-      return "£149";
+      return "£149"; // Public "Teams" price
     default:
-      return "£29";
+      return "£0";
   }
 }
 

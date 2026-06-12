@@ -122,7 +122,7 @@ export function FirstRunChecklist({
           href="/pricing"
           className="text-xs text-muted underline-offset-4 hover:text-brand hover:underline"
         >
-          Upgrade to unlock →
+          Start 14-day free trial →
         </Link>
       ),
     });

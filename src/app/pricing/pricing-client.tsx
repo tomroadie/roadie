@@ -5,66 +5,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { trackBeginCheckout } from "@/lib/analytics";
+import {
+  FREE_PLAN_CARD,
+  planDisplayValue,
+  PUBLIC_PAID_PLANS,
+  type PublicPaidPlanKey,
+} from "@/lib/plan-display";
 import { normalizePlan, type RoadiePlan } from "@/lib/plan-limits";
 
 type PriceIds = { starter: string; pro: string; label: string };
-type PaidPlanKey = keyof PriceIds;
-
-const planValues: Record<PaidPlanKey, number> = {
-  starter: 29,
-  pro: 59,
-  label: 149,
-};
-
-const PLANS: Array<{
-  key: PaidPlanKey;
-  name: string;
-  price: string;
-  blurb: string;
-  highlight?: string;
-  features: string[];
-}> = [
-  {
-    key: "starter",
-    name: "Starter",
-    price: "£29/month",
-    blurb: "Everything you need to show up consistently as an independent artist.",
-    features: [
-      "Weekly content plan",
-      "Instagram audit",
-      "Events calendar",
-      "Weekly focus questions",
-      "1 artist",
-    ],
-  },
-  {
-    key: "pro",
-    name: "Pro",
-    price: "£59/month",
-    blurb: "Live data, expert eyes on your content, and room to grow.",
-    highlight: "Most popular",
-    features: [
-      "Everything in Starter",
-      "Live Instagram stats",
-      "Monthly audit refresh",
-      "2 content reviews per month",
-      "Up to 3 artists",
-    ],
-  },
-  {
-    key: "label",
-    name: "Label",
-    price: "£149/month",
-    blurb: "Full-service strategy for serious artists and small rosters.",
-    features: [
-      "Everything in Pro",
-      "Monthly strategy call",
-      "8 content reviews per month",
-      "Up to 10 artists",
-      "Priority support",
-    ],
-  },
-];
 
 export default function PricingClient({
   priceIds,
@@ -75,12 +24,12 @@ export default function PricingClient({
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const [loadingPlan, setLoadingPlan] = useState<PaidPlanKey | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<PublicPaidPlanKey | null>(null);
   const [error, setError] = useState<string | null>(null);
   const normalizedCurrent = normalizePlan(currentPlan);
 
-  async function startCheckout(plan: PaidPlanKey) {
-    trackBeginCheckout(plan, planValues[plan] ?? 0);
+  async function startCheckout(plan: PublicPaidPlanKey) {
+    trackBeginCheckout(plan, planDisplayValue(plan));
     setError(null);
     setLoadingPlan(plan);
 
@@ -94,6 +43,7 @@ export default function PricingClient({
       return;
     }
 
+    // Internal Stripe keys: Tempo Pro → pro, Teams → label. Starter removed from public checkout.
     const priceId = priceIds[plan];
     if (!priceId) {
       setError("Missing Stripe price ID for this plan.");
@@ -126,6 +76,8 @@ export default function PricingClient({
     window.location.assign(data.url);
   }
 
+  const isOnFree = normalizedCurrent === "free";
+
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
       <div className="flex flex-col gap-2">
@@ -135,12 +87,12 @@ export default function PricingClient({
         <h1 className="text-4xl font-black uppercase tracking-tight text-foreground sm:text-5xl">
           Your music deserves a real content strategy
         </h1>
-        {normalizedCurrent === "free" ? (
+        {isOnFree ? (
           <p className="mt-3 text-sm text-muted">You&apos;re on the free plan</p>
         ) : null}
         <p className="max-w-2xl text-base text-muted">
-          Join artists using Tempo to show up consistently, grow their audience, and spend
-          less time stressing about what to post.
+          Start with a free Instagram audit. Upgrade to Tempo Pro when you&apos;re
+          ready to turn that diagnosis into a weekly plan.
         </p>
       </div>
 
@@ -148,7 +100,7 @@ export default function PricingClient({
         className="mt-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-center text-xs font-bold uppercase tracking-widest text-muted"
         aria-label="Highlights"
       >
-        <span>5 ideas every week</span>
+        <span>5 ideas every Monday</span>
         <span aria-hidden className="hidden sm:inline">
           ·
         </span>
@@ -159,16 +111,51 @@ export default function PricingClient({
         <span>Cancels anytime</span>
       </div>
 
-      <p className="mt-10 text-center text-sm leading-relaxed text-muted">
-        Start with a 14-day free trial. Cancel anytime.
-      </p>
-
       <div className="mt-10 grid gap-5 md:grid-cols-3">
-        {PLANS.map((p) => {
+        <div className="relative flex h-full min-w-0 flex-col rounded-xl border border-card-border bg-card p-6 shadow-sm">
+          <div className="space-y-2">
+            {isOnFree ? (
+              <div className="mb-2 inline-flex w-fit rounded-full bg-brand px-3 py-1 text-xs font-black uppercase tracking-wide text-brand-foreground">
+                Current plan
+              </div>
+            ) : null}
+            <h2 className="text-xl font-black uppercase tracking-tight text-foreground">
+              {FREE_PLAN_CARD.name}
+            </h2>
+            <p className="text-3xl font-black tracking-tight text-foreground">
+              {FREE_PLAN_CARD.price}
+            </p>
+            <p className="text-sm leading-relaxed text-muted">{FREE_PLAN_CARD.blurb}</p>
+          </div>
+          <ul className="mt-5 space-y-2 text-sm text-muted-strong">
+            {FREE_PLAN_CARD.features.map((f) => (
+              <li key={f} className="flex items-start gap-2">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
+                <span>{f}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-auto pt-6">
+            {isOnFree ? (
+              <div className="flex h-11 w-full items-center justify-center rounded-lg border border-card-border px-4 text-sm font-black uppercase tracking-wide text-muted">
+                Current plan
+              </div>
+            ) : (
+              <Link
+                href="/home"
+                className="flex h-11 w-full items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
+              >
+                Run free audit
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {PUBLIC_PAID_PLANS.map((p) => {
           const isPopular = p.key === "pro";
           const isCurrent = normalizedCurrent === p.key;
 
-          const ctaLabel = isCurrent ? "Current plan" : "Start free trial";
+          const ctaLabel = isCurrent ? "Current plan" : "Start your 14-day free trial";
 
           const ctaButtonClass = [
             "flex h-11 w-full items-center justify-center rounded-lg px-4 text-sm font-black uppercase tracking-wide shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
@@ -233,7 +220,7 @@ export default function PricingClient({
       </div>
 
       <p className="mt-10 text-center text-sm leading-relaxed text-muted">
-        All plans start with a 14-day free trial. Cancel anytime.
+        All paid plans start with a 14-day free trial. Cancel anytime.
         <br />
         Your data is always yours.
       </p>

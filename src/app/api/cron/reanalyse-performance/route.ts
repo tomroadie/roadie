@@ -225,13 +225,13 @@ Your job is to identify the single most important pattern in how this artist is 
 
 Focus on: what their recent content reveals about their current strategy, whether there is a clear pattern emerging, and what is working vs what is being underused.
 
-Write in a warm, direct tone — like a trusted advisor who sees both the potential and the opportunity. Never use language that implies the artist is failing or desperate. Frame everything as an observation and an opportunity.
+Write in a direct, evidence-based tone — like a trusted strategist. Never use: nobody cares, begging, desperate, panic, failing, sarcasm, or dismissive language. Prefer: the data suggests..., the missed opportunity is..., your audience responds more strongly when...
 
 Do not reference posts by number. Reference them by their content instead.
 
 Return 2-3 sentences maximum. Start with what is working or what is clear about their current momentum, then note the key opportunity.`;
 
-  const analysis2Prompt = `You are a trusted music industry strategist giving a private, honest review of an artist's recent Instagram performance. Your tone is warm, direct, and encouraging — like a manager who genuinely believes in the artist and wants to help them grow.
+  const analysis2Prompt = `You are a trusted music industry strategist giving a private review of an artist's recent Instagram performance. Your tone is direct, evidence-based, and encouraging — critique the content strategy, never the artist.
 
 Artist: ${artistName}
 Genre: ${genre ?? "not specified"}
@@ -244,11 +244,11 @@ ${formattedCurrentPosts}
 ${formattedPrevSummary}
 
 CRITICAL TONE RULES:
-- Never use words like desperate, frantic, struggling, fighting, pleading, or any language that implies the artist is failing
-- Never frame the artist's behaviour as a character flaw
+- Never use: nobody cares, begging, desperate, panic, failing, people don't care, your audience ignores you, trying too hard
+- Never use sarcasm, dismissiveness, insults, or language that makes the artist feel judged
+- Prefer: your audience responds more strongly when..., the data suggests..., the missed opportunity is..., the strongest signal is...
 - Always acknowledge what IS working first, specifically and with data
-- Frame every problem as an untapped opportunity
-- Use 'you could' and 'what works even better is' instead of 'you don't' or 'the problem is'
+- Frame every gap as an untapped opportunity with evidence
 - Be specific and use real data points
 - Sound like a conversation, not a report
 - Do not reference posts by number — reference them by their content
@@ -257,10 +257,12 @@ Provide a strategic analysis with these exact sections:
 **POSITIONING** — what makes this artist distinct and what they are already doing well this month
 **CONTENT PATTERN** — what the data shows about how they are showing up, specific observations
 **ENGAGEMENT REALITY** — what is actually connecting with their audience and why
-**CORE OPPORTUNITY** — the single biggest lever they could pull right now
-**YOUR NEXT MOVE** — 2-3 specific, immediately actionable suggestions in their voice
+**THE HIDDEN PATTERN** — one concise paragraph on the deeper audience/content behaviour behind the numbers
+**BIGGEST MISSED OPPORTUNITY** — the single biggest lever they could pull right now
+**WHAT HAPPENS IF NOTHING CHANGES** — likely consequence of continuing the current pattern, without fearmongering
+**YOUR NEXT MOVE** — exactly 3 specific teaser actions as a numbered list (1. 2. 3.), in their voice
 
-Be specific, warm, and actionable. Max 300 words total.`;
+Be specific, warm, and actionable. Max 400 words total.`;
 
   let ai_pattern_analysis: string;
   let ai_full_analysis: string;

@@ -13,6 +13,7 @@ import {
   type InstagramLiveMediaRow,
 } from "@/app/insights/live-stats-section";
 import { FullAnalysisCollapsible } from "./full-analysis-collapsible";
+import { AuditUpgradeSection } from "./audit-upgrade-section";
 import { ConversionTracker } from "@/components/conversion-tracker";
 import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
@@ -477,7 +478,7 @@ export default async function HomePage({
             }
           : hasAudit
             ? {
-                label: "Plan: Upgrade to unlock",
+                label: "Plan: Start free trial",
                 cls: "bg-amber-400 text-zinc-950 ring-amber-200/40",
               }
             : {
@@ -629,10 +630,13 @@ export default async function HomePage({
           sections={fullAnalysisSections}
           artistId={activeArtistId}
           updatedAt={audit.created_at}
-          canGeneratePlan={canGeneratePlan}
           forceOpen={auditReady}
         />
       </div>
+
+      {!canGeneratePlan && !auditPending ? (
+        <AuditUpgradeSection sections={fullAnalysisSections} />
+      ) : null}
     </>
   ) : null;
 
@@ -747,7 +751,7 @@ export default async function HomePage({
                 href="/pricing"
                 className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95"
               >
-                Unlock with Pro →
+                Start 14-day free trial
               </Link>
             </div>
           </div>
@@ -845,7 +849,7 @@ export default async function HomePage({
             href="/pricing"
             className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95"
           >
-            Unlock with Pro →
+            Start 14-day free trial
           </Link>
         </div>
       </div>
@@ -891,14 +895,14 @@ export default async function HomePage({
             Content review
           </p>
           <p className="mt-1 max-w-xs text-sm text-muted">
-            Submit your plan ideas for expert feedback before you post. 2
-            reviews included per month on Pro.
+            Submit your plan ideas for expert feedback before you post.
+            Included with Tempo Pro.
           </p>
           <Link
             href="/pricing"
             className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95"
           >
-            Unlock with Pro →
+            Start 14-day free trial
           </Link>
         </div>
       </div>
@@ -970,7 +974,7 @@ export default async function HomePage({
             >
               Settings
             </Link>{" "}
-            to run your free audit and unlock your content plan.
+            to run your free Instagram audit.
           </p>
         </div>
       ) : null}

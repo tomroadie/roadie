@@ -137,7 +137,7 @@ export function auditReadyEmail(data: {
   positioning, content patterns, engagement reality,
   and exactly what to do next.</p>
 
-  <a href="${data.appUrl}/home" style="${CTA}">
+  <a href="${data.appUrl}/home?audit=ready" style="${CTA}">
     Read your full audit →
   </a>
 

@@ -3,11 +3,6 @@ import { timingSafeEqual } from "crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { trackUsage } from "@/lib/track-usage";
-import {
-  generateAuditEmail,
-  generateAuditEmailPlainText,
-  getAuditEmailSubject,
-} from "@/lib/emails/generate-audit-email";
 
 function verifyWebhookSecret(headerValue: string | null, secret: string): boolean {
   if (!headerValue || !secret) return false;
@@ -59,13 +54,6 @@ type ApifyActorRun = {
     status?: unknown;
   };
 };
-
-function firstSentence(text: string): string {
-  const t = String(text ?? "").trim().replace(/\s+/g, " ");
-  if (!t) return "";
-  const match = t.match(/^(.+?[.!?])(\s|$)/);
-  return (match?.[1] ?? t).trim();
-}
 
 async function fetchApifyDatasetItems<T>(
   url: string,
@@ -279,36 +267,6 @@ Provide a strategic analysis with these exact sections:
 Be specific, commercially focused, and actionable. Max 350 words total.`;
 }
 
-async function sendResendEmail(args: {
-  apiKey: string;
-  to: string;
-  subject: string;
-  text: string;
-  html?: string;
-}): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${args.apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      from: "Tempo <hello@roadie.media>",
-      to: [args.to],
-      subject: args.subject,
-      text: args.text,
-      html: args.html,
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    return { ok: false, status: res.status, error: text || res.statusText };
-  }
-
-  return { ok: true };
-}
-
 export async function POST(request: Request) {
   const webhookSecret = process.env.WEBHOOK_SECRET;
   if (!webhookSecret) {
@@ -334,14 +292,6 @@ export async function POST(request: Request) {
   if (!anthropicKey) {
     return NextResponse.json(
       { error: "Server misconfiguration: missing ANTHROPIC_API_KEY" },
-      { status: 500 }
-    );
-  }
-
-  const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) {
-    return NextResponse.json(
-      { error: "Server misconfiguration: missing RESEND_API_KEY" },
       { status: 500 }
     );
   }
@@ -611,45 +561,6 @@ export async function POST(request: Request) {
       }
     } catch {
       // Don't block if plan generation fails
-    }
-  }
-
-  if (!isResearchLead) {
-    const teaser = firstSentence(ai_pattern_analysis);
-    const insightsUrl = "https://tempo.roadie.media/insights";
-
-    const emailText = generateAuditEmailPlainText({
-      artist_name: artistName,
-      followers: followers ?? "—",
-      following: following ?? "—",
-      post_count: post_count ?? "—",
-      teaser,
-      cta_url: insightsUrl,
-    });
-
-    const emailHtml = generateAuditEmail({
-      artist_name: artistName,
-      followers: followers ?? "—",
-      following: following ?? "—",
-      post_count: post_count ?? "—",
-      teaser,
-      cta_url: insightsUrl,
-    });
-
-    const emailSend = await sendResendEmail({
-      apiKey: resendKey,
-      to: lead.email.trim().toLowerCase(),
-      subject: getAuditEmailSubject(artistName),
-      text: emailText,
-      html: emailHtml,
-    });
-
-    if (!emailSend.ok) {
-      console.error("Resend send failed", {
-        pending_lead_id: lead.id,
-        status: emailSend.status,
-        error: emailSend.error,
-      });
     }
   }
 

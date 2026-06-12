@@ -231,9 +231,10 @@ function normalizeInstagramLivePayload(payload: {
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ upgraded?: string; registered?: string }>;
+  searchParams: Promise<{ upgraded?: string; registered?: string; audit?: string }>;
 }) {
-  const { upgraded, registered } = await searchParams;
+  const { upgraded, registered, audit: auditParam } = await searchParams;
+  const auditReady = auditParam === "ready";
   const supabase = await createClient();
   const {
     data: { user },
@@ -351,7 +352,7 @@ export default async function HomePage({
     .limit(1)
     .maybeSingle();
 
-  const auditJustCompleted = !!recentAudit;
+  const auditJustCompleted = !!recentAudit || auditReady;
 
   const { data: reviewsData, error: reviewsError } = await supabase
     .from("content_reviews")
@@ -623,6 +624,7 @@ export default async function HomePage({
           artistId={activeArtistId}
           updatedAt={audit.created_at}
           canGeneratePlan={canGeneratePlan}
+          forceOpen={auditReady}
         />
       </div>
     </>
@@ -681,7 +683,7 @@ export default async function HomePage({
             </Link>
           </div>
         </div>
-      ) : (
+      ) : hasAudit && !canViewLiveSocialData ? (
         <div className="relative mt-5 overflow-hidden rounded-xl">
           <div
             className="pointer-events-none select-none space-y-3 blur-sm opacity-50"
@@ -744,7 +746,7 @@ export default async function HomePage({
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </section>
   );
 
@@ -781,7 +783,8 @@ export default async function HomePage({
     </section>
   );
 
-  const engagementLockedSection = !canViewEngagementTrends ? (
+  const engagementLockedSection =
+    hasAudit && !canViewEngagementTrends ? (
     <section className="relative mt-10 overflow-hidden rounded-xl border border-card-border bg-card p-7">
       <div
         className="pointer-events-none select-none blur-sm opacity-60"
@@ -843,7 +846,7 @@ export default async function HomePage({
     </section>
   ) : null;
 
-  const reviewLockedSection = !canReview ? (
+  const reviewLockedSection = hasAudit && !canReview ? (
     <section className="relative mt-10 overflow-hidden rounded-xl border border-card-border bg-card p-7">
       <div
         className="pointer-events-none select-none blur-sm opacity-60"

@@ -68,6 +68,7 @@ type FullAnalysisCollapsibleProps = {
   artistId: string;
   updatedAt?: string | null;
   canGeneratePlan?: boolean;
+  forceOpen?: boolean;
 };
 
 export function FullAnalysisCollapsible({
@@ -75,10 +76,15 @@ export function FullAnalysisCollapsible({
   artistId,
   updatedAt = null,
   canGeneratePlan = true,
+  forceOpen = false,
 }: FullAnalysisCollapsibleProps) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    if (forceOpen) {
+      setOpen(true);
+      return;
+    }
     const key = analysisSeenKey(artistId);
     const seen = localStorage.getItem(key);
     if (!seen) {
@@ -87,7 +93,7 @@ export function FullAnalysisCollapsible({
     } else {
       setOpen(false);
     }
-  }, [artistId]);
+  }, [artistId, forceOpen]);
 
   if (sections.length === 0) return null;
 

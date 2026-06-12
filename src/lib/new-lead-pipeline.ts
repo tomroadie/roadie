@@ -83,11 +83,11 @@ export async function enqueueNewLead(input: EnqueueNewLeadInput): Promise<void> 
     apifyToken,
     {
       username: [handle],
-      resultsLimit: 10,
+      resultsLimit: 30,
     },
     {
       memoryMbytes: 2048,
-      timeoutSecs: 300,
+      timeoutSecs: 480,
     }
   );
   apify_profile_run_id = await apifyRun("apify~instagram-profile-scraper", apifyToken, {

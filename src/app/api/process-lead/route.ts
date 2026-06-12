@@ -143,55 +143,88 @@ function formatPosts(items: ApifyPostItem[]): string {
 }
 
 function buildArtistPattern1Prompt(
+  artistName: string,
   formattedProfile: string,
-  formattedPosts: string,
   hasPosts: boolean,
   noPostsNote: string,
   postsRes: { items: ApifyPostItem[] }
 ): string {
-  return (
-    "You are a supportive music industry strategist analysing Instagram data for an artist. Below is a structured summary of their profile and recent posts. Your job is to identify the single most important pattern in how they show up online.\n\n" +
-    "Focus on: what their bio suggests they want to be known for, what their recent content actually shows, and whether there is a gap between the two.\n\n" +
-    "Write in a warm, direct tone — like a trusted advisor who sees both the potential and the opportunity. Never use language that implies the artist is failing or desperate. Frame everything as an observation and an opportunity.\n\n" +
-    "Do not reference posts by number. Reference them by their content (e.g. 'your most recent post about X').\n\n" +
-    "Return 2-3 sentences maximum. Start with what is working or what is clear about their identity, then note the opportunity.\n\n" +
-    `${formattedProfile}${noPostsNote}` +
-    (hasPosts ? `\n\n${formatPosts(postsRes.items.slice(0, 3))}` : "")
-  );
+  return `You are a music industry analyst giving a private, honest assessment of an artist's Instagram presence. You have access to their last 30 posts with engagement data.
+
+Your job is to identify the single most surprising or counterintuitive finding in this data — the thing the artist probably doesn't know about their own account.
+
+Rules:
+- Lead with a specific number or data point
+- Name the tension or gap between what they are doing and what is actually working
+- Never say "your identity is clear" or anything generically positive
+- Do not list multiple observations — pick the ONE most interesting finding
+- Sound like a strategist, not a copywriter
+- 2-3 sentences maximum
+
+Bad example:
+"Your content shows a strong visual identity with consistent behind-the-scenes content that resonates with your audience."
+
+Good example:
+"Your teaser content generated 27 comments while your performance clips averaged 2 — you're accidentally training your audience to engage with announcements rather than your music. The data suggests your fans are more invested in the story around your releases than the releases themselves."
+
+Artist: ${artistName}
+Profile: ${formattedProfile}
+${noPostsNote}
+${hasPosts ? formatPosts(postsRes.items.slice(0, 10)) : ""}
+
+Use specific numbers from the post data. If you cannot find a genuinely surprising finding, find the most significant gap between their highest and lowest performing content and explain what it means.`;
 }
 
 function buildArtistFullAnalysisPrompt(
   artistName: string,
+  genre: string,
   formattedProfile: string,
   formattedPosts: string,
   noPostsNote: string
 ): string {
-  return `You are a trusted music industry strategist giving a private, honest review of an artist's Instagram presence. Your tone is warm, direct, and encouraging — like a manager who genuinely believes in the artist and wants to help them grow.
+  return `You are a trusted music industry strategist giving a private diagnostic of an artist's Instagram presence. You have their last 30 posts with full engagement data.
 
-CRITICAL TONE RULES:
-- Never use words like desperate, frantic, struggling, fighting, pleading, begging, or any language that implies the artist is failing
-- Never frame the artist's behaviour as a character flaw
-- Always acknowledge what IS working first, specifically
-- Frame every problem as an untapped opportunity
-- Use 'you could' and 'what works even better is' instead of 'you don't' or 'the problem is'
-- Be specific and use real data points from their posts
-- Sound like a conversation, not a report
-- Never reference posts by number (e.g. "Post 3", "Post 5", "the third post"). Reference posts by their content instead (e.g. "your Boomtown announcement", "the behind-the-scenes clip", "your most recent release post"). The artist cannot see a numbered list — make every reference self-evident from context.
+Your job is to make the artist feel genuinely understood — and slightly uncomfortable. Not harsh, but honest. The best outcome is the artist reading this and thinking "oh shit, that's exactly what we're doing."
 
-TONE CALIBRATION: Study the artist's actual captions carefully. Note their sentence length, punctuation style, emoji usage, whether they use lowercase or proper case, their vocabulary level, and personality markers. Every insight and caption suggestion must feel natural to their voice. Do not include hashtags in any caption examples — write captions that sound natural and human.
+CRITICAL RULES:
+- Use specific numbers in every section
+- Never reference posts by number — reference by content
+- Lead every section with the most interesting finding, not the most obvious one
+- Create tension between what they are doing and what is working
+- Sound like a strategist having a private conversation, not a report
+- No hashtags in any suggestions
+- Max 350 words total
 
-Artist: ${artistName}. Below is a structured summary of their Instagram profile and recent posts.${noPostsNote}${formattedProfile}
+TONE CALIBRATION:
+Study the artist's actual captions carefully. Note their sentence length, punctuation, emoji usage, lowercase vs proper case, vocabulary, and personality. Every suggestion must sound like it came from them.
 
+Artist: ${artistName}
+Genre: ${genre}
+
+${formattedProfile}
+${noPostsNote}
 ${formattedPosts}
 
-Provide a strategic analysis with these exact sections:
-**POSITIONING** — what makes this artist distinct and what they are already doing well
-**CONTENT PATTERN** — what the data shows about how they show up, specific observations
-**ENGAGEMENT REALITY** — what is actually connecting with their audience and why
-**CORE OPPORTUNITY** — the single biggest lever they could pull (not 'core problem')
-**YOUR NEXT MOVE** — 2-3 specific, immediately actionable suggestions in their voice
+Provide analysis with these exact sections:
 
-Be specific, warm, and actionable. Max 300 words total.`;
+**POSITIONING**
+What makes this artist distinct. Lead with something specific from the data, not a general observation. What do the numbers tell you about how their audience sees them?
+
+**CONTENT PATTERN**
+What the data actually shows — not what they think they post, but what they actually post and how it performs. Find the gap between their most and least effective content types. Use numbers.
+
+**ENGAGEMENT REALITY**
+The most surprising engagement signal in their data. What is working that they might not realise? What are they over-investing in that underperforms? Be specific.
+
+**BIGGEST MISSED OPPORTUNITY**
+The single most important thing they are not doing that their data suggests would work. This should feel like a revelation — something they could act on immediately. Frame it as an opportunity, not a criticism.
+End with one sentence that naturally leads to the value of a weekly plan:
+e.g. "This is exactly the kind of pattern that shapes every idea in your weekly plan."
+
+**YOUR NEXT MOVE**
+2-3 specific content ideas that emerge directly from the data. These should be angles, not formats. Not "post a carousel" but "the story behind [specific thing from their content]." Make these so specific that they could only have been written for this artist.
+
+Be direct. Be specific. Make them feel seen.`;
 }
 
 function buildVenuePattern1Prompt(
@@ -208,7 +241,7 @@ function buildVenuePattern1Prompt(
     "Do not reference posts by number. Reference them by their content (e.g. 'your announcement post for the June show').\n\n" +
     "Return 2-3 sentences maximum. Start with what is working or consistent, then note the most important opportunity.\n\n" +
     `${formattedProfile}${noPostsNote}` +
-    (hasPosts ? `\n\n${formatPosts(postsRes.items.slice(0, 3))}` : "")
+    (hasPosts ? `\n\n${formatPosts(postsRes.items.slice(0, 10))}` : "")
   );
 }
 
@@ -403,7 +436,7 @@ export async function POST(request: Request) {
 
   const postsUrl = `https://api.apify.com/v2/actor-runs/${encodeURIComponent(
     lead.apify_posts_run_id
-  )}/dataset/items?token=${encodeURIComponent(apifyToken)}&limit=10`;
+  )}/dataset/items?token=${encodeURIComponent(apifyToken)}&limit=30`;
 
   const profileUrl = `https://api.apify.com/v2/actor-runs/${encodeURIComponent(
     lead.apify_profile_run_id
@@ -433,7 +466,7 @@ export async function POST(request: Request) {
 
   const { data: profileLookup } = await supabase
     .from("profiles")
-    .select("id, owner_user_id, account_type")
+    .select("id, owner_user_id, account_type, genre")
     .eq("instagram_handle", lead.instagram_handle.trim())
     .maybeSingle();
 
@@ -442,13 +475,17 @@ export async function POST(request: Request) {
   const anthropic = new Anthropic({ apiKey: anthropicKey });
 
   const artistName = lead.artist_name?.trim() || "Unknown artist";
+  const genre =
+    typeof profileLookup?.genre === "string" && profileLookup.genre.trim()
+      ? profileLookup.genre.trim()
+      : "Unknown";
   const analysis1Prompt = isVenue
     ? buildVenuePattern1Prompt(formattedProfile, formattedPosts, hasPosts, noPostsNote, postsRes)
-    : buildArtistPattern1Prompt(formattedProfile, formattedPosts, hasPosts, noPostsNote, postsRes);
+    : buildArtistPattern1Prompt(artistName, formattedProfile, hasPosts, noPostsNote, postsRes);
 
   const analysis2Prompt = isVenue
     ? buildVenueFullAnalysisPrompt(artistName, formattedProfile, formattedPosts, noPostsNote)
-    : buildArtistFullAnalysisPrompt(artistName, formattedProfile, formattedPosts, noPostsNote);
+    : buildArtistFullAnalysisPrompt(artistName, genre, formattedProfile, formattedPosts, noPostsNote);
 
   let ai_pattern_analysis: string;
   let ai_full_analysis: string;

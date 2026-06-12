@@ -622,6 +622,7 @@ export default async function HomePage({
           sections={fullAnalysisSections}
           artistId={activeArtistId}
           updatedAt={audit.created_at}
+          canGeneratePlan={canGeneratePlan}
         />
       </div>
     </>

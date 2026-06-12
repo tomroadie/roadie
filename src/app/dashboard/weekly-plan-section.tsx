@@ -1278,9 +1278,13 @@ export function WeeklyPlanSection({
 
           if (freePlanNoIdeasYet) {
             if (hasAudit) {
-              emptyCopy = auditPending
-                ? "Your plan will be ready once your audit is complete."
-                : "Your audit is ready! Upgrade to generate your personalised content plan.";
+              if (auditPending) {
+                emptyCopy =
+                  "Your plan will be ready once your audit is complete.";
+              } else {
+                emptyCopy =
+                  "Your audit is ready. Upgrade to generate your personalised content plan.";
+              }
             } else if (auditPending) {
               emptyCopy =
                 "Your audit is running — your plan will be generated once it's ready.";
@@ -1309,25 +1313,45 @@ export function WeeklyPlanSection({
             return null;
           }
 
+          const showAuditUpgradeCta =
+            freePlanNoIdeasYet && hasAudit && !auditPending;
+
           return (
             <div className="mt-6 rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
-              {emptyCopy ? (
-                <p className="text-sm leading-relaxed text-muted">{emptyCopy}</p>
-              ) : null}
-              {showEmptyActions ? (
-                <div className="mt-6 flex justify-center">
-                  {freePlanNoIdeasYet && hasAudit ? (
-                    <Link
-                      href="/pricing"
-                      className={
-                        auditPending
-                          ? "inline-flex h-11 min-w-[200px] items-center justify-center rounded-lg border border-card-border bg-card px-8 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
-                          : "inline-flex h-11 min-w-[200px] items-center justify-center rounded-lg bg-brand px-8 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
-                      }
-                    >
-                      Upgrade
-                    </Link>
-                  ) : canGenerate ? (
+              {showAuditUpgradeCta ? (
+                <div className="py-8 text-center">
+                  <p className="text-sm leading-relaxed text-muted-strong">
+                    Your audit is ready. Upgrade to generate your personalised
+                    content plan.
+                  </p>
+                  <Link
+                    href="/pricing"
+                    className="mt-4 inline-flex h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
+                  >
+                    Unlock your plan →
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  {emptyCopy ? (
+                    <p className="text-sm leading-relaxed text-muted">
+                      {emptyCopy}
+                    </p>
+                  ) : null}
+                  {showEmptyActions ? (
+                    <div className="mt-6 flex justify-center">
+                      {freePlanNoIdeasYet && hasAudit ? (
+                        <Link
+                          href="/pricing"
+                          className={
+                            auditPending
+                              ? "inline-flex h-11 min-w-[200px] items-center justify-center rounded-lg border border-card-border bg-card px-8 text-sm font-black uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-brand"
+                              : "inline-flex h-11 min-w-[200px] items-center justify-center rounded-lg bg-brand px-8 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
+                          }
+                        >
+                          Upgrade
+                        </Link>
+                      ) : canGenerate ? (
                     <button
                       type="button"
                       onClick={requestGenerate}
@@ -1356,8 +1380,10 @@ export function WeeklyPlanSection({
                       Upgrade to generate your plan
                     </Link>
                   )}
-                </div>
-              ) : null}
+                    </div>
+                  ) : null}
+                </>
+              )}
             </div>
           );
         })()

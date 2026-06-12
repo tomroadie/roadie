@@ -2,10 +2,11 @@ const KNOWN_SECTIONS = [
   "Positioning",
   "Content Pattern",
   "Engagement Reality",
+  "Biggest Missed Opportunity",
+  "Your Next Move",
   "Core Problem",
   "Core Opportunity",
   "Opportunity",
-  "Your Next Move",
 ] as const;
 
 export type ParsedAnalysisSection = {

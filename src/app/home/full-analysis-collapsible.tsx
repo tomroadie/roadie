@@ -1,16 +1,47 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ParsedAnalysisSection } from "@/lib/parse-full-analysis";
 
-function sectionAccent(title: string): { border: string; label: string } {
+function sectionStyle(title: string): { container: string; label: string } {
   const t = title.toLowerCase();
-  if (t.includes("position")) return { border: "border-l-purple-400", label: "text-purple-200" };
-  if (t.includes("content")) return { border: "border-l-sky-400", label: "text-sky-200" };
-  if (t.includes("engagement")) return { border: "border-l-teal-400", label: "text-teal-200" };
-  if (t.includes("core")) return { border: "border-l-amber-400", label: "text-amber-200" };
-  if (t.includes("opportun")) return { border: "border-l-emerald-400", label: "text-emerald-200" };
-  return { border: "border-l-zinc-600", label: "text-foreground" };
+
+  if (t.includes("biggest missed")) {
+    return {
+      container: "rounded-xl border border-amber-500/30 bg-amber-500/10 p-6",
+      label: "text-xs font-bold uppercase tracking-widest text-amber-400",
+    };
+  }
+
+  if (
+    t.includes("position") ||
+    t.includes("content") ||
+    t.includes("engagement") ||
+    t.includes("next move") ||
+    t.includes("opportun")
+  ) {
+    return {
+      container: "rounded-xl border border-brand/30 bg-brand/10 p-6",
+      label: "text-xs font-bold uppercase tracking-widest text-brand",
+    };
+  }
+
+  if (t.includes("core")) {
+    return {
+      container: "rounded-xl border border-amber-500/30 bg-amber-500/10 p-6",
+      label: "text-xs font-bold uppercase tracking-widest text-amber-400",
+    };
+  }
+
+  return {
+    container: "rounded-xl border border-card-border bg-input p-6",
+    label: "text-sm font-bold uppercase tracking-widest text-foreground",
+  };
+}
+
+function isBiggestMissedOpportunity(title: string): boolean {
+  return title.toLowerCase().includes("biggest missed");
 }
 
 function analysisSeenKey(artistId: string): string {
@@ -36,12 +67,14 @@ type FullAnalysisCollapsibleProps = {
   sections: ParsedAnalysisSection[];
   artistId: string;
   updatedAt?: string | null;
+  canGeneratePlan?: boolean;
 };
 
 export function FullAnalysisCollapsible({
   sections,
   artistId,
   updatedAt = null,
+  canGeneratePlan = true,
 }: FullAnalysisCollapsibleProps) {
   const [open, setOpen] = useState(false);
 
@@ -83,18 +116,31 @@ export function FullAnalysisCollapsible({
       {open ? (
         <div className="mt-5 space-y-4">
           {sections.map((sec, i) => {
-            const a = sectionAccent(sec.title);
+            const style = sectionStyle(sec.title);
             return (
-              <div
-                key={`${sec.title}-${i}`}
-                className={`rounded-xl border border-card-border bg-input p-6 ${a.border} border-l-4`}
-              >
-                <h3 className={`text-sm font-bold uppercase tracking-widest ${a.label}`}>
-                  {sec.title}
-                </h3>
+              <div key={`${sec.title}-${i}`} className={style.container}>
+                <h3 className={style.label}>{sec.title}</h3>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-strong">
                   {sec.body}
                 </p>
+                {isBiggestMissedOpportunity(sec.title) && !canGeneratePlan ? (
+                  <div className="mt-4 rounded-lg border border-brand/30 bg-brand/10 p-4">
+                    <p className="text-sm font-semibold text-foreground">
+                      Turn this insight into action every week.
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted">
+                      Your weekly plan is built around exactly these patterns — 5
+                      specific ideas every Monday shaped by what&apos;s actually
+                      working for your account.
+                    </p>
+                    <Link
+                      href="/pricing"
+                      className="mt-3 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-4 text-xs font-black uppercase tracking-wide text-brand-foreground transition-colors hover:brightness-95"
+                    >
+                      Unlock your weekly plan →
+                    </Link>
+                  </div>
+                ) : null}
               </div>
             );
           })}

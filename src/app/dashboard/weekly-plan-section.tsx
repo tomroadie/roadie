@@ -569,6 +569,7 @@ type WeeklyPlanSectionProps = {
   } | null;
   hasJustUpgraded?: boolean;
   hasJustRegistered?: boolean;
+  showAuditBanner?: boolean;
   hasInstagram?: boolean;
   canMarkAsPosted?: boolean;
   recentPosts?: RecentPostPerformance[];
@@ -599,6 +600,7 @@ export function WeeklyPlanSection({
   revisionRequest = null,
   hasJustUpgraded = false,
   hasJustRegistered = false,
+  showAuditBanner = false,
   hasInstagram = false,
   canMarkAsPosted = false,
   recentPosts = [],
@@ -1158,6 +1160,30 @@ export function WeeklyPlanSection({
         </div>
       ) : null}
 
+      {showAuditBanner && !hasPlanIdeas && !auditPending ? (
+        isManaged ? (
+          <div className="mb-6 rounded-xl border-2 border-brand bg-brand/10 px-6 py-5">
+            <p className="text-xs font-bold uppercase tracking-widest text-brand">
+              Your audit is ready
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-foreground">
+              We&apos;ve analysed your Instagram. Your first content plan will
+              arrive on Monday morning.
+            </p>
+          </div>
+        ) : (
+          <div className="mb-6 rounded-xl border-2 border-brand bg-brand/10 px-6 py-5">
+            <p className="text-xs font-bold uppercase tracking-widest text-brand">
+              Your audit is ready
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-foreground">
+              Generate your first content plan below — it&apos;s been shaped by
+              your real data.
+            </p>
+          </div>
+        )
+      ) : null}
+
       <div
         className={
           headerRightIsButton
@@ -1183,13 +1209,18 @@ export function WeeklyPlanSection({
               month
             </p>
           ) : null}
-          {hasAudit ? (
+          {hasAudit && canGenerate && !hasPlanIdeas ? (
             <p className="mt-2 text-sm text-muted">
               {upcomingEventsCount > 0 ? (
                 <>Plan shaped by {upcomingEventsCount} upcoming events.</>
               ) : (
                 <>No upcoming dates — add some to get more specific ideas.</>
               )}
+            </p>
+          ) : null}
+          {hasAudit && canGenerate && hasPlanIdeas && upcomingEventsCount > 0 ? (
+            <p className="mt-2 text-sm text-muted">
+              Plan shaped by {upcomingEventsCount} upcoming events.
             </p>
           ) : null}
           {!headerRightIsButton && headerRight ? (

@@ -4,6 +4,12 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { trackUsage } from "@/lib/track-usage";
 import { resolveProfileForAudit } from "@/lib/resolve-audit-profile";
+import {
+  buildEmailRecipient,
+  everSent,
+  sendEmail,
+} from "@/lib/email";
+import { auditReadyEmail } from "@/lib/email-templates";
 
 function verifyWebhookSecret(headerValue: string | null, secret: string): boolean {
   if (!headerValue || !secret) return false;
@@ -563,8 +569,57 @@ export async function POST(request: Request) {
     );
   }
 
-  // Auto-generate first plan if none exists (skip for research audits)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+
+  if (
+    !isResearchLead &&
+    profileLookup?.id &&
+    profileLookup.owner_user_id &&
+    appUrl
+  ) {
+    const alreadyNotified = await everSent(profileLookup.id, "audit_ready");
+    if (!alreadyNotified) {
+      const { data: profileForEmail } = await supabase
+        .from("profiles")
+        .select(
+          "id, owner_user_id, artist_name, plan, marketing_unsubscribed, all_emails_paused"
+        )
+        .eq("id", profileLookup.id)
+        .maybeSingle();
+
+      const recipient = profileForEmail
+        ? await buildEmailRecipient(supabase, profileForEmail)
+        : null;
+
+      if (recipient) {
+        const email = auditReadyEmail({
+          artistId: profileLookup.id,
+          artistName: recipient.artistName,
+          followers: followers ?? 0,
+          following: following ?? 0,
+          postCount: post_count ?? 0,
+          patternAnalysis: ai_pattern_analysis,
+          appUrl,
+        });
+
+        const sent = await sendEmail({
+          to: recipient.email,
+          subject: email.subject,
+          html: email.html,
+          recipient,
+          type: "audit_ready",
+        });
+
+        if (!sent) {
+          console.error("process-lead: audit_ready email not sent", {
+            artist_id: profileLookup.id,
+          });
+        }
+      }
+    }
+  }
+
+  // Auto-generate first plan if none exists (skip for research audits)
   const planWebhookSecret = process.env.WEBHOOK_SECRET;
   if (appUrl && profileLookup?.id && planWebhookSecret && !isResearchLead) {
     try {

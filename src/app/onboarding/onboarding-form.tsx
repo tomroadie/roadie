@@ -5,6 +5,24 @@ import { useFormStatus } from "react-dom";
 import { completeOnboarding } from "./actions";
 import { GENRES } from "./genres";
 
+const POSTING_FREQUENCY_OPTIONS = [
+  {
+    value: "weekly",
+    label: "Weekly (1-2x per week)",
+    description: "quality over quantity",
+  },
+  {
+    value: "regular",
+    label: "Regular (3-4x per week)",
+    description: "consistent presence",
+  },
+  {
+    value: "active",
+    label: "Active (5+ per week)",
+    description: "maximum growth mode",
+  },
+] as const;
+
 function SubmitButton() {
   const { pending } = useFormStatus();
 
@@ -41,6 +59,9 @@ export function OnboardingForm() {
   const [step, setStep] = useState<1 | 2>(1);
   const [artistName, setArtistName] = useState("");
   const [genre, setGenre] = useState("");
+  const [postingFrequency, setPostingFrequency] = useState<
+    "weekly" | "regular" | "active"
+  >("regular");
   const [instagramHandle, setInstagramHandle] = useState("");
 
   const step1Valid = Boolean(artistName.trim() && genre);
@@ -154,10 +175,64 @@ export function OnboardingForm() {
 
       {step === 2 ? (
         <div className="space-y-4">
-          <p className="text-center text-sm leading-relaxed text-muted-strong">
-            You&apos;re all set. Your free audit will run in the background — takes about 3
-            minutes.
-          </p>
+          <h2 className="text-base font-semibold text-foreground">
+            How do you want to show up?
+          </h2>
+          <div>
+            <p className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand">
+              How often do you want to post?
+            </p>
+            <div role="radiogroup" className="grid gap-2">
+              {POSTING_FREQUENCY_OPTIONS.map((opt) => {
+                const selected = postingFrequency === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setPostingFrequency(opt.value)}
+                    className={[
+                      "flex w-full items-start gap-3 rounded-xl border bg-input p-4 text-left transition-colors",
+                      selected
+                        ? "border-brand ring-2 ring-brand/20"
+                        : "border-card-border hover:border-brand",
+                    ].join(" ")}
+                    aria-pressed={selected}
+                  >
+                    <span
+                      className={[
+                        "mt-0.5 inline-flex h-5 w-5 flex-none items-center justify-center rounded-full border",
+                        selected ? "border-brand" : "border-card-border",
+                      ].join(" ")}
+                      aria-hidden="true"
+                    >
+                      <span
+                        className={[
+                          "h-2.5 w-2.5 rounded-full",
+                          selected ? "bg-brand" : "bg-transparent",
+                        ].join(" ")}
+                      />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-foreground">
+                        {opt.label}{" "}
+                        <span className="font-normal text-muted">
+                          — {opt.description}
+                        </span>
+                      </span>
+                      <input
+                        type="radio"
+                        name="posting_frequency"
+                        value={opt.value}
+                        checked={selected}
+                        onChange={() => setPostingFrequency(opt.value)}
+                        className="sr-only"
+                      />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {state?.error ? (
             <p className="text-sm text-red-400" role="alert">

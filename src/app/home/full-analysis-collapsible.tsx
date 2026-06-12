@@ -15,8 +15,8 @@ function sectionStyle(title: string): { container: string; label: string } {
 
   if (t.includes("hidden pattern")) {
     return {
-      container: "rounded-xl border border-violet-500/30 bg-violet-500/10 p-6",
-      label: "text-xs font-bold uppercase tracking-widest text-violet-300",
+      container: "rounded-xl border border-brand/30 bg-brand/10 p-6",
+      label: "text-xs font-bold uppercase tracking-widest text-brand",
     };
   }
 

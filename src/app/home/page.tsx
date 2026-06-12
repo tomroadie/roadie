@@ -359,7 +359,8 @@ export default async function HomePage({
     .limit(1)
     .maybeSingle();
 
-  const auditJustCompleted = !!recentAudit || auditReady;
+  const auditJustCompleted = !!recentAudit;
+  const showAuditBanner = auditJustCompleted || auditReady;
 
   const { data: reviewsData, error: reviewsError } = await supabase
     .from("content_reviews")
@@ -563,6 +564,7 @@ export default async function HomePage({
       revisionRequest={revisionRequest}
       hasJustUpgraded={upgraded === "true"}
       hasJustRegistered={false}
+      showAuditBanner={showAuditBanner}
       hasInstagram={hasInstagram}
       canMarkAsPosted={canMarkAsPosted}
       recentPosts={recentPosts}
@@ -939,30 +941,6 @@ export default async function HomePage({
       <div className="mt-6 h-px w-full bg-[#1a1a1a]" />
 
       <AppNavWrapper />
-
-      {!showAuditFirst && auditJustCompleted && !hasPlanIdeas && !auditPending ? (
-        isManaged ? (
-          <div className="mt-6 rounded-xl border-2 border-brand bg-brand/10 px-6 py-5">
-            <p className="text-xs font-bold uppercase tracking-widest text-brand">
-              Your audit is ready
-            </p>
-            <p className="mt-1 text-sm leading-relaxed text-foreground">
-              We&apos;ve analysed your Instagram. Your first content plan will
-              arrive on Monday morning.
-            </p>
-          </div>
-        ) : (
-          <div className="mt-6 rounded-xl border-2 border-brand bg-brand/10 px-6 py-5">
-            <p className="text-xs font-bold uppercase tracking-widest text-brand">
-              Your audit is ready
-            </p>
-            <p className="mt-1 text-sm leading-relaxed text-foreground">
-              Generate your first content plan below — it&apos;s been shaped by
-              your real data.
-            </p>
-          </div>
-        )
-      ) : null}
 
       {!showAuditFirst && registered === "true" && !hasInstagram && !auditPending ? (
         <div className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">

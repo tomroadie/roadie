@@ -41,6 +41,101 @@ function mapPostType(
   }
 }
 
+// Only fetch Insights for posts still within this window — matches the
+// weekly recap's "final metrics" horizon (see SPEC-performance-recap.md §4).
+const INSIGHTS_MAX_AGE_DAYS = 8;
+
+function daysSinceIso(iso: string | undefined): number | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return null;
+  return (Date.now() - t) / (1000 * 60 * 60 * 24);
+}
+
+// Metric availability varies by media type and drifts over Graph API
+// versions — an unsupported metric name fails the whole insights call, so
+// we ask for the fields we actually map to columns and fall back to just
+// "reach" (the most broadly supported metric) if that errors.
+function insightsMetricsForMediaType(mediaType: string | undefined): string {
+  switch (mediaType?.toUpperCase()) {
+    case "VIDEO":
+    case "REELS":
+    case "CAROUSEL_ALBUM":
+    case "IMAGE":
+      return "reach,saved,shares";
+    default:
+      return "reach";
+  }
+}
+
+type PostInsights = {
+  reach: number | null;
+  saves: number | null;
+  shares: number | null;
+  raw: Record<string, unknown>;
+};
+
+type GraphInsightsResponse = {
+  data?: Array<{ name?: string; values?: Array<{ value?: number }> }>;
+  error?: { message?: string; code?: number };
+};
+
+// Logs the raw payload once per distinct media_type seen in this cron run,
+// so we can verify what Meta actually returns before trusting the mapped
+// reach/saves/shares columns.
+async function fetchPostInsights(
+  mediaId: string,
+  accessToken: string,
+  mediaType: string | undefined,
+  loggedMediaTypes: Set<string>
+): Promise<PostInsights> {
+  const empty: PostInsights = { reach: null, saves: null, shares: null, raw: {} };
+
+  async function request(
+    metrics: string
+  ): Promise<{ ok: boolean; json: GraphInsightsResponse }> {
+    const url = new URL(
+      `https://graph.facebook.com/${GRAPH_VERSION}/${mediaId}/insights`
+    );
+    url.searchParams.set("metric", metrics);
+    url.searchParams.set("access_token", accessToken);
+    const res = await fetch(url.toString());
+    const json = (await res.json()) as GraphInsightsResponse;
+    return { ok: res.ok && !json.error, json };
+  }
+
+  const primaryMetrics = insightsMetricsForMediaType(mediaType);
+  let { ok, json } = await request(primaryMetrics);
+
+  if (!ok && primaryMetrics !== "reach") {
+    ({ ok, json } = await request("reach"));
+  }
+
+  const typeKey = (mediaType ?? "UNKNOWN").toUpperCase();
+  if (!loggedMediaTypes.has(typeKey)) {
+    loggedMediaTypes.add(typeKey);
+    console.log(
+      `sync-post-performance: raw insights payload for media_type=${typeKey}:`,
+      JSON.stringify(json)
+    );
+  }
+
+  if (!ok) return empty;
+
+  const values: Record<string, number> = {};
+  for (const entry of json.data ?? []) {
+    const value = entry.values?.[0]?.value;
+    if (entry.name && typeof value === "number") values[entry.name] = value;
+  }
+
+  return {
+    reach: values.reach ?? null,
+    saves: values.saved ?? null,
+    shares: values.shares ?? null,
+    raw: json,
+  };
+}
+
 function engagementRate(
   likes: number,
   comments: number,
@@ -183,6 +278,7 @@ export async function GET(request: Request) {
     let synced = 0;
     let linked = 0;
     const errors: string[] = [];
+    const loggedMediaTypes = new Set<string>();
 
     for (const profile of connectedProfiles) {
       const artistId = String(profile.id ?? "").trim();
@@ -256,6 +352,33 @@ export async function GET(request: Request) {
           const comments = Number(post.comments_count) || 0;
           const rate = engagementRate(likes, comments, followers);
 
+          const ageDays = daysSinceIso(post.timestamp);
+          const withinInsightsWindow =
+            ageDays !== null && ageDays <= INSIGHTS_MAX_AGE_DAYS;
+
+          let insights: PostInsights = {
+            reach: null,
+            saves: null,
+            shares: null,
+            raw: {},
+          };
+          if (withinInsightsWindow) {
+            try {
+              insights = await fetchPostInsights(
+                instagramPostId,
+                accessToken,
+                post.media_type,
+                loggedMediaTypes
+              );
+            } catch (e) {
+              errors.push(
+                `${artistId}/${instagramPostId}: insights fetch failed: ${
+                  e instanceof Error ? e.message : "Unknown error"
+                }`
+              );
+            }
+          }
+
           if (existingIds.has(instagramPostId)) {
             const { error: updateError } = await supabase
               .from("post_performance")
@@ -263,6 +386,15 @@ export async function GET(request: Request) {
                 likes,
                 comments,
                 engagement_rate: rate,
+                ig_media_type: post.media_type ?? null,
+                ...(withinInsightsWindow
+                  ? {
+                      reach: insights.reach,
+                      saves: insights.saves,
+                      shares: insights.shares,
+                      raw: insights.raw,
+                    }
+                  : {}),
               })
               .eq("artist_id", artistId)
               .eq("instagram_post_id", instagramPostId);
@@ -287,11 +419,16 @@ export async function GET(request: Request) {
                 post_date: postDate,
                 caption: post.caption ?? null,
                 post_type: mapPostType(post.media_type),
+                ig_media_type: post.media_type ?? null,
                 likes,
                 comments,
                 engagement_rate: rate,
                 week_start: weekStart,
                 scraped_at: scrapedAt,
+                reach: insights.reach,
+                saves: insights.saves,
+                shares: insights.shares,
+                raw: insights.raw,
               });
 
             if (insertError) {

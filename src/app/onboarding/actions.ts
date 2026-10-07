@@ -7,6 +7,15 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { GENRES } from "./genres";
 import { userIsAdmin } from "@/lib/is-admin";
+import { parseKeyDates } from "@/lib/key-dates";
+import {
+  isConfidence,
+  isCurrentPosting,
+  isWantedFrequency,
+  startingTargetFromAnswers,
+  TONE_TAGS,
+  weekStartFromDays,
+} from "@/lib/starting-point";
 
 export type OnboardingState = { error?: string } | null;
 
@@ -35,10 +44,26 @@ export async function completeOnboarding(
   const postingFrequencyRaw = String(
     formData.get("posting_frequency") ?? ""
   ).trim();
-  const validFrequencies = ["weekly", "regular", "active"];
-  const postingFrequency = validFrequencies.includes(postingFrequencyRaw)
+  const postingFrequency = isWantedFrequency(postingFrequencyRaw)
     ? postingFrequencyRaw
     : "regular";
+
+  // "Where are you starting?" answers.
+  const confidenceRaw = String(formData.get("posting_confidence") ?? "").trim();
+  const confidence = isConfidence(confidenceRaw) ? confidenceRaw : null;
+  const currentRaw = String(formData.get("current_posting") ?? "").trim();
+  const currentPosting = isCurrentPosting(currentRaw) ? currentRaw : null;
+  const contentDays = [
+    ...new Set(
+      formData
+        .getAll("content_days")
+        .map((v) => Number(v))
+        .filter((n) => Number.isInteger(n) && n >= 0 && n <= 6)
+    ),
+  ];
+  const toneRaw = String(formData.get("tone_tag") ?? "").trim();
+  const toneTag = (TONE_TAGS as readonly string[]).includes(toneRaw) ? toneRaw : null;
+  const comingUp = String(formData.get("coming_up") ?? "").trim().slice(0, 1000);
 
   if (!artistName || !genre) {
     return { error: "Artist name and genre are required." };
@@ -132,12 +157,44 @@ export async function completeOnboarding(
       instagram_handle: instagramHandle,
       voice_description: voiceDescription || null,
       posting_frequency: postingFrequency,
+      posting_confidence: confidence,
+      current_posting: currentPosting,
+      content_days: contentDays,
+      tone_tag: toneTag,
+      coming_up_note: comingUp || null,
+      weekly_target: startingTargetFromAnswers({
+        confidence,
+        currentPosting,
+        wanted: postingFrequency,
+      }),
+      week_start_day: weekStartFromDays(contentDays),
     },
     { onConflict: "id" }
   );
 
   if (error) {
     return { error: error.message };
+  }
+
+  // "Anything coming up?" becomes dated events. The raw text is already
+  // saved above, so a failed parse loses nothing.
+  if (comingUp) {
+    const dates = await parseKeyDates(comingUp);
+    if (dates.length > 0) {
+      const { error: eventsError } = await supabase.from("events").insert(
+        dates.map((d) => ({
+          artist_id: activeArtistId,
+          user_id: user.id,
+          title: d.title,
+          event_date: d.date,
+          event_type: d.event_type,
+          notes: "Added from onboarding",
+        }))
+      );
+      if (eventsError) {
+        console.error("onboarding: saving key dates failed", eventsError.message);
+      }
+    }
   }
 
   if (instagramHandle && artistName && user.email) {

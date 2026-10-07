@@ -72,6 +72,11 @@ export type ConceptContext = {
   genre: string | null;
   sound: string | null;
   voice: string | null;
+  /** Onboarding answers. */
+  confidence: string | null;
+  toneTag: string | null;
+  contentDays: number[];
+  comingUpNote: string | null;
   handle: string | null;
   followers: number | null;
   /** Where the posts came from. "synced" = connected Instagram. */

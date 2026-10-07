@@ -55,6 +55,17 @@ export function buildConceptPrompt(ctx: ConceptContext, today: string): string {
     `- Genre: ${ctx.genre ?? "not given"}`,
     ctx.sound ? `- How they describe their sound: ${ctx.sound}` : null,
     ctx.voice ? `- In their own words: ${ctx.voice}` : null,
+    ctx.toneTag ? `- How they describe their posting tone: ${ctx.toneTag}. Write the ideas so they'd sound like that.` : null,
+    ctx.confidence === "hard"
+      ? "- They find posting hard. Keep every idea gentle and low-exposure: no talking to camera required for the low-effort options."
+      : ctx.confidence === "getting_there"
+        ? "- They're getting there with posting. Mostly low effort, with the odd stretch."
+        : null,
+    ctx.contentDays.length > 0
+      ? `- Days they usually have time to make content: ${ctx.contentDays
+          .map((d) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d])
+          .join(", ")}`
+      : null,
   ]
     .filter(Boolean)
     .join("\n");
@@ -104,6 +115,10 @@ Take these seriously: "No time" means lower the effort; "No gear for this" means
     .filter(Boolean)
     .join("\n\n");
 
+  const comingUpSection = ctx.comingUpNote
+    ? `## What they told us is coming up (their words)\n"${ctx.comingUpNote}"\nUse this where it fits, even if no exact date was given.`
+    : "";
+
   const declinedSection =
     ctx.declined.length > 0
       ? `## Ideas they turned down\n${ctx.declined
@@ -138,6 +153,8 @@ ${postsSection}
 ${auditSection}
 
 ${datesSection}
+
+${comingUpSection}
 
 ${declinedSection}
 

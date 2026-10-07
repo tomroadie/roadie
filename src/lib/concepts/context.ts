@@ -168,7 +168,7 @@ export async function loadConceptContext(
       supabase
         .from("profiles")
         .select(
-          "artist_name, genre, sound_description, voice_description, posting_frequency, weekly_target"
+          "artist_name, genre, sound_description, voice_description, posting_frequency, weekly_target, posting_confidence, tone_tag, content_days, coming_up_note"
         )
         .eq("id", artistId)
         .maybeSingle(),
@@ -287,6 +287,10 @@ export async function loadConceptContext(
     genre: profile.genre ?? null,
     sound: profile.sound_description?.trim() || null,
     voice: profile.voice_description?.trim() || null,
+    confidence: profile.posting_confidence ?? null,
+    toneTag: profile.tone_tag ?? null,
+    contentDays: Array.isArray(profile.content_days) ? profile.content_days.map(Number) : [],
+    comingUpNote: profile.coming_up_note?.trim() || null,
     handle: audit?.instagram_handle
       ? String(audit.instagram_handle).replace(/^@/, "")
       : null,

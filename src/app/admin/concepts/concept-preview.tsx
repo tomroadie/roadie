@@ -130,6 +130,7 @@ export function ConceptPreview({ artists: initialArtists }: { artists: PreviewAr
   const [result, setResult] = useState<PreviewResponse | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [publishedId, setPublishedId] = useState<string | null>(null);
+  const [auditStale, setAuditStale] = useState(false);
 
   const selected = artists.find((a) => a.id === artistId) ?? null;
 
@@ -191,7 +192,13 @@ export function ConceptPreview({ artists: initialArtists }: { artists: PreviewAr
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? `Request failed (${res.status})`);
-      setResult(json as PreviewResponse);
+      const r = json as PreviewResponse;
+      setResult(r);
+      setAuditStale(
+        r.context.postSource === "audit" &&
+          !!r.context.auditCreatedAt &&
+          Date.now() - Date.parse(r.context.auditCreatedAt) > 30 * 86400000
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -274,6 +281,9 @@ export function ConceptPreview({ artists: initialArtists }: { artists: PreviewAr
                   : `${ctx.daysSinceLastPost} days ago`}
               </div>
               <div>Starting target: {ctx.weeklyTarget}/week</div>
+              {ctx.postSource === "audit" && ctx.auditCreatedAt && (
+                <div>Audit: {formatWhen(ctx.auditCreatedAt)}</div>
+              )}
               <div>Key dates: {ctx.keyDates.length}</div>
               <div>
                 {result.model} · attempt {result.attempts} ·{" "}
@@ -301,6 +311,11 @@ export function ConceptPreview({ artists: initialArtists }: { artists: PreviewAr
                 </>
               )}
             </div>
+            {auditStale && (
+                <p className="mt-3 text-sm font-semibold text-amber-300">
+                  This audit is over a month old, so recent posts are missing. Refresh the audit before publishing.
+                </p>
+              )}
             {result.warnings.length > 0 && (
               <ul className="mt-3 list-disc pl-5 text-xs text-amber-300">
                 {result.warnings.map((w, i) => (

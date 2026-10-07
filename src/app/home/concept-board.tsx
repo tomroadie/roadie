@@ -34,7 +34,7 @@ function Executions({ concept }: { concept: BoardConcept }) {
     <ul className="mt-4 space-y-3">
       {concept.executions.map((e, i) => (
         <li key={i} className="flex gap-3 text-sm leading-relaxed text-foreground">
-          <span className="mt-0.5 shrink-0 rounded bg-input px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-muted">
+          <span className="mt-0.5 shrink-0 self-start whitespace-nowrap rounded bg-input px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-muted">
             {FORMAT_LABEL[e.format] ?? e.format} · {EFFORT_LABEL[e.effort] ?? e.effort}
           </span>
           <span>{e.idea}</span>

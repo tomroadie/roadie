@@ -943,12 +943,15 @@ export default async function HomePage({
           <h1 className="text-5xl font-black uppercase tracking-tight text-foreground sm:text-6xl">
             {artistName}
           </h1>
-          <div
-            className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-black uppercase tracking-wide ring-1 ring-inset ${momentum.cls}`}
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
-            {momentum.label}
-          </div>
+          {/* The plan status badge belongs to the weekly plan, not the board. */}
+          {board ? null : (
+            <div
+              className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-black uppercase tracking-wide ring-1 ring-inset ${momentum.cls}`}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+              {momentum.label}
+            </div>
+          )}
         </div>
         <LogoutButton />
       </div>

@@ -76,6 +76,8 @@ export type ConceptContext = {
   followers: number | null;
   /** Where the posts came from. "synced" = connected Instagram. */
   postSource: "synced" | "audit" | "none";
+  /** When the audit scrape was taken; old scrapes mean stale posts. */
+  auditCreatedAt: string | null;
   posts: ContextPost[];
   postsLast28Days: number;
   daysSinceLastPost: number | null;

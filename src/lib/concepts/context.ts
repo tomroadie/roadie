@@ -273,6 +273,7 @@ export async function loadConceptContext(
       : null,
     followers: toNum(audit?.followers),
     postSource,
+    auditCreatedAt: audit?.created_at ? String(audit.created_at) : null,
     posts,
     postsLast28Days,
     daysSinceLastPost,

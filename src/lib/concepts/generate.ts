@@ -101,6 +101,16 @@ export function validatePool(
       return;
     }
 
+    // Artists read the why and never see post numbers.
+    if (/\bposts?\s*#?\d+/i.test(why)) {
+      const msg = `${label} ("${title}"): why mentions a post number`;
+      if (opts.strict) {
+        errors.push(msg);
+        return;
+      }
+      warnings.push(msg);
+    }
+
     const evidenceRaw = Array.isArray(c.evidence_posts) ? c.evidence_posts : [];
     let evidence = evidenceRaw.map(Number).filter(Number.isInteger);
     const bogus = evidence.filter((n) => !validPostNumbers.has(n));
@@ -202,7 +212,9 @@ export function validatePool(
 
   let overCited = false;
   for (const [n, titles] of citedBy) {
-    if (titles.length >= 3) {
+    // With only one or two everyday posts, each may back one concept.
+    const limit = thinEveryday && !newsPosts.has(n) ? 2 : 3;
+    if (titles.length >= limit) {
       overCited = true;
       errors.push(`Post ${n} is the evidence for ${titles.length} different concepts`);
     } else if (titles.length === 2) {

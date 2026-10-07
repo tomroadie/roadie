@@ -19,6 +19,27 @@ export default function LoginClient() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [resetNote, setResetNote] = useState<string | null>(null);
+
+  async function sendReset() {
+    setError(null);
+    setResetNote(null);
+    if (!email.trim()) {
+      setError("Enter your email above, then tap Forgot password.");
+      return;
+    }
+    // The link comes back through /auth/callback, which signs them in and
+    // forwards to /reset-password to choose a new one.
+    const { error: resetError } = await createClient().auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    });
+    if (resetError) {
+      setError(resetError.message);
+      return;
+    }
+    // Same message whether or not the address has an account.
+    setResetNote("If that email has a Tempo account, a reset link is on its way. Open it in this browser.");
+  }
 
   useEffect(() => {
     if (mode === "signup") setIsSignup(true);
@@ -196,6 +217,21 @@ export default function LoginClient() {
                 className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
                 placeholder="••••••••"
               />
+              {!isSignup ? (
+                <button
+                  type="button"
+                  onClick={sendReset}
+                  disabled={loading}
+                  className="mt-2 text-xs text-muted underline-offset-4 hover:text-brand hover:underline"
+                >
+                  Forgot password?
+                </button>
+              ) : null}
+              {resetNote ? (
+                <p className="mt-2 text-xs text-brand" role="status">
+                  {resetNote}
+                </p>
+              ) : null}
             </div>
             {isSignup ? (
               <div>

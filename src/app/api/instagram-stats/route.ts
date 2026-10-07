@@ -1,10 +1,13 @@
 import { createClient } from "@/utils/supabase/server";
+import {
+  IG_GRAPH_BASE,
+  isReconnectError,
+  type IgGraphError,
+} from "@/lib/instagram-graph";
 import { cookies } from "next/headers";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { userIsAdmin } from "@/lib/is-admin";
 import { NextResponse } from "next/server";
-
-const GRAPH_VERSION = "v19.0";
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -97,7 +100,7 @@ export async function GET(request: Request) {
   }
 
   const mediaUrl = new URL(
-    `https://graph.facebook.com/${GRAPH_VERSION}/${instagramUserId}/media`
+    `${IG_GRAPH_BASE}/${instagramUserId}/media`
   );
   mediaUrl.searchParams.set(
     "fields",
@@ -123,8 +126,15 @@ export async function GET(request: Request) {
     media = await mediaRes.json();
 
     if (!mediaRes.ok) {
+      const graphError = (media as { error?: IgGraphError } | null)?.error;
       return NextResponse.json(
-        { error: "instagram_api_error", media, insights: null },
+        {
+          error: isReconnectError(graphError)
+            ? "reconnect_required"
+            : "instagram_api_error",
+          media,
+          insights: null,
+        },
         { status: 502 }
       );
     }

@@ -12,9 +12,18 @@ export type PreviewArtist = {
   name: string;
   genre: string | null;
   hasAudit: boolean;
+  boardEnabled: boolean;
+  liveSince: string | null;
 };
 
-type PreviewResponse = GenerateResult & { ms: number };
+type PreviewResponse = GenerateResult & { ms: number; generation_id: string };
+
+function formatWhen(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
 
 const BOARD_SLOTS = 3;
 
@@ -113,17 +122,67 @@ function ConceptCard({
   );
 }
 
-export function ConceptPreview({ artists }: { artists: PreviewArtist[] }) {
-  const [artistId, setArtistId] = useState(artists[0]?.id ?? "");
+export function ConceptPreview({ artists: initialArtists }: { artists: PreviewArtist[] }) {
+  const [artists, setArtists] = useState(initialArtists);
+  const [artistId, setArtistId] = useState(initialArtists[0]?.id ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PreviewResponse | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [publishedId, setPublishedId] = useState<string | null>(null);
+
+  const selected = artists.find((a) => a.id === artistId) ?? null;
+
+  function updateArtist(id: string, patch: Partial<PreviewArtist>) {
+    setArtists((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+  }
+
+  async function adminPost(body: Record<string, unknown>) {
+    const res = await fetch("/api/admin/publish-concepts", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error ?? `Request failed (${res.status})`);
+    return json;
+  }
+
+  async function publish() {
+    if (!result) return;
+    setPublishing(true);
+    setError(null);
+    try {
+      await adminPost({ generation_id: result.generation_id });
+      setPublishedId(result.generation_id);
+      updateArtist(result.context.artistId, {
+        boardEnabled: true,
+        liveSince: new Date().toISOString(),
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  async function setBoard(enabled: boolean) {
+    if (!selected) return;
+    setError(null);
+    try {
+      await adminPost({ artist_id: selected.id, board_enabled: enabled });
+      updateArtist(selected.id, { boardEnabled: enabled });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
 
   async function run() {
     if (!artistId) return;
     setLoading(true);
     setError(null);
     setResult(null);
+    setPublishedId(null);
     try {
       const res = await fetch("/api/admin/preview-concepts", {
         method: "POST",
@@ -168,6 +227,26 @@ export function ConceptPreview({ artists }: { artists: PreviewArtist[] }) {
         </button>
       </div>
 
+      {selected && (
+        <p className="mt-3 text-xs text-muted">
+          Board:{" "}
+          {selected.boardEnabled ? (
+            <span className="font-semibold text-brand">on</span>
+          ) : (
+            <span className="font-semibold text-muted-strong">off</span>
+          )}
+          {selected.liveSince ? ` · live ideas since ${formatWhen(selected.liveSince)}` : " · nothing published yet"}
+          {" · "}
+          <button
+            type="button"
+            onClick={() => setBoard(!selected.boardEnabled)}
+            className="font-semibold text-muted-strong underline underline-offset-2 hover:text-foreground"
+          >
+            {selected.boardEnabled ? "switch off (back to weekly plan)" : "switch on"}
+          </button>
+        </p>
+      )}
+
       {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
 
       {result && ctx && (
@@ -201,6 +280,27 @@ export function ConceptPreview({ artists }: { artists: PreviewArtist[] }) {
                 {(result.ms / 1000).toFixed(1)}s
               </div>
             </dl>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              {publishedId === result.generation_id ? (
+                <span className="text-sm font-semibold text-brand">
+                  Published. These are now on {selected?.name ?? "the artist"}&rsquo;s board.
+                </span>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={publish}
+                    disabled={publishing}
+                    className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-foreground disabled:opacity-50"
+                  >
+                    {publishing ? "Publishing…" : "Publish to board"}
+                  </button>
+                  <span className="text-xs text-muted">
+                    Saved as a draft. Publishing replaces the current board; pinned ideas stay.
+                  </span>
+                </>
+              )}
+            </div>
             {result.warnings.length > 0 && (
               <ul className="mt-3 list-disc pl-5 text-xs text-amber-300">
                 {result.warnings.map((w, i) => (

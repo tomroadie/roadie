@@ -5,6 +5,8 @@ import Link from "next/link";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { WeeklyPlanSection } from "@/app/dashboard/weekly-plan-section";
+import { ConceptBoard } from "./concept-board";
+import { loadBoard } from "@/lib/concepts/store";
 import { AuditCTASection } from "@/app/insights/audit-cta-section";
 import { RecentPostsCards } from "@/app/insights/recent-posts-cards";
 import {
@@ -267,7 +269,7 @@ export default async function HomePage({
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, genre, instagram_handle, plan, plan_override, voice_description, posting_frequency, is_managed, instagram_user_id, instagram_access_token, trial_started_at"
+      "artist_name, genre, instagram_handle, plan, plan_override, voice_description, posting_frequency, is_managed, instagram_user_id, instagram_access_token, trial_started_at, board_enabled"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -550,7 +552,14 @@ export default async function HomePage({
     ? parseFullAnalysisText(audit.ai_full_analysis)
     : [];
 
-  const weeklyPlanSection = (
+  // Beta: artists with the concept board see it in place of the weekly plan.
+  const board = profile?.board_enabled
+    ? await loadBoard(supabase, activeArtistId)
+    : null;
+
+  const weeklyPlanSection = board ? (
+    <ConceptBoard key={activeArtistId} initialBoard={board} />
+  ) : (
     <WeeklyPlanSection
       initialIdeas={initialIdeas}
       initialIdeaRatings={initialIdeaRatings}

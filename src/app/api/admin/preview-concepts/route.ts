@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { userIsAdmin } from "@/lib/is-admin";
 import { generateConceptPool } from "@/lib/concepts/generate";
+import { saveDraftGeneration } from "@/lib/concepts/store";
 
 const ARTIST_ID_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -10,8 +11,8 @@ const ARTIST_ID_UUID_RE =
 export const maxDuration = 120;
 
 /**
- * Admin-only: generate a concept pool for any artist without saving it.
- * Used to judge generator quality before the board is built.
+ * Admin-only: generate a concept pool for any artist and save it as a draft.
+ * Nothing reaches the artist until the draft is published.
  */
 export async function POST(request: Request) {
   let artistId = "";
@@ -38,11 +39,14 @@ export async function POST(request: Request) {
 
   try {
     const started = Date.now();
-    const result = await generateConceptPool(
-      createServiceRoleClient(),
-      artistId
-    );
-    return NextResponse.json({ ...result, ms: Date.now() - started });
+    const admin = createServiceRoleClient();
+    const result = await generateConceptPool(admin, artistId);
+    const generationId = await saveDraftGeneration(admin, result, user.id);
+    return NextResponse.json({
+      ...result,
+      generation_id: generationId,
+      ms: Date.now() - started,
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error("preview-concepts failed", { artist_id: artistId, message });

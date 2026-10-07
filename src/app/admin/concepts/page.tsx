@@ -15,14 +15,22 @@ export default async function AdminConceptsPage() {
   if (!(await userIsAdmin(supabase, user.id))) redirect("/dashboard");
 
   const admin = createServiceRoleClient();
-  const [{ data: profiles }, { data: audits }] = await Promise.all([
+  const [{ data: profiles }, { data: audits }, { data: live }] = await Promise.all([
     admin
       .from("profiles")
-      .select("id, artist_name, genre")
+      .select("id, artist_name, genre, board_enabled")
       .not("artist_name", "is", null)
       .order("artist_name"),
     admin.from("audits").select("artist_id").not("artist_id", "is", null),
+    admin
+      .from("concept_generations")
+      .select("artist_id, published_at")
+      .eq("status", "live"),
   ]);
+
+  const liveSince = new Map(
+    (live ?? []).map((g) => [String(g.artist_id), String(g.published_at ?? "")])
+  );
 
   const withAudit = new Set((audits ?? []).map((a) => String(a.artist_id)));
   const artists: PreviewArtist[] = (profiles ?? [])
@@ -32,6 +40,8 @@ export default async function AdminConceptsPage() {
       name: String(p.artist_name).trim(),
       genre: p.genre ? String(p.genre) : null,
       hasAudit: withAudit.has(String(p.id)),
+      boardEnabled: p.board_enabled === true,
+      liveSince: liveSince.get(String(p.id)) || null,
     }))
     .sort((a, b) => Number(b.hasAudit) - Number(a.hasAudit));
 
@@ -45,8 +55,9 @@ export default async function AdminConceptsPage() {
               Concept preview
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-muted">
-              Runs the new concept generator for an artist without saving
-              anything. Check each &ldquo;why&rdquo; against the posts it cites.
+              Runs the concept generator and saves the result as a draft.
+              Check each &ldquo;why&rdquo; against the posts it cites, then
+              publish it to the artist&rsquo;s board.
             </p>
           </div>
           <Link href="/admin" className="text-sm font-semibold text-brand">

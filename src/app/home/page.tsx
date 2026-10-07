@@ -149,9 +149,11 @@ function mediaMetric(
 function normalizeInstagramLivePayload(payload: {
   media?: unknown;
   insights?: unknown | null;
+  followers?: unknown;
 }): {
   insights: InstagramLiveInsightRow[];
   media: InstagramLiveMediaRow[];
+  followers: number | null;
 } {
   const insightsPayload = payload.insights;
 
@@ -160,9 +162,9 @@ function normalizeInstagramLivePayload(payload: {
       ? []
       : [
           {
-            key: "impressions",
-            label: "Impressions",
-            value: sumInstagramAccountMetric(insightsPayload, "impressions"),
+            key: "views",
+            label: "Views",
+            value: sumInstagramAccountMetric(insightsPayload, "views"),
           },
           {
             key: "reach",
@@ -221,13 +223,16 @@ function normalizeInstagramLivePayload(payload: {
       thumbnailUrl,
       likes,
       comments,
-      impressions: mediaMetric(item, "impressions"),
+      views: mediaMetric(item, "views") ?? mediaMetric(item, "impressions"),
       reach: mediaMetric(item, "reach"),
       timestamp,
     };
   });
 
-  return { insights, media };
+  const followers =
+    typeof payload.followers === "number" ? payload.followers : null;
+
+  return { insights, media, followers };
 }
 
 export default async function HomePage({
@@ -504,6 +509,7 @@ export default async function HomePage({
   let liveSocialStats: {
     insights: InstagramLiveInsightRow[];
     media: InstagramLiveMediaRow[];
+    followers: number | null;
   } | null = null;
 
   const instagramUserId = profile?.instagram_user_id?.trim();
@@ -535,7 +541,7 @@ export default async function HomePage({
       (statsJson as { error?: string }).error !== "not_connected"
     ) {
       liveSocialStats = normalizeInstagramLivePayload(
-        statsJson as { media?: unknown; insights?: unknown }
+        statsJson as { media?: unknown; insights?: unknown; followers?: unknown }
       );
     }
   }
@@ -653,7 +659,7 @@ export default async function HomePage({
           <LiveStatsSection
             insights={liveSocialStats.insights}
             media={liveSocialStats.media}
-            followers={audit?.followers ?? 0}
+            followers={liveSocialStats.followers ?? audit?.followers ?? 0}
             timestamps={liveSocialStats.media.map((m) => m.timestamp)}
           />
         </div>

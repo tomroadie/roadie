@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 export type InstagramLiveInsightRow = {
-  key: "impressions" | "reach" | "profile_views";
+  key: "views" | "reach" | "profile_views";
   label: string;
   value: number;
 };
@@ -14,7 +14,7 @@ export type InstagramLiveMediaRow = {
   thumbnailUrl: string | null;
   likes: number;
   comments: number;
-  impressions: number | null;
+  views: number | null;
   reach: number | null;
   timestamp: string;
 };
@@ -272,11 +272,9 @@ export function LiveStatsSection({
                     })()}
                     <span>
                       <span className="font-semibold text-foreground">
-                        {m.impressions === null
-                          ? "—"
-                          : m.impressions.toLocaleString()}
+                        {m.views === null ? "—" : m.views.toLocaleString()}
                       </span>{" "}
-                      impressions
+                      views
                     </span>
                     <span>
                       <span className="font-semibold text-foreground">

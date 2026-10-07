@@ -143,5 +143,109 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: message }, { status: 502 });
   }
 
-  return NextResponse.json({ media, insights: null });
+  // Enrich with insights. Each call is best-effort: a metric Meta won't
+  // return for a given post or account just shows as "—" in the panel.
+  const items = ((media as { data?: Array<Record<string, unknown>> }).data ?? []);
+  const [mediaInsights, accountInsights, followers] = await Promise.all([
+    Promise.all(
+      items.map((item) =>
+        typeof item.id === "string"
+          ? fetchMediaInsights(item.id, accessToken)
+          : Promise.resolve([])
+      )
+    ),
+    fetchAccountInsights(instagramUserId, accessToken),
+    fetchFollowers(instagramUserId, accessToken),
+  ]);
+  items.forEach((item, i) => {
+    item.insights = { data: mediaInsights[i] };
+  });
+
+  return NextResponse.json({
+    media,
+    insights: accountInsights.length ? { data: accountInsights } : null,
+    followers,
+  });
+}
+
+type MetricRow = { name: string; values: Array<{ value: number }> };
+
+type GraphInsightsJson = {
+  data?: Array<{
+    name?: string;
+    values?: Array<{ value?: number }>;
+    total_value?: { value?: number };
+  }>;
+  error?: IgGraphError;
+};
+
+// Normalises both insights shapes (values[] and total_value) to values[].
+function toMetricRows(json: GraphInsightsJson): MetricRow[] {
+  const rows: MetricRow[] = [];
+  for (const entry of json.data ?? []) {
+    if (!entry.name) continue;
+    const value =
+      typeof entry.total_value?.value === "number"
+        ? entry.total_value.value
+        : entry.values?.[0]?.value;
+    if (typeof value === "number") rows.push({ name: entry.name, values: [{ value }] });
+  }
+  return rows;
+}
+
+async function getInsights(url: URL): Promise<MetricRow[]> {
+  try {
+    const res = await fetch(url.toString());
+    const json = (await res.json()) as GraphInsightsJson;
+    if (!res.ok || json.error) return [];
+    return toMetricRows(json);
+  } catch {
+    return [];
+  }
+}
+
+// Reach and views per post. Asked for one at a time because an unsupported
+// metric fails the whole call (availability varies by media type).
+async function fetchMediaInsights(mediaId: string, accessToken: string) {
+  const results = await Promise.all(
+    ["reach", "views"].map((metric) => {
+      const url = new URL(`${IG_GRAPH_BASE}/${mediaId}/insights`);
+      url.searchParams.set("metric", metric);
+      url.searchParams.set("access_token", accessToken);
+      return getInsights(url);
+    })
+  );
+  return results.flat();
+}
+
+// Account totals for the last 7 days.
+async function fetchAccountInsights(igUserId: string, accessToken: string) {
+  const until = Math.floor(Date.now() / 1000);
+  const since = until - 7 * 24 * 60 * 60;
+  const results = await Promise.all(
+    ["views", "reach", "profile_views"].map((metric) => {
+      const url = new URL(`${IG_GRAPH_BASE}/${igUserId}/insights`);
+      url.searchParams.set("metric", metric);
+      url.searchParams.set("period", "day");
+      url.searchParams.set("metric_type", "total_value");
+      url.searchParams.set("since", String(since));
+      url.searchParams.set("until", String(until));
+      url.searchParams.set("access_token", accessToken);
+      return getInsights(url);
+    })
+  );
+  return results.flat();
+}
+
+async function fetchFollowers(igUserId: string, accessToken: string) {
+  try {
+    const url = new URL(`${IG_GRAPH_BASE}/${igUserId}`);
+    url.searchParams.set("fields", "followers_count");
+    url.searchParams.set("access_token", accessToken);
+    const res = await fetch(url.toString());
+    const json = (await res.json()) as { followers_count?: number };
+    return typeof json.followers_count === "number" ? json.followers_count : null;
+  } catch {
+    return null;
+  }
 }

@@ -20,6 +20,8 @@ import type {
 const DEFAULT_MODEL = "claude-sonnet-4-5";
 /** The board needs three cards plus spares; below this the run has failed. */
 const MIN_VALID_CONCEPTS = 3;
+/** Fewer everyday (non-news) posts than this and everyday concepts may be starting points. */
+export const THIN_EVERYDAY = 3;
 
 const FORMATS: ExecutionFormat[] = ["reel", "carousel", "photo", "story", "text"];
 const EFFORTS: Effort[] = ["low", "medium", "high"];
@@ -72,6 +74,9 @@ export function validatePool(
 
   const validPostNumbers = new Set(ctx.posts.map((p) => p.n));
   const newsPosts = new Set(ctx.posts.filter((p) => p.news).map((p) => p.n));
+  // An artist who only posts news has little everyday evidence; ideas for
+  // the gaps between announcements are then honest starting points.
+  const thinEveryday = ctx.posts.length - newsPosts.size < THIN_EVERYDAY;
   const validDates = new Set(ctx.keyDates.map((d) => d.date));
   const rawConcepts = Array.isArray(o.concepts) ? o.concepts : [];
   const concepts: Concept[] = [];
@@ -115,7 +120,8 @@ export function validatePool(
       }
       warnings.push(`${msg}; those posts were removed from its evidence`);
       evidence = evidence.filter((n) => !newsPosts.has(n));
-      if (evidence.length === 0 && !ctx.coldStart) {
+      // Its why still talks about the news posts, so it can't stand as a starting point.
+      if (evidence.length === 0) {
         errors.push(`${label} ("${title}"): no evidence left once news posts were removed`);
         return;
       }
@@ -124,7 +130,7 @@ export function validatePool(
     let basis: Concept["basis"] =
       str(c.basis) === "starting_point" ? "starting_point" : "from_data";
     if (basis === "from_data" && evidence.length === 0) {
-      if (ctx.coldStart) {
+      if (ctx.coldStart || (thinEveryday && !aboutNews)) {
         basis = "starting_point";
       } else {
         errors.push(`${label} ("${title}"): no evidence posts`);

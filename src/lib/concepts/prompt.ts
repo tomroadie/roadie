@@ -85,10 +85,19 @@ export function buildConceptPrompt(ctx: ConceptContext, today: string): string {
           .join("\n")}`
       : "";
 
+  const everydayCount = ctx.posts.filter((p) => !p.news).length;
+  const newsOnlyNote =
+    !ctx.coldStart && everydayCount < 3
+      ? `## They mostly post news
+Only ${everydayCount} of their ${ctx.posts.length} posts ${everydayCount === 1 ? "isn't" : "aren't"} about a release, gig or announcement. That's the pattern to gently break: they go quiet between announcements. Most concepts should be things to post in those gaps. Where there's no everyday post to point at, say so honestly, mark the concept basis "starting_point" with evidence_posts empty, and keep it low effort. Don't stretch a release post to justify an everyday idea.`
+      : "";
+
   const coldStartNote = ctx.coldStart
     ? `## Starting from very little
 There are fewer than four posts to learn from, so you can't ground concepts in what has worked. Instead, build concepts from what they've told us about themselves and things every working musician has to hand (rehearsals, writing, gear, gigs, the people they make music with). Mark these basis "starting_point" with evidence_posts empty, and make the focus about getting the first few posts out, not about performance. If there are one to three posts, you may still cite them where they genuinely support a concept (basis "from_data").`
-    : `Every concept must have basis "from_data" and at least one evidence post.`;
+    : everydayCount < 3
+      ? `Concepts about news must have basis "from_data" and cite news posts.`
+      : `Every concept must have basis "from_data" and at least one evidence post.`;
 
   return `Today is ${today}.
 
@@ -105,6 +114,8 @@ ${auditSection}
 ${datesSection}
 
 ${declinedSection}
+
+${newsOnlyNote}
 
 ${coldStartNote}
 

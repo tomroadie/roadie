@@ -1,5 +1,6 @@
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { NextResponse } from "next/server";
+import { cleanInstagramHandle } from "@/lib/new-lead-pipeline";
 import {
   IG_GRAPH_BASE,
   INSTAGRAM_REDIRECT_URI,
@@ -119,6 +120,23 @@ export async function GET(request: Request) {
     }
 
     const supabase = createServiceRoleClient();
+
+    // Don't attach one artist's Instagram to another artist's profile
+    // (easy to do when managing several artists from one login).
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("instagram_handle")
+      .eq("id", artistId)
+      .maybeSingle();
+    const expectedHandle = cleanInstagramHandle(profile?.instagram_handle ?? "");
+    const connectedHandle = cleanInstagramHandle(me.username ?? "");
+    if (expectedHandle && connectedHandle && expectedHandle !== connectedHandle) {
+      return fail(
+        `connected @${connectedHandle} but artist handle is @${expectedHandle}`,
+        "instagram_wrong_account"
+      );
+    }
+
     const { data: updated, error: dbError } = await supabase
       .from("profiles")
       .update({

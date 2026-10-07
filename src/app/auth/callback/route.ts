@@ -62,6 +62,9 @@ async function sendWelcomeEmail(args: {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
+  // Where to go after signing in (e.g. /reset-password). Same-site paths only.
+  const nextRaw = searchParams.get("next") ?? "";
+  const next = /^\/(?!\/)[\w\-/?=&]*$/.test(nextRaw) ? nextRaw : null;
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=auth", request.url));
@@ -142,5 +145,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(new URL(redirectPath, request.url));
+  return NextResponse.redirect(new URL(next ?? redirectPath, request.url));
 }

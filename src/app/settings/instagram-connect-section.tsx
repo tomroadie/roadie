@@ -11,6 +11,8 @@ import {
 const CONNECT_ERRORS: Record<string, string> = {
   instagram_cancelled:
     "Instagram wasn't connected because the permission screen was cancelled. Try again whenever you're ready.",
+  instagram_wrong_account:
+    "That Instagram account doesn't match this artist's handle. Switch to the right artist in the dropdown, or log into the right Instagram account, then try again.",
   instagram_connect_failed:
     "We couldn't connect your Instagram. Make sure it's a professional (Business or Creator) account, then try again.",
 };

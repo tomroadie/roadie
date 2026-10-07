@@ -163,13 +163,31 @@ export function validatePool(
     ctx.keyDates.length > 0 && !concepts.some((c) => c.key_date);
   if (missingKeyDate) errors.push("No concept serves the upcoming key date");
 
+  // One spike explained several different ways is a sign the model is
+  // reading causes into noise. Two is a flag for review; three is a retry.
+  const citedBy = new Map<number, string[]>();
+  for (const c of concepts) {
+    for (const n of c.evidence_posts) {
+      citedBy.set(n, [...(citedBy.get(n) ?? []), c.title]);
+    }
+  }
+  let overCited = false;
+  for (const [n, titles] of citedBy) {
+    if (titles.length >= 3) {
+      overCited = true;
+      errors.push(`Post ${n} is the evidence for ${titles.length} different concepts`);
+    } else if (titles.length === 2) {
+      warnings.push(`Post ${n} backs two concepts: "${titles[0]}" and "${titles[1]}"`);
+    }
+  }
+
   // Strict (first attempt): anything short of a full, date-aware pool is
   // worth one retry. Lenient (retry): accept what holds up.
   const needed = opts.strict ? POOL_SIZE : MIN_VALID_CONCEPTS;
   if (
     !focus ||
     concepts.length < needed ||
-    (opts.strict && missingKeyDate)
+    (opts.strict && (missingKeyDate || overCited))
   ) {
     return { pool: null, errors, warnings };
   }

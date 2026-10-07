@@ -33,6 +33,11 @@ function PostRef({ post }: { post: ContextPost }) {
     <li className="rounded-lg border border-card-border bg-input p-3 text-xs">
       <div className="flex flex-wrap items-center gap-2 text-muted">
         <span className="font-bold text-foreground">Post {post.n}</span>
+        {post.news && (
+          <span className="rounded-full bg-sky-400/15 px-2 py-0.5 font-bold text-sky-300">
+            news
+          </span>
+        )}
         {post.standout && (
           <span className="rounded-full bg-brand/15 px-2 py-0.5 font-bold text-brand">
             standout
@@ -71,6 +76,7 @@ function ConceptCard({
         {concept.basis === "starting_point" && (
           <span className="text-amber-300">Starting point</span>
         )}
+        {concept.about_news && <span className="text-sky-300">About news</span>}
         {concept.key_date && (
           <span className="text-sky-300">For {concept.key_date}</span>
         )}

@@ -71,6 +71,7 @@ export function validatePool(
   }
 
   const validPostNumbers = new Set(ctx.posts.map((p) => p.n));
+  const newsPosts = new Set(ctx.posts.filter((p) => p.news).map((p) => p.n));
   const validDates = new Set(ctx.keyDates.map((d) => d.date));
   const rawConcepts = Array.isArray(o.concepts) ? o.concepts : [];
   const concepts: Concept[] = [];
@@ -96,11 +97,28 @@ export function validatePool(
     }
 
     const evidenceRaw = Array.isArray(c.evidence_posts) ? c.evidence_posts : [];
-    const evidence = evidenceRaw.map(Number).filter(Number.isInteger);
+    let evidence = evidenceRaw.map(Number).filter(Number.isInteger);
     const bogus = evidence.filter((n) => !validPostNumbers.has(n));
     if (bogus.length > 0) {
       errors.push(`${label} ("${title}"): cites posts that don't exist (${bogus.join(", ")})`);
       return;
+    }
+
+    // A release-day spike can't prove an everyday technique.
+    const aboutNews = c.about_news === true;
+    const newsCited = evidence.filter((n) => newsPosts.has(n));
+    if (!aboutNews && newsCited.length > 0) {
+      const msg = `${label} ("${title}"): isn't about news but cites news posts (${newsCited.join(", ")})`;
+      if (opts.strict) {
+        errors.push(msg);
+        return;
+      }
+      warnings.push(`${msg}; those posts were removed from its evidence`);
+      evidence = evidence.filter((n) => !newsPosts.has(n));
+      if (evidence.length === 0 && !ctx.coldStart) {
+        errors.push(`${label} ("${title}"): no evidence left once news posts were removed`);
+        return;
+      }
     }
 
     let basis: Concept["basis"] =
@@ -156,6 +174,7 @@ export function validatePool(
       executions,
       key_date: keyDate,
       basis,
+      about_news: aboutNews,
     });
   });
 
@@ -171,6 +190,10 @@ export function validatePool(
       citedBy.set(n, [...(citedBy.get(n) ?? []), c.title]);
     }
   }
+  const newsConcepts = concepts.filter((c) => c.about_news).length;
+  const tooMuchNews = newsConcepts > 2;
+  if (tooMuchNews) errors.push(`${newsConcepts} concepts are about news; at most two should be`);
+
   let overCited = false;
   for (const [n, titles] of citedBy) {
     if (titles.length >= 3) {
@@ -187,7 +210,7 @@ export function validatePool(
   if (
     !focus ||
     concepts.length < needed ||
-    (opts.strict && (missingKeyDate || overCited))
+    (opts.strict && (missingKeyDate || overCited || tooMuchNews))
   ) {
     return { pool: null, errors, warnings };
   }

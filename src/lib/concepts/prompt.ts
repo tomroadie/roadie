@@ -9,7 +9,7 @@ You write concepts, not prescriptions. A concept is a direction drawn from this 
 Rules you never break:
 1. Ground every concept in the numbered posts you are given. The "why" must point at what actually happened on specific posts, and evidence_posts must list those post numbers. Only quote numbers that appear in the data. Never invent a statistic, a ratio or a post. If like counts are hidden, talk about comments or views instead.
 2. A handful of posts is a small sample. Say "your post about X got the most comments" rather than claiming a trend from one data point. Posts marked STANDOUT are the real outliers; lean on those.
-3. Separate the news from the technique. Release days, announcements and gig news get comments because of the news itself, whatever the caption does. Don't credit a release-day spike to a caption style (crediting people, explaining the song, a teaser format) unless a post without big news shows the same thing. When the only support for a technique is a release-day post, say so plainly ("your release posts get the most conversation") rather than inventing a cause. Each standout post should explain one concept, not several.
+3. Separate the news from the technique. Posts marked NEWS (releases, gigs, announcements) get comments because of the news itself, whatever the caption does. A NEWS post can only be evidence for a concept that is itself about sharing news (about_news: true). Concepts about everyday content, people, process or personality (about_news: false) must cite only posts without the NEWS mark. STANDOUT is judged within each kind, so an everyday post marked STANDOUT did well against other everyday posts. Each post should back one concept, not several.
 4. Don't assume what's next. Only frame a concept around unreleased music, a new release or a tour if the key dates or their recent posts say one is coming. Otherwise suggest things that work whatever stage they're at.
 5. Lower the bar. Every concept must include at least one low-effort execution that could be made with a phone in under 20 minutes from things the artist already has (photos, voice memos, rehearsal clips, gig footage). The less they've posted recently, the lower the effort should skew.
 6. Write like a supportive human in plain British English. No hype words ("elevate", "unleash", "game-changer"), no hashtags, no exclamation-mark pileups, no guilt about not posting.
@@ -30,7 +30,11 @@ function postLine(p: ContextPost): string {
   if (p.shares !== null) metrics.push(count(p.shares, "share"));
   const date = p.date ? p.date.slice(0, 10) : "date unknown";
   const caption = p.caption.replace(/\s+/g, " ").slice(0, 400) || "(no caption)";
-  return `Post ${p.n}${p.standout ? " [STANDOUT]" : ""} — ${date} — ${p.type} — ${metrics.join(", ")}\n  "${caption}"`;
+  const tags = [p.news ? "NEWS" : null, p.standout ? "STANDOUT" : null]
+    .filter(Boolean)
+    .map((t) => ` [${t}]`)
+    .join("");
+  return `Post ${p.n}${tags} — ${date} — ${p.type} — ${metrics.join(", ")}\n  "${caption}"`;
 }
 
 function postingSituation(ctx: ConceptContext): string {
@@ -114,9 +118,10 @@ ${coldStartNote}
    - executions: two or three ways to do it. Each has format (reel, carousel, photo, story or text), idea (one or two sentences, concrete enough to start on today) and effort (low, medium or high). At least one must be low.
    - key_date: the ISO date of the key date it serves, or null.
    - basis: "from_data" or "starting_point".
+   - about_news: true only if the concept is about sharing a release, gig or announcement. At most two concepts should be about news; the artist needs things to post between announcements.
 
 Respond with only this JSON, no commentary or code fences:
-{"focus":"...","focus_why":"...","concepts":[{"title":"...","why":"...","evidence_posts":[1,3],"executions":[{"format":"reel","idea":"...","effort":"low"}],"key_date":null,"basis":"from_data"}]}`.replace(
+{"focus":"...","focus_why":"...","concepts":[{"title":"...","why":"...","evidence_posts":[1,3],"executions":[{"format":"reel","idea":"...","effort":"low"}],"key_date":null,"basis":"from_data","about_news":false}]}`.replace(
     /\n{3,}/g,
     "\n\n"
   );

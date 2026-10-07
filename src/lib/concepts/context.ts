@@ -29,7 +29,24 @@ function median(values: number[]): number {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
 
-type RawPost = Omit<ContextPost, "n" | "standout">;
+type RawPost = Omit<ContextPost, "n" | "standout" | "news">;
+
+/**
+ * News posts get comments because of the news (a release, a gig, an
+ * announcement), whatever the caption does. Tagging them in code stops the
+ * model reading a release-day spike as proof of a caption technique.
+ * Keyword matching will sometimes mislabel; that's fine for a review loop.
+ */
+const NEWS_PATTERNS: RegExp[] = [
+  /\b(out[^a-z0-9]{0,6}now|is out|it['’]?s out|are out|out (today|tomorrow|this|next|on|friday|\d+))\b/i,
+  /\b(single|ep|album|mixtape|record|releas\w*|pre-?save|stream\w* now|listening)\b/i,
+  /\b(tickets?|tix|gigs?|tour\w*|festival|headlin\w*|supporting|support slot|line-?up|show tonight|free show|playing (at|a|some|the|our))\b/i,
+  /\b(announc\w*|launch\w*|imminent|coming soon|stay tuned|counting down|\d+ days? (until|to go))\b/i,
+];
+
+export function isNewsPost(caption: string): boolean {
+  return NEWS_PATTERNS.some((re) => re.test(caption));
+}
 
 /** Maps Instagram's internal names (Sidecar, CAROUSEL_ALBUM, IMAGE) to plain ones. */
 function normaliseType(raw: unknown): string {
@@ -82,17 +99,31 @@ function byDateDesc(a: RawPost, b: RawPost): number {
  * points at real outliers instead of finding patterns in noise.
  */
 export function numberPosts(posts: RawPost[]): ContextPost[] {
-  const sorted = [...posts].sort(byDateDesc).slice(0, MAX_POSTS);
-  const commentCounts = sorted
-    .map((p) => p.comments)
-    .filter((c): c is number => c !== null);
-  const typical = median(commentCounts);
-  const threshold = Math.max(3, typical * 2);
+  const sorted = [...posts]
+    .sort(byDateDesc)
+    .slice(0, MAX_POSTS)
+    .map((p) => ({ ...p, news: isNewsPost(p.caption) }));
+
+  // Standouts are judged within their own kind: a busy everyday post is
+  // compared with other everyday posts, not with release days.
+  const thresholdFor = (news: boolean) =>
+    Math.max(
+      3,
+      median(
+        sorted
+          .filter((p) => p.news === news)
+          .map((p) => p.comments)
+          .filter((c): c is number => c !== null)
+      ) * 2
+    );
+  const thresholds = { news: thresholdFor(true), everyday: thresholdFor(false) };
 
   return sorted.map((p, i) => ({
     ...p,
     n: i + 1,
-    standout: p.comments !== null && p.comments >= threshold,
+    standout:
+      p.comments !== null &&
+      p.comments >= (p.news ? thresholds.news : thresholds.everyday),
   }));
 }
 

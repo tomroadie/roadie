@@ -28,6 +28,8 @@ export type Concept = {
   key_date: string | null;
   /** "from_data" when backed by posts, "starting_point" when it isn't. */
   basis: "from_data" | "starting_point";
+  /** True when the concept is about releases, gigs or announcements. Only these may cite news posts. */
+  about_news: boolean;
 };
 
 export type ConceptPool = {
@@ -51,7 +53,9 @@ export type ContextPost = {
   reach: number | null;
   saves: number | null;
   shares: number | null;
-  /** Set in code: comments well above this artist's typical post. */
+  /** Set in code: a release, gig or announcement post. */
+  news: boolean;
+  /** Set in code: comments well above this artist's typical post of the same kind. */
   standout: boolean;
 };
 

@@ -1,3 +1,5 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+
 // Instagram API with Instagram Login.
 // Artists sign in with their Instagram professional (Business or Creator)
 // account directly — no Facebook Page involved.
@@ -13,9 +15,68 @@ export const INSTAGRAM_SCOPES = [
   "instagram_business_manage_insights",
 ].join(",");
 
-// Short-lived cookie holding the OAuth state, so the callback can check the
-// response belongs to the browser that started the connection.
-export const IG_OAUTH_STATE_COOKIE = "ig_oauth_state";
+// OAuth state is "<payload>.<hmac>", where payload is base64url JSON with
+// the artist ID, when it was issued and which Tempo domain the person started
+// on. It's signed with the app secret and checked without a cookie, because
+// Tempo runs on more than one domain but Instagram always sends people back
+// to tempo.roadie.media, where a cookie set on another domain is missing.
+const STATE_MAX_AGE_MS = 15 * 60 * 1000;
+
+// Domains people may be sent back to after connecting.
+export const TEMPO_ORIGINS = [
+  "https://tempo.roadie.media",
+  "https://app.roadie.media",
+] as const;
+
+type StatePayload = { a: string; t: number; o: string };
+
+function stateSignature(payload: string, secret: string): string {
+  return createHmac("sha256", secret).update(payload).digest("hex");
+}
+
+export function signOAuthState(
+  artistId: string,
+  origin: string,
+  secret: string
+): string {
+  const body: StatePayload = { a: artistId, t: Date.now(), o: origin };
+  const payload = Buffer.from(JSON.stringify(body)).toString("base64url");
+  return `${payload}.${stateSignature(payload, secret)}`;
+}
+
+// Returns the artist ID and return origin if the state is genuine and recent,
+// otherwise a reason for the logs.
+export function verifyOAuthState(
+  state: string,
+  secret: string
+): { artistId: string; origin: string } | { error: string } {
+  const [payload, signature, ...rest] = state.split(".");
+  if (!payload || !signature || rest.length) return { error: "malformed state" };
+
+  const a = Buffer.from(signature, "hex");
+  const b = Buffer.from(stateSignature(payload, secret), "hex");
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+    return { error: "state signature mismatch" };
+  }
+
+  let body: StatePayload;
+  try {
+    body = JSON.parse(Buffer.from(payload, "base64url").toString()) as StatePayload;
+  } catch {
+    return { error: "unreadable state" };
+  }
+
+  const age = Date.now() - Number(body.t);
+  if (!Number.isFinite(age) || age < 0 || age > STATE_MAX_AGE_MS) {
+    return { error: "state expired" };
+  }
+  if (!body.a) return { error: "state missing artist" };
+
+  const origin = (TEMPO_ORIGINS as readonly string[]).includes(body.o)
+    ? body.o
+    : TEMPO_ORIGINS[0];
+  return { artistId: body.a, origin };
+}
 
 // Refresh tokens this close to expiry (long-lived tokens last 60 days).
 export const IG_TOKEN_REFRESH_WINDOW_DAYS = 10;

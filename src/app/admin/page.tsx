@@ -445,6 +445,12 @@ export default async function AdminPage() {
             >
               Plans to review →
             </Link>
+            <Link
+              href="/admin/concepts"
+              className="text-sm font-semibold text-brand transition-colors hover:text-brand/80"
+            >
+              Concept preview →
+            </Link>
           </div>
           <p className="mt-2 text-muted">
             Browse every artist, switch context, create managed clients, or enqueue

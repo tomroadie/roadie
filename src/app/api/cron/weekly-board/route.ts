@@ -93,8 +93,9 @@ export async function GET(request: Request) {
   let query = admin
     .from("profiles")
     .select("id, artist_name, week_start_day")
-    .eq("board_enabled", true)
-    .eq("cron_active", true);
+    // board_enabled is the deliberate opt-in. cron_active and is_private are
+    // off for every admin-created client artist, so they can't gate this.
+    .eq("board_enabled", true);
   if (forced) query = query.eq("id", forced);
   const { data: profiles, error } = await query;
   if (error) {

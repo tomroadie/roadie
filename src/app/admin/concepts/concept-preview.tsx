@@ -16,7 +16,28 @@ export type PreviewArtist = {
   liveSince: string | null;
 };
 
-type PreviewResponse = GenerateResult & { ms: number; generation_id: string };
+export type PendingDraft = {
+  generationId: string;
+  artistId: string;
+  artistName: string;
+  createdAt: string;
+};
+
+type PreviewResponse = GenerateResult & {
+  ms: number;
+  generation_id: string;
+  kind?: string;
+  created_at?: string;
+};
+
+/** Audit scrapes over a month old miss recent posts. */
+function isAuditStale(ctx: GenerateResult["context"]): boolean {
+  return (
+    ctx.postSource === "audit" &&
+    !!ctx.auditCreatedAt &&
+    Date.now() - Date.parse(ctx.auditCreatedAt) > 30 * 86400000
+  );
+}
 
 function formatWhen(iso: string): string {
   const d = new Date(iso);
@@ -122,7 +143,15 @@ function ConceptCard({
   );
 }
 
-export function ConceptPreview({ artists: initialArtists }: { artists: PreviewArtist[] }) {
+export function ConceptPreview({
+  artists: initialArtists,
+  pendingDrafts: initialDrafts,
+}: {
+  artists: PreviewArtist[];
+  pendingDrafts: PendingDraft[];
+}) {
+  const [drafts, setDrafts] = useState(initialDrafts);
+  const [notify, setNotify] = useState(false);
   const [artists, setArtists] = useState(initialArtists);
   const [artistId, setArtistId] = useState(initialArtists[0]?.id ?? "");
   const [loading, setLoading] = useState(false);
@@ -154,8 +183,12 @@ export function ConceptPreview({ artists: initialArtists }: { artists: PreviewAr
     setPublishing(true);
     setError(null);
     try {
-      await adminPost({ generation_id: result.generation_id });
+      const out = await adminPost({ generation_id: result.generation_id, notify });
       setPublishedId(result.generation_id);
+      setDrafts((prev) => prev.filter((d) => d.generationId !== result.generation_id));
+      if (notify && !out.emailed) {
+        setError("Published, but the Your week email wasn't sent (emails paused, no address, or already sent today).");
+      }
       updateArtist(result.context.artistId, {
         boardEnabled: true,
         liveSince: new Date().toISOString(),
@@ -194,10 +227,32 @@ export function ConceptPreview({ artists: initialArtists }: { artists: PreviewAr
       if (!res.ok) throw new Error(json.error ?? `Request failed (${res.status})`);
       const r = json as PreviewResponse;
       setResult(r);
+      setNotify(false);
       setAuditStale(
-        r.context.postSource === "audit" &&
-          !!r.context.auditCreatedAt &&
-          Date.now() - Date.parse(r.context.auditCreatedAt) > 30 * 86400000
+        isAuditStale(r.context)
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadDraft(d: PendingDraft) {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    setPublishedId(null);
+    setArtistId(d.artistId);
+    try {
+      const res = await fetch(`/api/admin/drafts?generation_id=${d.generationId}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? `Request failed (${res.status})`);
+      const r = json as PreviewResponse;
+      setResult(r);
+      setNotify(r.kind === "weekly");
+      setAuditStale(
+        isAuditStale(r.context)
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -210,6 +265,29 @@ export function ConceptPreview({ artists: initialArtists }: { artists: PreviewAr
 
   return (
     <div className="mt-8">
+      {drafts.length > 0 && (
+        <section className="mb-8 rounded-xl border border-amber-400/30 bg-amber-400/5 p-5">
+          <p className="text-xs font-bold uppercase tracking-widest text-amber-300">
+            Waiting for review
+          </p>
+          <ul className="mt-3 space-y-2">
+            {drafts.map((d) => (
+              <li key={d.generationId} className="flex flex-wrap items-center gap-3 text-sm">
+                <span className="font-semibold text-foreground">{d.artistName}</span>
+                <span className="text-muted">weekly draft, {formatWhen(d.createdAt)}</span>
+                <button
+                  type="button"
+                  onClick={() => loadDraft(d)}
+                  className="font-semibold text-brand underline underline-offset-2"
+                >
+                  Review
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <select
           value={artistId}
@@ -305,8 +383,16 @@ export function ConceptPreview({ artists: initialArtists }: { artists: PreviewAr
                   >
                     {publishing ? "Publishing…" : "Publish to board"}
                   </button>
+                  <label className="flex items-center gap-2 text-xs text-muted-strong">
+                    <input
+                      type="checkbox"
+                      checked={notify}
+                      onChange={(e) => setNotify(e.target.checked)}
+                    />
+                    Send &ldquo;Your week&rdquo; email
+                  </label>
                   <span className="text-xs text-muted">
-                    Saved as a draft. Publishing replaces the current board; pinned ideas stay.
+                    {result.kind === "weekly" ? "Weekly draft" : "Saved as a draft"}. Publishing replaces the current board; pinned ideas stay.
                   </span>
                 </>
               )}

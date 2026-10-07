@@ -4,7 +4,15 @@ import { createClient } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { userIsAdmin } from "@/lib/is-admin";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
-import { ConceptPreview, type PreviewArtist } from "./concept-preview";
+import {
+  ConceptPreview,
+  type PendingDraft,
+  type PreviewArtist,
+} from "./concept-preview";
+
+function daysAgoIso(days: number): string {
+  return new Date(Date.now() - days * 86400000).toISOString();
+}
 
 export default async function AdminConceptsPage() {
   const supabase = await createClient();
@@ -15,7 +23,8 @@ export default async function AdminConceptsPage() {
   if (!(await userIsAdmin(supabase, user.id))) redirect("/dashboard");
 
   const admin = createServiceRoleClient();
-  const [{ data: profiles }, { data: audits }, { data: live }] = await Promise.all([
+  const tenDaysAgo = daysAgoIso(10);
+  const [{ data: profiles }, { data: audits }, { data: live }, { data: drafts }] = await Promise.all([
     admin
       .from("profiles")
       .select("id, artist_name, genre, board_enabled")
@@ -26,6 +35,13 @@ export default async function AdminConceptsPage() {
       .from("concept_generations")
       .select("artist_id, published_at")
       .eq("status", "live"),
+    admin
+      .from("concept_generations")
+      .select("id, artist_id, created_at")
+      .eq("status", "draft")
+      .eq("context_summary->>kind", "weekly")
+      .gte("created_at", tenDaysAgo)
+      .order("created_at", { ascending: false }),
   ]);
 
   const liveSince = new Map(
@@ -44,6 +60,24 @@ export default async function AdminConceptsPage() {
       liveSince: liveSince.get(String(p.id)) || null,
     }))
     .sort((a, b) => Number(b.hasAudit) - Number(a.hasAudit));
+
+  // Newest weekly draft per artist that hasn't been published yet.
+  const names = new Map(artists.map((a) => [a.id, a.name]));
+  const seen = new Set<string>();
+  const pendingDrafts: PendingDraft[] = [];
+  for (const d of drafts ?? []) {
+    const artistId = String(d.artist_id);
+    if (seen.has(artistId)) continue;
+    const liveAt = liveSince.get(artistId);
+    if (liveAt && liveAt > String(d.created_at)) continue;
+    seen.add(artistId);
+    pendingDrafts.push({
+      generationId: String(d.id),
+      artistId,
+      artistName: names.get(artistId) ?? "Unknown artist",
+      createdAt: String(d.created_at),
+    });
+  }
 
   return (
     <>
@@ -64,7 +98,7 @@ export default async function AdminConceptsPage() {
             Back to admin
           </Link>
         </header>
-        <ConceptPreview artists={artists} />
+        <ConceptPreview artists={artists} pendingDrafts={pendingDrafts} />
       </div>
     </>
   );

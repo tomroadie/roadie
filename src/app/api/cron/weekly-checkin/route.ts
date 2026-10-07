@@ -170,7 +170,9 @@ export async function GET(request: Request) {
       )
       .or(ELIGIBLE_PROFILES_FILTER)
       .or(PUBLIC_PROFILES_OR_FILTER)
-      .eq("cron_active", true);
+      .eq("cron_active", true)
+      // Board artists get the weekly board job and "Your week" email instead.
+      .eq("board_enabled", false);
 
     if (profilesError) {
       return NextResponse.json(

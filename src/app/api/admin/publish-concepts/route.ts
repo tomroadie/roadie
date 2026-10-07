@@ -3,14 +3,16 @@ import { createClient } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { userIsAdmin } from "@/lib/is-admin";
 import { publishGeneration } from "@/lib/concepts/store";
+import { sendYourWeek } from "@/lib/concepts/weekly";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
  * Admin-only. Two actions:
- *   { generation_id }                 publish a draft to the artist's board
- *                                     (switches the board on)
+ *   { generation_id, notify? }        publish a draft to the artist's board
+ *                                     (switches the board on); notify sends
+ *                                     "Your week" 
  *   { artist_id, board_enabled }      switch the board on or off without
  *                                     touching concepts
  */
@@ -45,7 +47,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Invalid generation_id" }, { status: 400 });
       }
       const { artistId: published } = await publishGeneration(admin, generationId);
-      return NextResponse.json({ ok: true, artist_id: published });
+      const emailed = body.notify === true ? await sendYourWeek(admin, generationId) : false;
+      return NextResponse.json({ ok: true, artist_id: published, emailed });
     }
 
     if (artistId && typeof body.board_enabled === "boolean") {

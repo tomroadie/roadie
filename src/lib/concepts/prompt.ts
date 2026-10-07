@@ -78,6 +78,32 @@ export function buildConceptPrompt(ctx: ConceptContext, today: string): string {
           .join("\n")}\nAt least one concept must serve the nearest of these, with key_date set to its date. Don't make every concept about dates; the artist also needs things to post in between.`
       : "## Key dates in the next 4 weeks\nNone known. Set key_date to null on every concept.";
 
+  const reasonCounts = new Map<string, number>();
+  for (const d of ctx.declined) {
+    if (d.reason) reasonCounts.set(d.reason, (reasonCounts.get(d.reason) ?? 0) + 1);
+  }
+  const repeatedReasons = [...reasonCounts].filter(([, n]) => n >= 2).map(([r]) => r);
+
+  const boardHistorySection = [
+    ctx.postedIdeas.length > 0
+      ? `## Board ideas they posted
+${ctx.postedIdeas.map((t) => `- ${t}`).join("\n")}
+These worked for them in practice. Build on the directions behind them with fresh angles; don't repeat them.`
+      : "",
+    ctx.pinnedIdeas.length > 0
+      ? `## On their shelf (pinned, not done yet)
+${ctx.pinnedIdeas.map((t) => `- ${t}`).join("\n")}
+They already have these. Don't suggest the same ideas again.`
+      : "",
+    repeatedReasons.length > 0
+      ? `## Reasons they keep giving for "Not for me"
+${repeatedReasons.map((r) => `- ${r}`).join("\n")}
+Take these seriously: "No time" means lower the effort; "No gear for this" means phone-only; "Not my style" means stay closer to how they already post.`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
   const declinedSection =
     ctx.declined.length > 0
       ? `## Ideas they turned down\n${ctx.declined
@@ -114,6 +140,8 @@ ${auditSection}
 ${datesSection}
 
 ${declinedSection}
+
+${boardHistorySection}
 
 ${newsOnlyNote}
 

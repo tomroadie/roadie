@@ -162,12 +162,13 @@ export async function loadConceptContext(
   const today = now.toISOString().slice(0, 10);
   const windowEnd = addDaysISO(today, KEY_DATE_WINDOW_DAYS);
 
-  const [profileRes, auditRes, perfRes, eventsRes, plansRes] =
+  const historySince = new Date(now.getTime() - 56 * 86400000).toISOString();
+  const [profileRes, auditRes, perfRes, eventsRes, plansRes, conceptsRes] =
     await Promise.all([
       supabase
         .from("profiles")
         .select(
-          "artist_name, genre, sound_description, voice_description, posting_frequency"
+          "artist_name, genre, sound_description, voice_description, posting_frequency, weekly_target"
         )
         .eq("id", artistId)
         .maybeSingle(),
@@ -201,6 +202,15 @@ export async function loadConceptContext(
         .eq("artist_id", artistId)
         .order("created_at", { ascending: false })
         .limit(4),
+      // What they did with earlier board ideas.
+      supabase
+        .from("concepts")
+        .select("title, status, bin_reason, status_changed_at")
+        .eq("artist_id", artistId)
+        .in("status", ["posted", "pinned", "binned"])
+        .gte("status_changed_at", historySince)
+        .order("status_changed_at", { ascending: false })
+        .limit(40),
     ]);
 
   if (profileRes.error) throw new Error(`profile: ${profileRes.error.message}`);
@@ -249,8 +259,17 @@ export async function loadConceptContext(
         notes: e.notes ? String(e.notes).trim() : null,
       }));
 
-  // Legacy thumbs-down ratings from weekly plans, until pin/bin replaces them.
+  const history = conceptsRes.error ? [] : (conceptsRes.data ?? []);
+  const titlesWith = (status: string) =>
+    history.filter((c) => c.status === status).map((c) => String(c.title));
+
+  // Board bins first, then legacy thumbs-down ratings from weekly plans.
   const declined = new Map<string, string | null>();
+  for (const c of history.filter((h) => h.status === "binned")) {
+    if (!declined.has(c.title)) {
+      declined.set(String(c.title), c.bin_reason ? String(c.bin_reason) : null);
+    }
+  }
   for (const plan of plansRes.error ? [] : (plansRes.data ?? [])) {
     const ratings = (plan.idea_ratings ?? {}) as Record<string, unknown>;
     const feedback = (plan.idea_feedback ?? {}) as Record<string, unknown>;
@@ -277,18 +296,21 @@ export async function loadConceptContext(
     posts,
     postsLast28Days,
     daysSinceLastPost,
-    weeklyTarget: startingWeeklyTarget(
-      postsLast28Days,
-      profile.posting_frequency
-    ),
+    // The weekly job adapts weekly_target; until it has, derive a start.
+    weeklyTarget:
+      typeof profile.weekly_target === "number" && profile.weekly_target > 0
+        ? profile.weekly_target
+        : startingWeeklyTarget(postsLast28Days, profile.posting_frequency),
     auditPattern: audit?.ai_pattern_analysis
       ? String(audit.ai_pattern_analysis).trim()
       : null,
     keyDates,
-    declined: [...declined].slice(0, 10).map(([title, reason]) => ({
+    declined: [...declined].slice(0, 12).map(([title, reason]) => ({
       title,
       reason,
     })),
+    postedIdeas: titlesWith("posted").slice(0, 10),
+    pinnedIdeas: titlesWith("pinned").slice(0, 10),
     coldStart: posts.length < COLD_START_MIN_POSTS,
   };
 }

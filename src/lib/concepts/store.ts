@@ -12,7 +12,8 @@ import type {
 export async function saveDraftGeneration(
   admin: SupabaseClient,
   result: GenerateResult,
-  createdBy: string | null
+  createdBy: string | null,
+  extra: Record<string, unknown> = { kind: "manual" }
 ): Promise<string> {
   const { context, pool } = result;
 
@@ -35,6 +36,14 @@ export async function saveDraftGeneration(
         weekly_target: context.weeklyTarget,
         cold_start: context.coldStart,
         key_dates: context.keyDates.length,
+        audit_created_at: context.auditCreatedAt,
+        ...extra,
+        // What the generator saw, so a draft can be reviewed with its evidence.
+        snapshot: {
+          posts: context.posts,
+          key_dates: context.keyDates,
+          artist_name: context.artistName,
+        },
       },
       created_by: createdBy,
     })

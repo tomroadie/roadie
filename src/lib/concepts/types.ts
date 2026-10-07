@@ -86,6 +86,10 @@ export type ConceptContext = {
   keyDates: ContextKeyDate[];
   /** Ideas the artist turned down, with reasons where given. */
   declined: { title: string; reason: string | null }[];
+  /** Board ideas they said they posted (last 8 weeks), newest first. */
+  postedIdeas: string[];
+  /** Board ideas sitting on their shelf. */
+  pinnedIdeas: string[];
   /** True when there's too little post data to ground concepts in. */
   coldStart: boolean;
 };

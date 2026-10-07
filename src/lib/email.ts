@@ -15,6 +15,7 @@ export type EmailType =
   | "trial_ending_engaged"
   | "trial_ending_inactive"
   | "weekly_plan_ready"
+  | "your_week"
   | "checkin_friday"
   | "winback_day1"
   | "winback_day7"
@@ -36,6 +37,7 @@ const TRANSACTIONAL_TYPES: EmailType[] = [
   "trial_ending_engaged",
   "trial_ending_inactive",
   "weekly_plan_ready",
+  "your_week",
   "checkin_friday",
   "first_plan_generated",
 ];

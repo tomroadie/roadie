@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { appBaseUrl } from "@/lib/email";
 import {
@@ -119,41 +119,47 @@ export async function GET(request: Request) {
     due = due.filter((p) => !doneAlready.has(String(p.id)));
   }
 
-  const done: WeeklyOutcome[] = [];
-  const failed: { artistId: string; artistName: string; error: string }[] = [];
-  let remaining = 0;
+  // cron-job.org gives up after 30 seconds and a run takes about a minute
+  // per artist, so reply now and do the work after the response. after()
+  // keeps running for this route's maxDuration.
+  after(async () => {
+    const done: WeeklyOutcome[] = [];
+    const failed: { artistId: string; artistName: string; error: string }[] = [];
+    let remaining = 0;
 
-  for (const [i, p] of due.entries()) {
-    if (Date.now() - started > TIME_BUDGET_MS) {
-      remaining = due.length - i;
-      break;
+    for (const [i, p] of due.entries()) {
+      if (Date.now() - started > TIME_BUDGET_MS) {
+        remaining = due.length - i;
+        break;
+      }
+      const artistId = String(p.id);
+      try {
+        done.push(await runWeeklyForArtist(admin, artistId, { autoPublish, now }));
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        console.error("weekly-board failed", { artistId, message });
+        failed.push({ artistId, artistName: String(p.artist_name ?? artistId), error: message });
+      }
     }
-    const artistId = String(p.id);
-    try {
-      done.push(await runWeeklyForArtist(admin, artistId, { autoPublish, now }));
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      console.error("weekly-board failed", { artistId, message });
-      failed.push({ artistId, artistName: String(p.artist_name ?? artistId), error: message });
-    }
-  }
 
-  await notifyAdmin(done, failed, remaining, autoPublish);
-
-  return NextResponse.json({
-    weekday: today,
-    due: due.length,
-    done: done.map((o) => ({
-      artist: o.artistName,
-      generation_id: o.generationId,
-      posted_last_week: o.postedLastWeek,
-      target: `${o.previousTarget ?? "new"} -> ${o.target}`,
-      published: o.published,
-      emailed: o.emailed,
-    })),
-    failed,
-    remaining,
-    auto_publish: autoPublish,
-    ms: Date.now() - started,
+    console.log("weekly-board finished", {
+      done: done.length,
+      failed: failed.length,
+      remaining,
+    });
+    await notifyAdmin(done, failed, remaining, autoPublish);
   });
+
+  return NextResponse.json(
+    {
+      weekday: today,
+      due: due.map((p) => String(p.artist_name ?? p.id)),
+      auto_publish: autoPublish,
+      note:
+        due.length > 0
+          ? "Running in the background; results arrive by email."
+          : "Nobody due this hour.",
+    },
+    { status: due.length > 0 ? 202 : 200 }
+  );
 }

@@ -8,6 +8,13 @@ import {
   type InstagramDisconnectState,
 } from "./actions";
 
+const CONNECT_ERRORS: Record<string, string> = {
+  instagram_cancelled:
+    "Instagram wasn't connected because the permission screen was cancelled. Try again whenever you're ready.",
+  instagram_connect_failed:
+    "We couldn't connect your Instagram. Make sure it's a professional (Business or Creator) account, then try again.",
+};
+
 function DisconnectButton() {
   const { pending } = useFormStatus();
 
@@ -25,10 +32,13 @@ function DisconnectButton() {
 export function InstagramConnectSection({
   instagramUserId,
   canConnectLiveStats,
+  connectError,
 }: {
   instagramUserId: string | null;
   canConnectLiveStats: boolean;
+  connectError?: string | null;
 }) {
+  const connectErrorMessage = connectError ? CONNECT_ERRORS[connectError] : null;
   const connected = Boolean(instagramUserId?.trim());
 
   const [state, formAction] = useActionState<
@@ -42,7 +52,7 @@ export function InstagramConnectSection({
         Connect Instagram
       </h2>
       <p className="text-sm text-muted">
-        Connects your Instagram Business account for real-time performance data
+        Connects your Instagram professional (Business or Creator) account for real-time performance data
       </p>
 
       {connected ? (
@@ -72,6 +82,12 @@ export function InstagramConnectSection({
           </Link>
         </p>
       )}
+
+      {!connected && connectErrorMessage ? (
+        <p role="alert" className="text-sm text-red-400">
+          {connectErrorMessage}
+        </p>
+      ) : null}
 
       {state?.error ? (
         <p role="alert" className="text-sm text-red-400">

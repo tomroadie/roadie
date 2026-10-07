@@ -1,9 +1,15 @@
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { randomBytes } from "node:crypto";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
+import {
+  IG_OAUTH_STATE_COOKIE,
+  INSTAGRAM_REDIRECT_URI,
+  INSTAGRAM_SCOPES,
+} from "@/lib/instagram-graph";
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -27,17 +33,35 @@ export async function GET() {
     );
   }
 
-  const redirectUri =
-    "https://tempo.roadie.media/api/auth/instagram/callback";
+  const clientId = process.env.INSTAGRAM_APP_ID?.trim();
+  if (!clientId) {
+    return NextResponse.redirect(
+      new URL("/settings?error=instagram_connect_failed", request.url)
+    );
+  }
+
+  // state = "<artistId>.<nonce>"; the nonce is also set as a cookie and
+  // checked in the callback.
+  const nonce = randomBytes(16).toString("hex");
+  const state = `${activeArtistId}.${nonce}`;
+
   const params = new URLSearchParams({
-    client_id: process.env.FACEBOOK_APP_ID!,
-    redirect_uri: redirectUri,
-    scope:
-      "instagram_basic,pages_show_list,pages_read_engagement,business_management,instagram_manage_insights",
+    client_id: clientId,
+    redirect_uri: INSTAGRAM_REDIRECT_URI,
+    scope: INSTAGRAM_SCOPES,
     response_type: "code",
-    state: activeArtistId,
+    state,
   });
 
-  const url = `https://www.facebook.com/v21.0/dialog/oauth?${params.toString()}`;
-  return NextResponse.redirect(url);
+  const response = NextResponse.redirect(
+    `https://www.instagram.com/oauth/authorize?${params.toString()}`
+  );
+  response.cookies.set(IG_OAUTH_STATE_COOKIE, state, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    maxAge: 600,
+    path: "/",
+  });
+  return response;
 }

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
+import { IG_GRAPH_BASE } from "@/lib/instagram-graph";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { PUBLIC_PROFILES_OR_FILTER } from "@/lib/public-profiles-filter";
 import { getMondayDateString } from "@/lib/week";
 import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 
-const GRAPH_VERSION = "v19.0";
 
 type ProfileRow = {
   id: string;
@@ -95,7 +95,7 @@ async function fetchPostInsights(
     metrics: string
   ): Promise<{ ok: boolean; json: GraphInsightsResponse }> {
     const url = new URL(
-      `https://graph.facebook.com/${GRAPH_VERSION}/${mediaId}/insights`
+      `${IG_GRAPH_BASE}/${mediaId}/insights`
     );
     url.searchParams.set("metric", metrics);
     url.searchParams.set("access_token", accessToken);
@@ -289,7 +289,7 @@ export async function GET(request: Request) {
 
       try {
         const mediaUrl = new URL(
-          `https://graph.facebook.com/${GRAPH_VERSION}/${instagramUserId}/media`
+          `${IG_GRAPH_BASE}/${instagramUserId}/media`
         );
         mediaUrl.searchParams.set(
           "fields",

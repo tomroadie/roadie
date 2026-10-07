@@ -15,7 +15,12 @@ import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { canDo, getPlanForGating } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error: settingsError } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -107,6 +112,7 @@ export default async function SettingsPage() {
       <InstagramConnectSection
         instagramUserId={profile.instagram_user_id ?? null}
         canConnectLiveStats={canConnectLiveStats}
+        connectError={settingsError ?? null}
       />
 
       <TikTokWaitlistSection

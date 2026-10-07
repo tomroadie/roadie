@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { IG_GRAPH_BASE } from "@/lib/instagram-graph";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
-import { PUBLIC_PROFILES_OR_FILTER } from "@/lib/public-profiles-filter";
 import { getMondayDateString } from "@/lib/week";
 import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 
@@ -254,8 +253,10 @@ export async function GET(request: Request) {
       .from("profiles")
       .select("id, instagram_user_id, instagram_access_token")
       .not("instagram_access_token", "is", null)
-      .not("instagram_user_id", "is", null)
-      .or(PUBLIC_PROFILES_OR_FILTER);
+      .not("instagram_user_id", "is", null);
+    // No is_private filter: syncing only reads an account its owner chose to
+    // connect and sends nothing. Admin-created client artists are all
+    // private, so filtering them out meant nothing ever synced.
 
     if (profilesError) {
       return NextResponse.json(
@@ -456,12 +457,29 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({
-      synced,
-      artists: connectedProfiles.length,
-      linked,
-      errors,
-    });
+    if (errors.length > 0) {
+      console.error("sync-post-performance errors", errors);
+    }
+
+    // 207 when some artists failed, 502 when every connected artist failed,
+    // so cron-job.org shows a failure instead of a quiet 200.
+    const failedArtists = new Set(errors.map((e) => e.split(/[:/]/)[0]));
+    const status =
+      connectedProfiles.length > 0 && failedArtists.size >= connectedProfiles.length
+        ? 502
+        : errors.length > 0
+          ? 207
+          : 200;
+
+    return NextResponse.json(
+      {
+        synced,
+        artists: connectedProfiles.length,
+        linked,
+        errors,
+      },
+      { status }
+    );
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

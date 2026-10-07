@@ -714,3 +714,107 @@ This link is just for you and expires in
 
   return { subject, html: baseTemplate(content, data.artistId) };
 }
+
+// ---------------------------------------------------------------------------
+// "Your week" — the one weekly email for artists on the concept board.
+// Everything generated or artist-entered is escaped before it goes in.
+// ---------------------------------------------------------------------------
+
+function esc(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? "" : "s"}`;
+}
+
+export type YourWeekData = {
+  artistId: string;
+  artistName: string;
+  appUrl: string;
+  focus: string;
+  postedLastWeek: number;
+  previousTarget: number | null;
+  target: number;
+  comingUp: { date: string; title: string }[];
+  easyIdea: { title: string; idea: string } | null;
+};
+
+/** One line about last week. Never a guilt trip. */
+export function lastWeekLine(d: Pick<YourWeekData, "postedLastWeek" | "previousTarget">): string {
+  const n = d.postedLastWeek;
+  if (d.previousTarget === null) {
+    return n > 0
+      ? `You posted ${plural(n, "time")} last week. Good start.`
+      : "This is your first week on the board. One post gets you going.";
+  }
+  if (n === 0) return "Last week was a quiet one. That's fine; one post this week gets you going again.";
+  if (n >= d.previousTarget) return `You posted ${plural(n, "time")} last week and hit your target. Nice one.`;
+  return `You posted ${plural(n, "time")} last week. That counts.`;
+}
+
+function formatShortDate(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+}
+
+export function yourWeekEmail(d: YourWeekData): { subject: string; html: string } {
+  const name = esc(d.artistName);
+  const subject = `Your week, ${d.artistName}`;
+
+  const targetLine =
+    d.previousTarget !== null && d.target > d.previousTarget
+      ? `This week's target goes up to <span style="${HIGHLIGHT}">${plural(d.target, "post")}</span>.`
+      : d.previousTarget !== null && d.target < d.previousTarget
+        ? `We've eased this week's target to <span style="${HIGHLIGHT}">${plural(d.target, "post")}</span>.`
+        : `This week's target: <span style="${HIGHLIGHT}">${plural(d.target, "post")}</span>.`;
+
+  const comingUp =
+    d.comingUp.length > 0
+      ? `<p style="${P}"><span style="${STRONG}">Coming up</span><br />${d.comingUp
+          .map((e) => `${esc(formatShortDate(e.date))}: ${esc(e.title)}`)
+          .join("<br />")}</p>`
+      : "";
+
+  const easyIdea = d.easyIdea
+    ? `<p style="${P}">One easy one to film this week:</p>
+<div style="background:#1A1A1A;border:1px solid #333333;border-radius:8px;padding:16px;margin:0 0 16px">
+  <p style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#00FF87;margin:0 0 8px">
+    ${esc(d.easyIdea.title)}
+  </p>
+  <p style="font-size:15px;color:#ffffff;line-height:1.5;margin:0">
+    ${esc(d.easyIdea.idea)}
+  </p>
+</div>`
+    : "";
+
+  const content = `
+<h1 style="${H1_SOFT}">${esc(d.focus)}</h1>
+
+<p style="${P}">Hi ${name},</p>
+
+<p style="${P}">${esc(lastWeekLine(d))} ${targetLine}</p>
+
+${comingUp}
+
+${easyIdea}
+
+<a href="${d.appUrl}/home" style="${CTA}">
+  Open your board →
+</a>
+
+<p style="${P}">Anything coming up in the next few weeks? A gig, a release, a studio day? Just reply to this email and we'll work it in.</p>
+
+<p style="${SIG}">
+— Tom at Tempo
+</p>`;
+
+  return { subject, html: baseTemplate(content, d.artistId) };
+}

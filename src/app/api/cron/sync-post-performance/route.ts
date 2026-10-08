@@ -3,6 +3,7 @@ import { IG_GRAPH_BASE } from "@/lib/instagram-graph";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { getMondayDateString } from "@/lib/week";
 import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
+import { linkPostsToConcepts } from "@/lib/concepts/link-posts";
 
 
 type ProfileRow = {
@@ -19,7 +20,27 @@ type MediaItem = {
   like_count?: number;
   comments_count?: number;
   permalink?: string;
+  thumbnail_url?: string;
+  media_url?: string;
 };
+
+type GraphAccountResponse = {
+  followers_count?: number;
+  media_count?: number;
+  error?: { message?: string };
+};
+
+/** Cover image: videos have a separate thumbnail, everything else uses the media itself. */
+function coverImage(post: MediaItem): string | null {
+  return post.thumbnail_url ?? (post.media_type?.toUpperCase() === "VIDEO" ? null : post.media_url) ?? null;
+}
+
+/** Runs fn over items with at most `limit` in flight. */
+async function inBatches<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  for (let i = 0; i < items.length; i += limit) {
+    await Promise.all(items.slice(i, i + limit).map(fn));
+  }
+}
 
 type GraphMediaResponse = {
   data?: MediaItem[];
@@ -56,20 +77,21 @@ function daysSinceIso(iso: string | undefined): number | null {
 // versions — an unsupported metric name fails the whole insights call, so
 // we ask for the fields we actually map to columns and fall back to just
 // "reach" (the most broadly supported metric) if that errors.
-function insightsMetricsForMediaType(mediaType: string | undefined): string {
+function insightsMetricChain(mediaType: string | undefined): string[] {
   switch (mediaType?.toUpperCase()) {
     case "VIDEO":
     case "REELS":
     case "CAROUSEL_ALBUM":
     case "IMAGE":
-      return "reach,saved,shares";
+      return ["reach,saved,shares,views", "reach,saved,shares", "reach"];
     default:
-      return "reach";
+      return ["reach"];
   }
 }
 
 type PostInsights = {
   reach: number | null;
+  views: number | null;
   saves: number | null;
   shares: number | null;
   raw: Record<string, unknown>;
@@ -89,7 +111,7 @@ async function fetchPostInsights(
   mediaType: string | undefined,
   loggedMediaTypes: Set<string>
 ): Promise<PostInsights> {
-  const empty: PostInsights = { reach: null, saves: null, shares: null, raw: {} };
+  const empty: PostInsights = { reach: null, views: null, saves: null, shares: null, raw: {} };
 
   async function request(
     metrics: string
@@ -104,11 +126,12 @@ async function fetchPostInsights(
     return { ok: res.ok && !json.error, json };
   }
 
-  const primaryMetrics = insightsMetricsForMediaType(mediaType);
-  let { ok, json } = await request(primaryMetrics);
-
-  if (!ok && primaryMetrics !== "reach") {
-    ({ ok, json } = await request("reach"));
+  // An unsupported metric fails the whole call, so step down until one works.
+  let ok = false;
+  let json: GraphInsightsResponse = {};
+  for (const metrics of insightsMetricChain(mediaType)) {
+    ({ ok, json } = await request(metrics));
+    if (ok) break;
   }
 
   const typeKey = (mediaType ?? "UNKNOWN").toUpperCase();
@@ -130,6 +153,7 @@ async function fetchPostInsights(
 
   return {
     reach: values.reach ?? null,
+    views: values.views ?? null,
     saves: values.saved ?? null,
     shares: values.shares ?? null,
     raw: json,
@@ -313,8 +337,32 @@ export async function GET(request: Request) {
         const posts = mediaJson.data ?? [];
         if (posts.length === 0) continue;
 
+        // Today's follower count, kept daily so growth can be shown later.
         let followers = 0;
-        const { data: audit } = await supabase
+        try {
+          const accountUrl = new URL(`${IG_GRAPH_BASE}/${instagramUserId}`);
+          accountUrl.searchParams.set("fields", "followers_count,media_count");
+          accountUrl.searchParams.set("access_token", accessToken);
+          const accountRes = await fetch(accountUrl.toString());
+          const account = (await accountRes.json()) as GraphAccountResponse;
+          if (accountRes.ok && !account.error && typeof account.followers_count === "number") {
+            followers = account.followers_count;
+            const { error: snapErr } = await supabase.from("instagram_account_snapshots").upsert(
+              {
+                artist_id: artistId,
+                snapshot_date: new Date().toISOString().slice(0, 10),
+                followers_count: account.followers_count,
+                media_count: account.media_count ?? null,
+              },
+              { onConflict: "artist_id,snapshot_date" }
+            );
+            if (snapErr) errors.push(`${artistId}: follower snapshot failed: ${snapErr.message}`);
+          }
+        } catch (e) {
+          errors.push(`${artistId}: account fetch failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+        }
+
+        const { data: audit } = followers > 0 ? { data: null } : await supabase
           .from("audits")
           .select("followers")
           .eq("artist_id", artistId)
@@ -322,7 +370,7 @@ export async function GET(request: Request) {
           .limit(1)
           .maybeSingle();
 
-        if (audit?.followers != null) {
+        if (followers === 0 && audit?.followers != null) {
           followers = Number(audit.followers) || 0;
         }
 
@@ -332,7 +380,7 @@ export async function GET(request: Request) {
 
         const { data: existingRows, error: existingError } = await supabase
           .from("post_performance")
-          .select("instagram_post_id")
+          .select("instagram_post_id, reach")
           .eq("artist_id", artistId)
           .in("instagram_post_id", postIds);
 
@@ -344,11 +392,15 @@ export async function GET(request: Request) {
         const existingIds = new Set(
           (existingRows ?? []).map((row) => row.instagram_post_id)
         );
+        // Older posts synced before we kept reach get it filled in once.
+        const missingReach = new Set(
+          (existingRows ?? []).filter((row) => row.reach == null).map((row) => row.instagram_post_id)
+        );
         const scrapedAt = new Date().toISOString();
 
-        for (const post of posts) {
+        await inBatches(posts, 5, async (post) => {
           const instagramPostId = post.id?.trim();
-          if (!instagramPostId) continue;
+          if (!instagramPostId) return;
 
           const likes = Number(post.like_count) || 0;
           const comments = Number(post.comments_count) || 0;
@@ -356,10 +408,13 @@ export async function GET(request: Request) {
 
           const ageDays = daysSinceIso(post.timestamp);
           const withinInsightsWindow =
-            ageDays !== null && ageDays <= INSIGHTS_MAX_AGE_DAYS;
+            (ageDays !== null && ageDays <= INSIGHTS_MAX_AGE_DAYS) ||
+            !existingIds.has(instagramPostId) ||
+            missingReach.has(instagramPostId);
 
           let insights: PostInsights = {
             reach: null,
+            views: null,
             saves: null,
             shares: null,
             raw: {},
@@ -390,9 +445,11 @@ export async function GET(request: Request) {
                 engagement_rate: rate,
                 ig_media_type: post.media_type ?? null,
                 permalink: post.permalink ?? null,
+                thumbnail_url: coverImage(post),
                 ...(withinInsightsWindow
                   ? {
                       reach: insights.reach,
+                      views: insights.views,
                       saves: insights.saves,
                       shares: insights.shares,
                       raw: insights.raw,
@@ -404,7 +461,7 @@ export async function GET(request: Request) {
 
             if (updateError) {
               errors.push(`${artistId}/${instagramPostId}: ${updateError.message}`);
-              continue;
+              return;
             }
           } else {
             const postDate = post.timestamp
@@ -424,12 +481,14 @@ export async function GET(request: Request) {
                 post_type: mapPostType(post.media_type),
                 ig_media_type: post.media_type ?? null,
                 permalink: post.permalink ?? null,
+                thumbnail_url: coverImage(post),
                 likes,
                 comments,
                 engagement_rate: rate,
                 week_start: weekStart,
                 scraped_at: scrapedAt,
                 reach: insights.reach,
+                views: insights.views,
                 saves: insights.saves,
                 shares: insights.shares,
                 raw: insights.raw,
@@ -437,12 +496,16 @@ export async function GET(request: Request) {
 
             if (insertError) {
               errors.push(`${artistId}/${instagramPostId}: ${insertError.message}`);
-              continue;
+              return;
             }
           }
 
           synced += 1;
-        }
+        });
+
+        const conceptLink = await linkPostsToConcepts(supabase, artistId);
+        linked += conceptLink.linked;
+        if (conceptLink.error) errors.push(`${artistId}: linking board ideas failed: ${conceptLink.error}`);
 
         try {
           const linkResult = await linkPostsToPlanIdeas(supabase, artistId);

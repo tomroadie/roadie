@@ -112,7 +112,7 @@ export function validatePool(
     }
 
     // NEWS and STANDOUT are our labels, not the artist's.
-    if (/\b(STANDOUT|NEWS)\b/.test(why) || /\b(standout|marked as news)\b/i.test(why)) {
+    if (/\b(STANDOUT|NEWS)\b/.test(why) || /\bmarked (as )?(standout|news)\b/i.test(why)) {
       const msg = `${label} ("${title}"): why uses an internal label (NEWS/STANDOUT)`;
       if (opts.strict) {
         errors.push(msg);

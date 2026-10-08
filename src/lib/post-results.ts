@@ -102,6 +102,15 @@ export async function loadPostResults(
     };
   });
 
+  // The reassurance on quieter posts reads as a lecture if it repeats, so keep it once.
+  const REASSURE = " One post doesn't make a pattern.";
+  let reassured = false;
+  for (const p of posts) {
+    if (!p.line?.endsWith(REASSURE)) continue;
+    if (reassured) p.line = p.line.slice(0, -REASSURE.length);
+    reassured = true;
+  }
+
   // Posts per board week, oldest first, ending with the current week.
   const currentStart = Date.parse(weekStartsAt);
   const weeks: WeekCount[] = [];

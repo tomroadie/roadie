@@ -1,3 +1,4 @@
+import { compareToUsual, describeComparison, type PerfPost } from "@/lib/performance";
 import { MAX_WEEKLY_TARGET } from "@/lib/starting-point";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
@@ -180,7 +181,7 @@ export async function loadConceptContext(
       supabase
         .from("post_performance")
         .select(
-          "post_date, post_type, ig_media_type, caption, likes, comments, views, reach, saves, shares"
+          "instagram_post_id, post_date, post_type, ig_media_type, caption, likes, comments, views, reach, saves, shares, excluded_from_usual"
         )
         .eq("artist_id", artistId)
         .order("post_date", { ascending: false })
@@ -201,7 +202,7 @@ export async function loadConceptContext(
       // What they did with earlier board ideas.
       supabase
         .from("concepts")
-        .select("title, status, bin_reason, status_changed_at")
+        .select("title, status, bin_reason, status_changed_at, instagram_post_id")
         .eq("artist_id", artistId)
         .in("status", ["posted", "pinned", "binned"])
         .gte("status_changed_at", historySince)
@@ -218,9 +219,11 @@ export async function loadConceptContext(
   const audit = auditRes.error ? null : auditRes.data;
 
   // Prefer synced Instagram data (real reach/saves); fall back to the audit scrape.
-  const synced: RawPost[] = perfRes.error
-    ? []
-    : (perfRes.data ?? []).map((r) => ({
+  // Posts marked as an ad or collab don't teach anything about what works.
+  const perfRows = perfRes.error ? [] : (perfRes.data ?? []);
+  const synced: RawPost[] = perfRows
+    .filter((r) => r.excluded_from_usual !== true)
+    .map((r) => ({
         date: r.post_date ? String(r.post_date) : null,
         type: normaliseType(r.ig_media_type ?? r.post_type),
         caption: String(r.caption ?? "").trim(),
@@ -258,6 +261,28 @@ export async function loadConceptContext(
   const history = conceptsRes.error ? [] : (conceptsRes.data ?? []);
   const titlesWith = (status: string) =>
     history.filter((c) => c.status === status).map((c) => String(c.title));
+
+  // How each posted idea actually did, when we know which post it became.
+  const perfPosts: PerfPost[] = perfRows.map((r) => ({
+    id: String(r.instagram_post_id),
+    postDate: r.post_date ? String(r.post_date) : null,
+    mediaType: r.ig_media_type ?? null,
+    reach: typeof r.reach === "number" ? r.reach : null,
+    likes: typeof r.likes === "number" ? r.likes : null,
+    comments: typeof r.comments === "number" ? r.comments : null,
+    excluded: r.excluded_from_usual === true,
+  }));
+  const postedIdeas = history
+    .filter((c) => c.status === "posted")
+    .map((c) => {
+      const post = c.instagram_post_id
+        ? perfPosts.find((p) => p.id === String(c.instagram_post_id))
+        : undefined;
+      const result = post && !post.excluded ? compareToUsual(post, perfPosts, now) : null;
+      return result?.settled
+        ? `${String(c.title)} → ${describeComparison(result).replace(/ One post doesn't make a pattern\.$/, "")}`
+        : String(c.title);
+    });
 
   // Board bins first, then legacy thumbs-down ratings from weekly plans.
   const declined = new Map<string, string | null>();
@@ -308,7 +333,7 @@ export async function loadConceptContext(
       title,
       reason,
     })),
-    postedIdeas: titlesWith("posted").slice(0, 10),
+    postedIdeas: postedIdeas.slice(0, 10),
     pinnedIdeas: titlesWith("pinned").slice(0, 10),
     coldStart: posts.length < COLD_START_MIN_POSTS,
   };

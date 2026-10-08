@@ -182,7 +182,7 @@ export type WeekProgress = {
   /** Ideas they marked "I posted this" since their week started. */
   marked: number;
   /** Posts Instagram sync has seen since their week started, oldest first. */
-  verified: { permalink: string | null }[];
+  verified: { permalink: string | null; result?: string | null }[];
 };
 
 /** Whichever source saw more, so one post isn't counted twice. */
@@ -223,6 +223,7 @@ function WeekBubbles({ progress }: { progress: WeekProgress }) {
       {Array.from({ length: total }, (_, i) => {
         if (i < verified.length) {
           const link = verified[i].permalink;
+          const result = verified[i].result;
           const inner = (
             <>
               <span aria-hidden="true">✓</span>
@@ -237,14 +238,14 @@ function WeekBubbles({ progress }: { progress: WeekProgress }) {
               href={link}
               target="_blank"
               rel="noopener noreferrer"
-              title="Spotted on Instagram. Tap to see the post."
-              aria-label="Spotted on Instagram, open post"
+              title={`Spotted on Instagram.${result ? ` ${result}` : ""} Tap to see the post.`}
+              aria-label={`Spotted on Instagram.${result ? ` ${result}` : ""} Open post`}
               className={`${base} ${filledCls} hover:brightness-110`}
             >
               {inner}
             </a>
           ) : (
-            <span key={i} title="Spotted on Instagram" className={`${base} ${filledCls}`}>
+            <span key={i} title={`Spotted on Instagram.${result ? ` ${result}` : ""}`} className={`${base} ${filledCls}`}>
               {inner}
             </span>
           );

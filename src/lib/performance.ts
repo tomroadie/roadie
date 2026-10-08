@@ -13,7 +13,12 @@ export type PerfPost = {
   reach: number | null;
   likes: number | null;
   comments: number | null;
+  /** Marked by the artist as an ad or collab: never part of anyone's usual. */
+  excluded?: boolean;
 };
+
+/** Reach this many times the usual gets the "was this an ad or collab?" question. */
+export const UNUSUAL_RATIO = 3;
 
 export type Band = "well_above" | "above" | "usual" | "quieter";
 
@@ -71,7 +76,7 @@ export function compareToUsual(
 ): Comparison | null {
   const t = time(post);
   const earlier = history
-    .filter((h) => h.id !== post.id && time(h) < t)
+    .filter((h) => h.id !== post.id && !h.excluded && time(h) < t)
     .sort((a, b) => time(b) - time(a))
     .slice(0, HISTORY_WINDOW);
 

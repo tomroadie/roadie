@@ -99,7 +99,7 @@ export function buildConceptPrompt(ctx: ConceptContext, today: string): string {
     ctx.postedIdeas.length > 0
       ? `## Board ideas they posted
 ${ctx.postedIdeas.map((t) => `- ${t}`).join("\n")}
-These worked for them in practice. Build on the directions behind them with fresh angles; don't repeat them.`
+They actually made these. Where a result follows the arrow, that's how the post did against their own usual reach. Lean towards directions that did well and give fresh angles on them; don't drop a direction because of one quieter result. Don't repeat the same ideas.`
       : "",
     ctx.pinnedIdeas.length > 0
       ? `## On their shelf (pinned, not done yet)

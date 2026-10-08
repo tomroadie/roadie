@@ -6,6 +6,8 @@ import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { WeeklyPlanSection } from "@/app/dashboard/weekly-plan-section";
 import { ConceptBoard, type WeekProgress } from "./concept-board";
+import { PostResultsSection } from "./post-results";
+import { loadPostResults, type PostResultsData } from "@/lib/post-results";
 import { loadBoard } from "@/lib/concepts/store";
 import { AuditCTASection } from "@/app/insights/audit-cta-section";
 import { RecentPostsCards } from "@/app/insights/recent-posts-cards";
@@ -576,10 +578,11 @@ export default async function HomePage({
   const week = board ? boardWeek(profile?.week_start_day) : null;
   let weekProgress: WeekProgress | undefined;
   let comingUp: EventRow[] = [];
+  let postResults: PostResultsData | null = null;
   if (board && week) {
     const fourWeeksOut = new Date(`${week.start}T12:00:00Z`);
     fourWeeksOut.setUTCDate(fourWeeksOut.getUTCDate() + 28);
-    const [markedRes, syncedRes, eventsRes] = await Promise.all([
+    const [markedRes, syncedRes, eventsRes, resultsRes] = await Promise.all([
       supabase
         .from("concepts")
         .select("id", { count: "exact", head: true })
@@ -588,7 +591,7 @@ export default async function HomePage({
         .gte("posted_at", week.startsAt),
       supabase
         .from("post_performance")
-        .select("permalink, post_date")
+        .select("instagram_post_id, permalink, post_date")
         .eq("artist_id", activeArtistId)
         .gte("post_date", week.startsAt)
         .order("post_date", { ascending: true }),
@@ -599,7 +602,10 @@ export default async function HomePage({
         .gte("event_date", new Date().toISOString().slice(0, 10))
         .lte("event_date", fourWeeksOut.toISOString().slice(0, 10))
         .order("event_date", { ascending: true }),
+      loadPostResults(supabase, activeArtistId, week.startsAt),
     ]);
+    postResults = resultsRes;
+    const lineByPost = new Map((postResults?.posts ?? []).map((p) => [p.id, p.line]));
     weekProgress = {
       target:
         typeof profile?.weekly_target === "number" && profile.weekly_target > 0
@@ -608,6 +614,7 @@ export default async function HomePage({
       marked: markedRes.count ?? 0,
       verified: (syncedRes.data ?? []).map((p) => ({
         permalink: typeof p.permalink === "string" ? p.permalink : null,
+        result: lineByPost.get(String(p.instagram_post_id)) ?? null,
       })),
     };
     comingUp = (eventsRes.data ?? []) as EventRow[];
@@ -1028,8 +1035,13 @@ export default async function HomePage({
 
     // A compact Instagram box: live account once connected, otherwise a
     // connect prompt first and only a few audit posts underneath.
-    const boardInstagramSection =
-      canViewLiveSocialData && liveSocialStats ? (
+    const boardInstagramSection = postResults ? (
+      <PostResultsSection
+        data={postResults}
+        handle={liveSocialStats?.account?.username ?? profile?.instagram_handle ?? null}
+        target={weekProgress?.target ?? null}
+      />
+    ) : canViewLiveSocialData && liveSocialStats ? (
         instagramSection
       ) : (
         <section className="mt-10 rounded-xl border border-card-border bg-card p-7">

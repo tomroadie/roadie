@@ -2,6 +2,8 @@ import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 import { generateEventId } from "@/lib/analytics";
 import { capiCompleteRegistration } from "@/lib/meta-capi";
+import { cookies } from "next/headers";
+import { CONSENT_COOKIE, parseConsent } from "@/lib/consent";
 
 async function sendWelcomeEmail(args: {
   apiKey: string;
@@ -115,7 +117,9 @@ export async function GET(request: Request) {
     if (isNewUser && user.email) {
       const eventId = registrationEventId ?? generateEventId();
       try {
-        await capiCompleteRegistration(user.email, eventId);
+        // Meta only hears about the sign-up if they accepted cookies.
+        const consent = parseConsent((await cookies()).get(CONSENT_COOKIE)?.value);
+        if (consent === "granted") await capiCompleteRegistration(user.email, eventId);
       } catch (e) {
         console.error("CAPI CompleteRegistration failed in auth callback", e);
       }

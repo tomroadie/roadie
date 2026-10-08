@@ -213,6 +213,11 @@ export async function POST(request: Request) {
     const value = planValues[planName] ?? 0;
     const eventId = `stripe-${session.id}`;
 
+    // Only with cookie consent given at checkout.
+    if (session.metadata?.marketing_consent !== "granted") {
+      return NextResponse.json({ ok: true });
+    }
+
     await capiCheckoutEvent(
       "StartTrial",
       customerEmail,

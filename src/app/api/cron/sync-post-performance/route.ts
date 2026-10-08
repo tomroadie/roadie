@@ -18,6 +18,7 @@ type MediaItem = {
   timestamp?: string;
   like_count?: number;
   comments_count?: number;
+  permalink?: string;
 };
 
 type GraphMediaResponse = {
@@ -294,7 +295,7 @@ export async function GET(request: Request) {
         );
         mediaUrl.searchParams.set(
           "fields",
-          "id,caption,media_type,timestamp,like_count,comments_count,thumbnail_url,media_url"
+          "id,caption,media_type,timestamp,like_count,comments_count,thumbnail_url,media_url,permalink"
         );
         mediaUrl.searchParams.set("limit", "20");
         mediaUrl.searchParams.set("access_token", accessToken);
@@ -388,6 +389,7 @@ export async function GET(request: Request) {
                 comments,
                 engagement_rate: rate,
                 ig_media_type: post.media_type ?? null,
+                permalink: post.permalink ?? null,
                 ...(withinInsightsWindow
                   ? {
                       reach: insights.reach,
@@ -421,6 +423,7 @@ export async function GET(request: Request) {
                 caption: post.caption ?? null,
                 post_type: mapPostType(post.media_type),
                 ig_media_type: post.media_type ?? null,
+                permalink: post.permalink ?? null,
                 likes,
                 comments,
                 engagement_rate: rate,

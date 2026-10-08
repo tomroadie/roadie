@@ -181,36 +181,82 @@ export type WeekProgress = {
   target: number;
   /** Ideas they marked "I posted this" since their week started. */
   marked: number;
-  /** Posts Instagram sync has seen since their week started. */
-  synced: number;
+  /** Posts Instagram sync has seen since their week started, oldest first. */
+  verified: { permalink: string | null }[];
 };
+
+/** Whichever source saw more, so one post isn't counted twice. */
+function postedCount(p: WeekProgress): number {
+  return Math.max(p.marked, p.verified.length);
+}
+
+function InstagramMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" />
+    </svg>
+  );
+}
 
 /**
  * One bubble per post in this week's target; each fills with a tick as they
- * post. Posting past the target adds filled bubbles. No numbers, no "missed".
+ * post. Posts Instagram has confirmed come first, carry a small Instagram
+ * badge and link to the post. Ones they only marked are a plain tick.
+ * Posting past the target adds filled bubbles. No numbers, no "missed".
  */
 function WeekBubbles({ progress }: { progress: WeekProgress }) {
   const target = Math.max(1, progress.target);
-  // Whichever source saw more, so one post isn't counted twice.
-  const posted = Math.max(progress.marked, progress.synced);
+  const verified = progress.verified;
+  const posted = postedCount(progress);
   const total = Math.max(target, posted);
+  const base =
+    "relative flex h-7 w-7 items-center justify-center rounded-full border-2 text-sm font-black transition-colors";
+  const filledCls = "border-brand bg-brand text-brand-foreground";
   return (
-    <div
-      className="flex items-center gap-2"
-      role="img"
-      aria-label={`${posted} of ${target} posts this week`}
-    >
+    <div className="flex items-center gap-2">
+      <span className="sr-only">
+        {posted} of {target} posts this week
+        {verified.length > 0 ? `, ${verified.length} spotted on Instagram` : ""}
+      </span>
       {Array.from({ length: total }, (_, i) => {
+        if (i < verified.length) {
+          const link = verified[i].permalink;
+          const inner = (
+            <>
+              <span aria-hidden="true">✓</span>
+              <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-card text-brand ring-1 ring-brand">
+                <InstagramMark />
+              </span>
+            </>
+          );
+          return link ? (
+            <a
+              key={i}
+              href={link}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Spotted on Instagram. Tap to see the post."
+              aria-label="Spotted on Instagram, open post"
+              className={`${base} ${filledCls} hover:brightness-110`}
+            >
+              {inner}
+            </a>
+          ) : (
+            <span key={i} title="Spotted on Instagram" className={`${base} ${filledCls}`}>
+              {inner}
+            </span>
+          );
+        }
         const filled = i < posted;
         return (
           <span
             key={i}
-            className={[
-              "flex h-7 w-7 items-center justify-center rounded-full border-2 text-sm font-black transition-colors",
-              filled
-                ? "border-brand bg-brand text-brand-foreground"
-                : "border-card-border bg-transparent text-transparent",
-            ].join(" ")}
+            title={filled ? "You marked this as posted" : undefined}
+            className={`${base} ${
+              filled ? filledCls : "border-card-border bg-transparent text-transparent"
+            }`}
             aria-hidden="true"
           >
             {filled ? "✓" : ""}
@@ -293,7 +339,7 @@ export function ConceptBoard({
           <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-card-border pt-5">
             <WeekBubbles progress={progress} />
             {(() => {
-              const posted = Math.max(progress.marked, progress.synced);
+              const posted = postedCount(progress);
               if (posted >= Math.max(1, progress.target)) {
                 return (
                   <p className="text-sm font-semibold text-brand">

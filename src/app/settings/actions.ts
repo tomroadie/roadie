@@ -291,7 +291,7 @@ export async function addArtist(
     httpOnly: false,
   });
 
-  redirect("/onboarding");
+  redirect(`/onboarding?artist=${encodeURIComponent(id)}`);
 }
 
 /**

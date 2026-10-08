@@ -4,7 +4,11 @@ import { Suspense } from "react";
 import { OnboardingForm } from "./onboarding-form";
 import { OnboardingConversionTracking } from "./onboarding-conversion-tracking";
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ artist?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -12,6 +16,26 @@ export default async function OnboardingPage() {
 
   if (!user) {
     redirect("/login");
+  }
+
+  // Set when "Add artist" sends someone here to finish a new artist. RLS
+  // means we only get a row back for an artist they can see.
+  const { artist: artistParam } = await searchParams;
+  let target: { id: string; artistName: string; genre: string; instagramHandle: string } | null = null;
+  if (artistParam) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, artist_name, genre, instagram_handle")
+      .eq("id", artistParam)
+      .maybeSingle();
+    if (data) {
+      target = {
+        id: String(data.id),
+        artistName: data.artist_name ?? "",
+        genre: data.genre ?? "",
+        instagramHandle: data.instagram_handle ?? "",
+      };
+    }
   }
 
   return (
@@ -34,7 +58,7 @@ export default async function OnboardingPage() {
           </p>
         </div>
 
-        <OnboardingForm />
+        <OnboardingForm target={target} />
       </div>
     </div>
     </>

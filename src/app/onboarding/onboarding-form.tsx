@@ -101,13 +101,20 @@ function Choice<T extends string>({
   );
 }
 
-export function OnboardingForm() {
+export type OnboardingTarget = {
+  id: string;
+  artistName: string;
+  genre: string;
+  instagramHandle: string;
+};
+
+export function OnboardingForm({ target }: { target?: OnboardingTarget | null }) {
   const [state, formAction] = useActionState(completeOnboarding, null);
   const [step, setStep] = useState<Step>(1);
 
-  const [artistName, setArtistName] = useState("");
-  const [genre, setGenre] = useState("");
-  const [instagramHandle, setInstagramHandle] = useState("");
+  const [artistName, setArtistName] = useState(target?.artistName ?? "");
+  const [genre, setGenre] = useState(target?.genre ?? "");
+  const [instagramHandle, setInstagramHandle] = useState(target?.instagramHandle ?? "");
 
   const [confidence, setConfidence] = useState<Confidence | null>(null);
   const [currentPosting, setCurrentPosting] = useState<CurrentPosting | null>(null);
@@ -132,6 +139,7 @@ export function OnboardingForm() {
       </div>
 
       {/* Every answer travels as a hidden field, whichever step is showing. */}
+      {target ? <input type="hidden" name="target_artist_id" value={target.id} /> : null}
       <input type="hidden" name="artist_name" value={artistName} />
       <input type="hidden" name="genre" value={genre} />
       <input type="hidden" name="instagram_handle" value={instagramHandle} />

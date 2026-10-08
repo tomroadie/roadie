@@ -146,7 +146,7 @@ export async function GET(request: Request) {
   // Enrich with insights. Each call is best-effort: a metric Meta won't
   // return for a given post or account just shows as "—" in the panel.
   const items = ((media as { data?: Array<Record<string, unknown>> }).data ?? []);
-  const [mediaInsights, accountInsights, followers] = await Promise.all([
+  const [mediaInsights, accountInsights, account] = await Promise.all([
     Promise.all(
       items.map((item) =>
         typeof item.id === "string"
@@ -155,7 +155,7 @@ export async function GET(request: Request) {
       )
     ),
     fetchAccountInsights(instagramUserId, accessToken),
-    fetchFollowers(instagramUserId, accessToken),
+    fetchAccount(instagramUserId, accessToken),
   ]);
   items.forEach((item, i) => {
     item.insights = { data: mediaInsights[i] };
@@ -164,7 +164,11 @@ export async function GET(request: Request) {
   return NextResponse.json({
     media,
     insights: accountInsights.length ? { data: accountInsights } : null,
-    followers,
+    followers: account.followers,
+    account: {
+      username: account.username,
+      profile_picture_url: account.profilePictureUrl,
+    },
   });
 }
 
@@ -237,15 +241,25 @@ async function fetchAccountInsights(igUserId: string, accessToken: string) {
   return results.flat();
 }
 
-async function fetchFollowers(igUserId: string, accessToken: string) {
+/** The connected account's profile: who they are and how many follow them. */
+async function fetchAccount(igUserId: string, accessToken: string) {
+  const empty = { username: null as string | null, profilePictureUrl: null as string | null, followers: null as number | null };
   try {
     const url = new URL(`${IG_GRAPH_BASE}/${igUserId}`);
-    url.searchParams.set("fields", "followers_count");
+    url.searchParams.set("fields", "username,profile_picture_url,followers_count");
     url.searchParams.set("access_token", accessToken);
     const res = await fetch(url.toString());
-    const json = (await res.json()) as { followers_count?: number };
-    return typeof json.followers_count === "number" ? json.followers_count : null;
+    const json = (await res.json()) as {
+      username?: string;
+      profile_picture_url?: string;
+      followers_count?: number;
+    };
+    return {
+      username: typeof json.username === "string" ? json.username : null,
+      profilePictureUrl: typeof json.profile_picture_url === "string" ? json.profile_picture_url : null,
+      followers: typeof json.followers_count === "number" ? json.followers_count : null,
+    };
   } catch {
-    return null;
+    return empty;
   }
 }

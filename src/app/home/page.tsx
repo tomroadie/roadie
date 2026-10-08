@@ -11,6 +11,7 @@ import { AuditCTASection } from "@/app/insights/audit-cta-section";
 import { RecentPostsCards } from "@/app/insights/recent-posts-cards";
 import {
   LiveStatsSection,
+  type InstagramLiveAccount,
   type InstagramLiveInsightRow,
   type InstagramLiveMediaRow,
 } from "@/app/insights/live-stats-section";
@@ -152,10 +153,12 @@ function normalizeInstagramLivePayload(payload: {
   media?: unknown;
   insights?: unknown | null;
   followers?: unknown;
+  account?: unknown;
 }): {
   insights: InstagramLiveInsightRow[];
   media: InstagramLiveMediaRow[];
   followers: number | null;
+  account: InstagramLiveAccount | null;
 } {
   const insightsPayload = payload.insights;
 
@@ -234,7 +237,17 @@ function normalizeInstagramLivePayload(payload: {
   const followers =
     typeof payload.followers === "number" ? payload.followers : null;
 
-  return { insights, media, followers };
+  const acc = (payload.account ?? null) as Record<string, unknown> | null;
+  const account: InstagramLiveAccount | null =
+    acc && typeof acc.username === "string"
+      ? {
+          username: acc.username,
+          profilePictureUrl:
+            typeof acc.profile_picture_url === "string" ? acc.profile_picture_url : null,
+        }
+      : null;
+
+  return { insights, media, followers, account };
 }
 
 export default async function HomePage({
@@ -512,6 +525,7 @@ export default async function HomePage({
     insights: InstagramLiveInsightRow[];
     media: InstagramLiveMediaRow[];
     followers: number | null;
+    account: InstagramLiveAccount | null;
   } | null = null;
 
   const instagramUserId = profile?.instagram_user_id?.trim();
@@ -543,7 +557,7 @@ export default async function HomePage({
       (statsJson as { error?: string }).error !== "not_connected"
     ) {
       liveSocialStats = normalizeInstagramLivePayload(
-        statsJson as { media?: unknown; insights?: unknown; followers?: unknown }
+        statsJson as { media?: unknown; insights?: unknown; followers?: unknown; account?: unknown }
       );
     }
   }
@@ -669,6 +683,7 @@ export default async function HomePage({
             insights={liveSocialStats.insights}
             media={liveSocialStats.media}
             followers={liveSocialStats.followers ?? audit?.followers ?? 0}
+            account={liveSocialStats.account}
             timestamps={liveSocialStats.media.map((m) => m.timestamp)}
           />
         </div>

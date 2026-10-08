@@ -177,7 +177,60 @@ function ShelfItem({
   );
 }
 
-export function ConceptBoard({ initialBoard }: { initialBoard: BoardState }) {
+export type WeekProgress = {
+  target: number;
+  /** Ideas they marked "I posted this" since their week started. */
+  marked: number;
+  /** Posts Instagram sync has seen since their week started. */
+  synced: number;
+};
+
+/**
+ * One bubble per post in this week's target; each fills with a tick as they
+ * post. Posting past the target adds filled bubbles. No numbers, no "missed".
+ */
+function WeekBubbles({ progress }: { progress: WeekProgress }) {
+  const target = Math.max(1, progress.target);
+  // Whichever source saw more, so one post isn't counted twice.
+  const posted = Math.max(progress.marked, progress.synced);
+  const total = Math.max(target, posted);
+  return (
+    <div
+      className="flex items-center gap-2"
+      role="img"
+      aria-label={`${posted} of ${target} posts this week`}
+    >
+      {Array.from({ length: total }, (_, i) => {
+        const filled = i < posted;
+        return (
+          <span
+            key={i}
+            className={[
+              "flex h-7 w-7 items-center justify-center rounded-full border-2 text-sm font-black transition-colors",
+              filled
+                ? "border-brand bg-brand text-brand-foreground"
+                : "border-card-border bg-transparent text-transparent",
+            ].join(" ")}
+            aria-hidden="true"
+          >
+            {filled ? "✓" : ""}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+export function ConceptBoard({
+  initialBoard,
+  initialProgress,
+  weekLabel,
+}: {
+  initialBoard: BoardState;
+  initialProgress?: WeekProgress;
+  weekLabel?: string;
+}) {
+  const [progress, setProgress] = useState<WeekProgress | null>(initialProgress ?? null);
   const [board, setBoard] = useState(initialBoard);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -196,7 +249,10 @@ export function ConceptBoard({ initialBoard }: { initialBoard: BoardState }) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Something went wrong");
       setBoard(json.board as BoardState);
-      if (action === "posted") setNote("Nice one. That counts towards this week.");
+      if (action === "posted") {
+        setNote("Nice one. That counts towards this week.");
+        setProgress((p) => (p ? { ...p, marked: p.marked + 1 } : p));
+      }
       if (action === "pin") setNote("Pinned. It's on your shelf below whenever you want it.");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -232,9 +288,18 @@ export function ConceptBoard({ initialBoard }: { initialBoard: BoardState }) {
         <p className="mt-3 text-2xl font-black leading-snug text-foreground">
           {board.focus}
         </p>
-        <p className="mt-2 text-sm text-muted">
-          Pick whichever idea fits your week. One post is a good week.
-        </p>
+        {progress ? (
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-card-border pt-5">
+            <WeekBubbles progress={progress} />
+            <p className="text-sm text-muted">
+              {weekLabel ? `Your week · ${weekLabel}` : "This week"}
+            </p>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-muted">
+            Pick whichever idea fits your week. One post is a good week.
+          </p>
+        )}
       </div>
 
       {(note || error) && (

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { WeeklyPlanSection } from "@/app/dashboard/weekly-plan-section";
-import { ConceptBoard } from "./concept-board";
+import { ConceptBoard, type WeekProgress } from "./concept-board";
 import { loadBoard } from "@/lib/concepts/store";
 import { AuditCTASection } from "@/app/insights/audit-cta-section";
 import { RecentPostsCards } from "@/app/insights/recent-posts-cards";
@@ -26,6 +26,7 @@ import { cleanInstagramHandle } from "@/lib/new-lead-pipeline";
 import { canDo, getPlanForGating } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 import type { EventRow } from "@/types/event";
+import { boardWeek } from "@/lib/board-week";
 
 type ContentReviewRow = {
   idea_hook: string;
@@ -282,7 +283,7 @@ export default async function HomePage({
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, genre, instagram_handle, plan, plan_override, voice_description, posting_frequency, is_managed, instagram_user_id, instagram_access_token, trial_started_at, board_enabled"
+      "artist_name, genre, instagram_handle, plan, plan_override, voice_description, posting_frequency, is_managed, instagram_user_id, instagram_access_token, trial_started_at, board_enabled, week_start_day, weekly_target"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -571,8 +572,51 @@ export default async function HomePage({
     ? await loadBoard(supabase, activeArtistId)
     : null;
 
+  // Board artists: their own week, progress so far, and the next 4 weeks of dates.
+  const week = board ? boardWeek(profile?.week_start_day) : null;
+  let weekProgress: WeekProgress | undefined;
+  let comingUp: EventRow[] = [];
+  if (board && week) {
+    const fourWeeksOut = new Date(`${week.start}T12:00:00Z`);
+    fourWeeksOut.setUTCDate(fourWeeksOut.getUTCDate() + 28);
+    const [markedRes, syncedRes, eventsRes] = await Promise.all([
+      supabase
+        .from("concepts")
+        .select("id", { count: "exact", head: true })
+        .eq("artist_id", activeArtistId)
+        .eq("status", "posted")
+        .gte("posted_at", week.startsAt),
+      supabase
+        .from("post_performance")
+        .select("id", { count: "exact", head: true })
+        .eq("artist_id", activeArtistId)
+        .gte("post_date", week.startsAt),
+      supabase
+        .from("events")
+        .select("id, title, event_date, event_type, notes")
+        .eq("artist_id", activeArtistId)
+        .gte("event_date", new Date().toISOString().slice(0, 10))
+        .lte("event_date", fourWeeksOut.toISOString().slice(0, 10))
+        .order("event_date", { ascending: true }),
+    ]);
+    weekProgress = {
+      target:
+        typeof profile?.weekly_target === "number" && profile.weekly_target > 0
+          ? profile.weekly_target
+          : 1,
+      marked: markedRes.count ?? 0,
+      synced: syncedRes.count ?? 0,
+    };
+    comingUp = (eventsRes.data ?? []) as EventRow[];
+  }
+
   const weeklyPlanSection = board ? (
-    <ConceptBoard key={activeArtistId} initialBoard={board} />
+    <ConceptBoard
+      key={activeArtistId}
+      initialBoard={board}
+      initialProgress={weekProgress}
+      weekLabel={week?.label}
+    />
   ) : (
     <WeeklyPlanSection
       initialIdeas={initialIdeas}
@@ -940,6 +984,93 @@ export default async function HomePage({
       </div>
     </section>
   ) : null;
+
+  // Board artists get one focused page: the week, the ideas, dates, then
+  // their Instagram. The old plan-era sections stay for everyone else.
+  if (board && week) {
+    const comingUpSection = (
+      <section className="mt-10 rounded-xl border border-card-border bg-card p-6">
+        <p className="text-xs font-bold uppercase tracking-widest text-brand">
+          Coming up
+        </p>
+        {comingUp.length > 0 ? (
+          <ul className="mt-3 space-y-2">
+            {comingUp.map((ev) => (
+              <li key={ev.id} className="flex gap-3 text-sm">
+                <span className="w-24 shrink-0 text-muted">
+                  {new Date(ev.event_date + "T12:00:00").toLocaleDateString("en-GB", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </span>
+                <span className="font-semibold text-foreground">{ev.title}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-muted">Nothing in the next four weeks.</p>
+        )}
+        <p className="mt-4 text-sm">
+          <Link href="/events" className="font-semibold text-brand hover:underline">
+            Add a date →
+          </Link>
+        </p>
+      </section>
+    );
+
+    return (
+      <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">
+              Your week · {week.label}
+            </p>
+            <h1 className="text-5xl font-black uppercase tracking-tight text-foreground sm:text-6xl">
+              {artistName}
+            </h1>
+          </div>
+          <LogoutButton />
+        </div>
+
+        <div className="mt-6 h-px w-full bg-[#1a1a1a]" />
+
+        <AppNavWrapper />
+
+        {!hasAudit ? (
+          <AuditCTASection
+            artistId={activeArtistId}
+            instagramHandle={profile?.instagram_handle ?? null}
+            initialHasPending={auditPending}
+            initialTriggeredAt={pendingAuditTriggeredAt}
+          />
+        ) : null}
+
+        {weeklyPlanSection}
+        {comingUpSection}
+        {instagramSection}
+
+        {audit ? (
+          <details className="group mt-10 rounded-xl border border-card-border bg-card p-6">
+            <summary className="cursor-pointer list-none text-sm font-bold uppercase tracking-tight text-muted-strong hover:text-foreground">
+              Your audit <span className="text-xs font-normal normal-case text-muted">· {formatRelativeDate(audit.created_at)}</span>
+            </summary>
+            <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-muted-strong">
+              {audit.ai_pattern_analysis}
+            </p>
+            <div className="mt-6">
+              <FullAnalysisCollapsible
+                sections={fullAnalysisSections}
+                artistId={activeArtistId}
+                updatedAt={audit.created_at}
+                forceOpen={auditReady}
+              />
+            </div>
+          </details>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">

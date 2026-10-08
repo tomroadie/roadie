@@ -17,14 +17,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Tempo",
-  description: "Couch to 5K for socials: Tempo helps music artists post more, without the dread.",
+  description: "Tempo helps music artists post more, without the dread: a training plan for your socials.",
   icons: {
     icon: "/favicon.png",
     apple: "/favicon.png",
   },
   openGraph: {
     title: "Tempo",
-    description: "Couch to 5K for socials: Tempo helps music artists post more, without the dread.",
+    description: "Tempo helps music artists post more, without the dread: a training plan for your socials.",
     url: "https://tempo.roadie.media",
     siteName: "Tempo",
   },

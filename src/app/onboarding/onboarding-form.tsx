@@ -199,7 +199,7 @@ export function OnboardingForm({ target }: { target?: OnboardingTarget | null })
               placeholder="e.g. @dyeband"
             />
             <p className="mt-2 text-xs leading-relaxed text-muted">
-              We&apos;ll run a free audit of your posts in the background, so your ideas come from what already works for you.
+              Next you&apos;ll connect Instagram, and we&apos;ll build your free audit and first ideas from your own posts.
             </p>
           </div>
 

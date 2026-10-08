@@ -301,7 +301,9 @@ export default async function HomePage({
 
   const plan = getPlanForGating(profile ?? {});
   const canReview = canDo(plan, "canReview", isAdmin);
-  const canViewLiveSocialData = canDo(plan, "canViewLiveSocialData", isAdmin);
+  // Board (beta) artists can always connect Instagram: the board is built on it.
+  const canViewLiveSocialData =
+    canDo(plan, "canViewLiveSocialData", isAdmin) || profile?.board_enabled === true;
   const canViewEngagementTrends = canDo(
     plan,
     "canViewEngagementTrends",
@@ -464,7 +466,7 @@ export default async function HomePage({
   const canGeneratePlan = canDo(plan, "canGeneratePlan", isAdmin);
   const showAuditFirst = hasAudit && !canGeneratePlan && !hasPlanIdeas;
   const canMarkAsPosted =
-    canDo(plan, "canViewLiveSocialData", isAdmin) &&
+    canViewLiveSocialData &&
     !!profile?.instagram_user_id?.trim();
 
   const { data: recentPostsData } = await supabase

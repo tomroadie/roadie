@@ -191,7 +191,7 @@ export async function GET(request: Request) {
       });
     }
 
-    return go("/insights?connected=true");
+    return go("/home?connected=true");
   } catch (e) {
     return fail(`unexpected error: ${e instanceof Error ? e.message : String(e)}`);
   }

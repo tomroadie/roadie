@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { ACTIVE_ARTIST_COOKIE } from "@/lib/active-artist";
 import { cleanInstagramHandle } from "@/lib/new-lead-pipeline";
+import { escapeHtml, notifyAdminEmail } from "@/lib/admin-notify";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { GENRES } from "./genres";
@@ -148,6 +149,9 @@ export async function completeOnboarding(
       coming_up_note: comingUp || null,
       weekly_target: startingTargetFromAnswers({ confidence, currentPosting }),
       week_start_day: weekStartFromDays(contentDays),
+      // Everyone new starts on the board; the first ideas are drafted for
+      // review once they connect Instagram.
+      board_enabled: true,
     },
     { onConflict: "id" }
   );
@@ -178,6 +182,13 @@ export async function completeOnboarding(
   }
 
   // No audit here: it's built once they connect Instagram (no scraping).
+
+  await notifyAdminEmail(
+    `Tempo: ${artistName} finished onboarding`,
+    `<p><strong>${escapeHtml(artistName)}</strong> (${escapeHtml(genre)}) finished onboarding${
+      instagramHandle ? ` with @${escapeHtml(instagramHandle)}` : " without an Instagram handle"
+    }.</p><p>Their first ideas are drafted for your review once they connect Instagram. If they don't, you can generate starting-point ideas from admin.</p>`
+  );
 
   redirect("/home?registered=true");
 }

@@ -53,7 +53,7 @@ function PostRow({ post }: { post: PostResult }) {
         {post.caption ? (
           <p className="mt-0.5 truncate text-sm text-foreground">{post.caption}</p>
         ) : null}
-        <p className={`mt-1 text-sm font-semibold ${lineClass(post)}`}>
+        <p className={`mt-1 text-sm ${lineClass(post)}`}>
           {post.line ??
             (post.reach !== null ? `Reached ${fmt(post.reach)}.` : "Not enough earlier posts to compare yet.")}
         </p>

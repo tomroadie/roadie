@@ -78,37 +78,34 @@ export async function completeOnboarding(
     return { error: findProfileErr.message };
   }
 
-  let activeArtistId: string;
+  // Only fill in an existing artist when that's clearly what's happening:
+  // same name (re-running onboarding), the artist "Add artist" just created
+  // (passed explicitly), or a selected artist that has no name yet. Anything
+  // else is a new artist, so a selected artist is never renamed.
+  const targetArtistId = String(formData.get("target_artist_id") ?? "").trim() || null;
+  let activeArtistId: string | null = existingProfile?.id ?? null;
 
-  if (existingProfile?.id) {
-    activeArtistId = existingProfile.id;
-  } else if (cookieArtistId) {
-    const { data: cookieArtist, error: cookieArtistErr } = await supabase
-      .from("artists")
-      .select("id, owner_user_id")
-      .eq("id", cookieArtistId)
-      .maybeSingle();
-
-    if (cookieArtistErr) {
-      return { error: cookieArtistErr.message };
-    }
-
-    if (
-      cookieArtist &&
-      (isAdmin || cookieArtist.owner_user_id === user.id)
-    ) {
-      activeArtistId = cookieArtist.id;
-    } else {
-      activeArtistId = crypto.randomUUID();
-      const { error: createArtistErr } = await supabase.from("artists").insert({
-        id: activeArtistId,
-        owner_user_id: user.id,
-      });
-      if (createArtistErr) {
-        return { error: createArtistErr.message };
+  if (!activeArtistId) {
+    const candidateId = targetArtistId ?? cookieArtistId;
+    if (candidateId) {
+      const [{ data: candidate, error: candidateErr }, { data: candidateProfile }] =
+        await Promise.all([
+          supabase.from("artists").select("id, owner_user_id").eq("id", candidateId).maybeSingle(),
+          supabase.from("profiles").select("artist_name").eq("id", candidateId).maybeSingle(),
+        ]);
+      if (candidateErr) {
+        return { error: candidateErr.message };
+      }
+      const canEdit = Boolean(candidate && (isAdmin || candidate.owner_user_id === user.id));
+      const unnamed = !candidateProfile?.artist_name?.trim();
+      const explicitlyTargeted = targetArtistId !== null && targetArtistId === candidateId;
+      if (canEdit && (explicitlyTargeted || unnamed)) {
+        activeArtistId = candidateId;
       }
     }
-  } else {
+  }
+
+  if (!activeArtistId) {
     activeArtistId = crypto.randomUUID();
     const { error: createArtistErr } = await supabase.from("artists").insert({
       id: activeArtistId,

@@ -1,5 +1,6 @@
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { after } from "next/server";
+import { appBaseUrl } from "@/lib/email";
 import { runConnectedAudit, startAuditProgress } from "@/lib/audit/connected-audit";
 import { NextResponse } from "next/server";
 import { cleanInstagramHandle } from "@/lib/new-lead-pipeline";
@@ -37,7 +38,22 @@ type MeResponse = {
 };
 
 // Leaves room for the background audit after a first connection.
-export const maxDuration = 120;
+export const maxDuration = 180;
+
+/** Runs the post sync for one artist now (its own request and time limit). */
+async function syncArtistNow(artistId: string): Promise<void> {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return;
+  try {
+    const res = await fetch(
+      `${appBaseUrl()}/api/cron/sync-post-performance?artist_id=${encodeURIComponent(artistId)}`,
+      { headers: { authorization: `Bearer ${secret}` } }
+    );
+    if (!res.ok) console.error("instagram callback: sync returned", res.status);
+  } catch (e) {
+    console.error("instagram callback: sync failed", artistId, e);
+  }
+}
 
 export async function GET(request: Request) {
   // Until the state is verified, send people back to the main domain.
@@ -168,7 +184,9 @@ export async function GET(request: Request) {
       .gte("created_at", monthAgo)
       .limit(1)
       .maybeSingle();
-    if (!recentAudit) {
+    if (recentAudit) {
+      after(() => syncArtistNow(artistId));
+    } else {
       const { data: owner } = await supabase
         .from("profiles")
         .select("artist_name, instagram_handle, owner_user_id")
@@ -184,6 +202,9 @@ export async function GET(request: Request) {
       });
       after(async () => {
         try {
+          // Sync first so the audit, the first ideas and "How your posts did"
+          // all have their posts straight away, not after tomorrow's sync.
+          await syncArtistNow(artistId);
           await runConnectedAudit(supabase, artistId, { pendingLeadId: pendingLeadId ?? undefined });
         } catch (e) {
           console.error("instagram callback: connected audit failed", artistId, e);

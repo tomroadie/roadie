@@ -21,6 +21,7 @@ export type PendingDraft = {
   artistId: string;
   artistName: string;
   createdAt: string;
+  kind?: "weekly" | "first";
 };
 
 type PreviewResponse = GenerateResult & {
@@ -250,7 +251,8 @@ export function ConceptPreview({
       if (!res.ok) throw new Error(json.error ?? `Request failed (${res.status})`);
       const r = json as PreviewResponse;
       setResult(r);
-      setNotify(r.kind === "weekly");
+      // Weekly drafts and first ideas both tell the artist their board is ready.
+      setNotify(r.kind === "weekly" || r.kind === "first");
       setAuditStale(
         isAuditStale(r.context)
       );
@@ -274,7 +276,9 @@ export function ConceptPreview({
             {drafts.map((d) => (
               <li key={d.generationId} className="flex flex-wrap items-center gap-3 text-sm">
                 <span className="font-semibold text-foreground">{d.artistName}</span>
-                <span className="text-muted">weekly draft, {formatWhen(d.createdAt)}</span>
+                <span className="text-muted">
+                  {d.kind === "first" ? "first ideas" : "weekly draft"}, {formatWhen(d.createdAt)}
+                </span>
                 <button
                   type="button"
                   onClick={() => loadDraft(d)}
@@ -392,7 +396,7 @@ export function ConceptPreview({
                     Send &ldquo;Your week&rdquo; email
                   </label>
                   <span className="text-xs text-muted">
-                    {result.kind === "weekly" ? "Weekly draft" : "Saved as a draft"}. Publishing replaces the current board; pinned ideas stay.
+                    {result.kind === "weekly" ? "Weekly draft" : result.kind === "first" ? "First ideas" : "Saved as a draft"}. Publishing replaces the current board; pinned ideas stay.
                   </span>
                 </>
               )}

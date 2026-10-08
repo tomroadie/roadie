@@ -37,9 +37,10 @@ export default async function AdminConceptsPage() {
       .eq("status", "live"),
     admin
       .from("concept_generations")
-      .select("id, artist_id, created_at")
+      .select("id, artist_id, created_at, kind:context_summary->>kind")
       .eq("status", "draft")
-      .eq("context_summary->>kind", "weekly")
+      // Weekly drafts and a new artist's first ideas both wait for review.
+      .in("context_summary->>kind", ["weekly", "first"])
       .gte("created_at", tenDaysAgo)
       .order("created_at", { ascending: false }),
   ]);
@@ -61,7 +62,7 @@ export default async function AdminConceptsPage() {
     }))
     .sort((a, b) => Number(b.hasAudit) - Number(a.hasAudit));
 
-  // Newest weekly draft per artist that hasn't been published yet.
+  // Newest draft per artist that hasn't been published yet.
   const names = new Map(artists.map((a) => [a.id, a.name]));
   const seen = new Set<string>();
   const pendingDrafts: PendingDraft[] = [];
@@ -76,6 +77,7 @@ export default async function AdminConceptsPage() {
       artistId,
       artistName: names.get(artistId) ?? "Unknown artist",
       createdAt: String(d.created_at),
+      kind: d.kind === "first" ? "first" : "weekly",
     });
   }
 

@@ -275,11 +275,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: msg }, { status: 500 });
     }
 
-    const { data: profiles, error: profilesError } = await supabase
+    // ?artist_id=… syncs just that artist (used straight after they connect).
+    const onlyArtist = new URL(request.url).searchParams.get("artist_id")?.trim() || null;
+    let profilesQuery = supabase
       .from("profiles")
       .select("id, instagram_user_id, instagram_access_token")
       .not("instagram_access_token", "is", null)
       .not("instagram_user_id", "is", null);
+    if (onlyArtist) profilesQuery = profilesQuery.eq("id", onlyArtist);
+    const { data: profiles, error: profilesError } = await profilesQuery;
     // No is_private filter: syncing only reads an account its owner chose to
     // connect and sends nothing. Admin-created client artists are all
     // private, so filtering them out meant nothing ever synced.

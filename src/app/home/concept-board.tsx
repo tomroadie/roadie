@@ -177,6 +177,74 @@ function ShelfItem({
   );
 }
 
+/** A post Instagram spotted this week that isn't linked to an idea yet. */
+export type UnmatchedPost = {
+  id: string;
+  postDate: string | null;
+  thumbnailUrl: string | null;
+  caption: string;
+};
+
+function dayName(iso: string | null): string {
+  if (!iso) return "this week";
+  return `on ${new Date(iso).toLocaleDateString("en-GB", { weekday: "long", timeZone: "Europe/London" })}`;
+}
+
+/**
+ * "Was this one of your ideas?" for a post Instagram spotted. Choosing an
+ * idea links them (so results follow the idea); "Something else" stops
+ * the question for that post.
+ */
+function IdeaMatchPrompt({
+  post,
+  options,
+  busy,
+  onAnswer,
+}: {
+  post: UnmatchedPost;
+  options: { id: string; title: string }[];
+  busy: boolean;
+  onAnswer: (conceptId: string | null) => void;
+}) {
+  return (
+    <div className="mt-4 rounded-xl border border-card-border bg-card p-5">
+      <div className="flex gap-4">
+        {post.thumbnailUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={post.thumbnailUrl} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />
+        ) : null}
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-foreground">
+            Instagram spotted a post {dayName(post.postDate)}. Was it one of your ideas?
+          </p>
+          {post.caption ? <p className="mt-1 truncate text-sm text-muted">{post.caption}</p> : null}
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {options.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            disabled={busy}
+            onClick={() => onAnswer(o.id)}
+            className="rounded-full border border-card-border px-3 py-1.5 text-left text-xs font-semibold text-foreground hover:border-brand disabled:opacity-50"
+          >
+            {o.title}
+          </button>
+        ))}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onAnswer(null)}
+          className="rounded-full px-3 py-1.5 text-xs font-semibold text-muted hover:text-foreground disabled:opacity-50"
+        >
+          Something else
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export type WeekProgress = {
   target: number;
   /** Ideas they marked "I posted this" since their week started. */
@@ -272,9 +340,17 @@ export function ConceptBoard({
   initialBoard,
   initialProgress,
   nextIdeasDay,
+  artistId,
+  unmatchedPosts = [],
+  postedUnlinked = [],
 }: {
   initialBoard: BoardState;
   initialProgress?: WeekProgress;
+  artistId?: string;
+  /** Posts Instagram spotted this week with no idea linked yet. */
+  unmatchedPosts?: UnmatchedPost[];
+  /** Ideas marked "I posted this" this week that aren't linked to a post. */
+  postedUnlinked?: { id: string; title: string }[];
   /** Weekday their next ideas arrive, e.g. "Friday". */
   nextIdeasDay?: string;
 }) {
@@ -283,6 +359,37 @@ export function ConceptBoard({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [unmatched, setUnmatched] = useState(unmatchedPosts);
+  const [postedOpen, setPostedOpen] = useState(postedUnlinked);
+
+  async function answerMatch(postId: string, conceptId: string | null) {
+    if (!artistId) return;
+    setBusyId(postId);
+    setError(null);
+    setNote(null);
+    try {
+      const res = await fetch("/api/concepts/link-post", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ instagram_post_id: postId, concept_id: conceptId, artist_id: artistId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Something went wrong");
+      const wasOpen = conceptId ? postedOpen.some((p) => p.id === conceptId) : false;
+      setBoard(json.board as BoardState);
+      setUnmatched((u) => u.filter((p) => p.id !== postId));
+      if (conceptId) {
+        setPostedOpen((p) => p.filter((c) => c.id !== conceptId));
+        // An idea still on the board or shelf has just been marked posted.
+        if (!wasOpen) setProgress((p) => (p ? { ...p, marked: p.marked + 1 } : p));
+        setNote("Linked. You'll see how that idea did once the numbers settle.");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   async function act(conceptId: string, action: Action, reason?: string) {
     setBusyId(conceptId);
@@ -360,6 +467,19 @@ export function ConceptBoard({
           </p>
         )}
       </div>
+
+      {unmatched[0] ? (
+        <IdeaMatchPrompt
+          post={unmatched[0]}
+          busy={busyId === unmatched[0].id}
+          options={[
+            ...postedOpen,
+            ...board.cards.filter((c): c is BoardConcept => Boolean(c)).map((c) => ({ id: c.id, title: c.title })),
+            ...board.shelf.map((c) => ({ id: c.id, title: c.title })),
+          ].filter((o, i, all) => all.findIndex((x) => x.id === o.id) === i)}
+          onAnswer={(conceptId) => answerMatch(unmatched[0].id, conceptId)}
+        />
+      ) : null}
 
       {(note || error) && (
         <p

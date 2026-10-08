@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { WeeklyPlanSection } from "@/app/dashboard/weekly-plan-section";
-import { ConceptBoard, type WeekProgress } from "./concept-board";
+import { ConceptBoard, type UnmatchedPost, type WeekProgress } from "./concept-board";
 import { PostResultsSection } from "./post-results";
 import { loadPostResults, type PostResultsData } from "@/lib/post-results";
 import { loadBoard } from "@/lib/concepts/store";
@@ -579,6 +579,8 @@ export default async function HomePage({
   let weekProgress: WeekProgress | undefined;
   let comingUp: EventRow[] = [];
   let postResults: PostResultsData | null = null;
+  let unmatchedPosts: UnmatchedPost[] = [];
+  let postedUnlinked: { id: string; title: string }[] = [];
   if (board && week) {
     const fourWeeksOut = new Date(`${week.start}T12:00:00Z`);
     fourWeeksOut.setUTCDate(fourWeeksOut.getUTCDate() + 28);
@@ -591,7 +593,7 @@ export default async function HomePage({
         .gte("posted_at", week.startsAt),
       supabase
         .from("post_performance")
-        .select("instagram_post_id, permalink, post_date")
+        .select("instagram_post_id, permalink, post_date, thumbnail_url, caption, idea_prompt_dismissed")
         .eq("artist_id", activeArtistId)
         .gte("post_date", week.startsAt)
         .order("post_date", { ascending: true }),
@@ -618,6 +620,36 @@ export default async function HomePage({
       })),
     };
     comingUp = (eventsRes.data ?? []) as EventRow[];
+
+    // Posts Instagram spotted this week that aren't linked to an idea yet:
+    // the board asks "Was this one of your ideas?".
+    const weekPosts = syncedRes.data ?? [];
+    if (weekPosts.length > 0) {
+      const [{ data: linked }, { data: postedThisWeek }] = await Promise.all([
+        supabase
+          .from("concepts")
+          .select("instagram_post_id")
+          .eq("artist_id", activeArtistId)
+          .in("instagram_post_id", weekPosts.map((p) => String(p.instagram_post_id))),
+        supabase
+          .from("concepts")
+          .select("id, title")
+          .eq("artist_id", activeArtistId)
+          .eq("status", "posted")
+          .is("instagram_post_id", null)
+          .gte("posted_at", week.startsAt),
+      ]);
+      const linkedIds = new Set((linked ?? []).map((l) => String(l.instagram_post_id)));
+      unmatchedPosts = weekPosts
+        .filter((p) => !p.idea_prompt_dismissed && !linkedIds.has(String(p.instagram_post_id)))
+        .map((p) => ({
+          id: String(p.instagram_post_id),
+          postDate: p.post_date ? String(p.post_date) : null,
+          thumbnailUrl: p.thumbnail_url ?? null,
+          caption: (String(p.caption ?? "").split("\n").map((l) => l.trim()).find(Boolean) ?? "").slice(0, 80),
+        }));
+      postedUnlinked = (postedThisWeek ?? []).map((c) => ({ id: String(c.id), title: String(c.title) }));
+    }
   }
 
   const weeklyPlanSection = board ? (
@@ -625,6 +657,9 @@ export default async function HomePage({
       key={activeArtistId}
       initialBoard={board}
       initialProgress={weekProgress}
+      artistId={activeArtistId}
+      unmatchedPosts={unmatchedPosts}
+      postedUnlinked={postedUnlinked}
       nextIdeasDay={
         ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][
           typeof profile?.week_start_day === "number" ? profile.week_start_day : 1

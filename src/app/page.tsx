@@ -5,7 +5,7 @@ import { RequestAccessForm } from "./request-access-form";
 
 const SITE_URL = "https://tempo.roadie.media";
 const YEAR = new Date().getFullYear();
-const TITLE = "Tempo: couch to 5K for socials";
+const TITLE = "Tempo: post more, without the dread";
 const DESCRIPTION =
   "Tempo helps music artists post more without the dread: a few ideas each week built from your own posts, a target that starts where you are, and how each post did against your own usual. Closed beta from November.";
 
@@ -56,13 +56,13 @@ export default function HoldingPage() {
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">For music artists · Closed beta</p>
             <h1 className="mt-4 text-5xl font-black uppercase leading-[0.95] tracking-tight text-foreground sm:text-6xl">
-              Couch to 5K
+              Post more,
               <br />
-              for socials
+              without the dread
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-strong">
-              Tempo helps you post more, without the dread. A few ideas each week built from your own
-              posts, a target that starts where you are, and a quiet note on how each post did.
+              A training plan for your socials. A few ideas each week built from your own posts, a
+              target that starts where you are, and a quiet note on how each post did.
             </p>
             <ul className="mt-8 space-y-3">
               {PROMISES.map((p) => (
@@ -103,12 +103,12 @@ export default function HoldingPage() {
 
         <section className="border-t border-card-border py-16">
           <div className="max-w-2xl">
-            <h2 className="text-2xl font-black uppercase tracking-tight text-foreground">Why &ldquo;couch to 5K&rdquo;?</h2>
+            <h2 className="text-2xl font-black uppercase tracking-tight text-foreground">Why start small?</h2>
             <p className="mt-4 text-sm leading-relaxed text-muted-strong">
               Most artists don&rsquo;t need a content calendar with five posts a week. They need to post
               a bit more often than they do now, about things their audience already responds to, without
-              it taking over their week. Tempo starts small and builds up gently, the way a running plan
-              does. It&rsquo;s made in Bristol by Roadie Media, who work with independent artists every day.
+              it taking over their week. Tempo starts small and builds up gently, like any good training
+              plan. It&rsquo;s made in Bristol by Roadie Media, who work with independent artists every day.
             </p>
           </div>
         </section>

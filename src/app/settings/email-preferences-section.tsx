@@ -1,6 +1,51 @@
 "use client";
 
 import { useState } from "react";
+import { setEmailOptOut } from "./actions";
+
+const BOARD_EMAILS = [
+  {
+    type: "your_week",
+    label: "Your week",
+    description: "Once a week on your day: last week in a line, what's coming up and one easy idea",
+  },
+  {
+    type: "post_detected",
+    label: "You posted, here's how it did",
+    description: "Only when we spot a new post, with how it's doing",
+  },
+] as const;
+
+function Toggle({
+  on,
+  busy,
+  onLabel = "On",
+  offLabel = "Off",
+  onClick,
+  disabled,
+}: {
+  on: boolean;
+  busy: boolean;
+  onLabel?: string;
+  offLabel?: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      disabled={disabled}
+      onClick={onClick}
+      className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition disabled:cursor-not-allowed disabled:opacity-60 ${
+        on ? "bg-brand text-brand-foreground" : "bg-input text-muted"
+      }`}
+    >
+      {busy ? "…" : on ? onLabel : offLabel}
+    </button>
+  );
+}
 
 type PreferenceType = "marketing" | "all";
 
@@ -15,11 +60,28 @@ export function EmailPreferencesSection({
   artistId,
   initialMarketingUnsubscribed,
   initialAllEmailsPaused,
+  boardEnabled = false,
+  initialOptOuts = [],
 }: {
   artistId: string;
   initialMarketingUnsubscribed: boolean;
   initialAllEmailsPaused: boolean;
+  boardEnabled?: boolean;
+  initialOptOuts?: string[];
 }) {
+  const [optOuts, setOptOuts] = useState<string[]>(initialOptOuts);
+  const [typeBusy, setTypeBusy] = useState<string | null>(null);
+
+  async function toggleType(type: string) {
+    setError(null);
+    setTypeBusy(type);
+    const turningOff = !optOuts.includes(type);
+    const res = await setEmailOptOut(type, turningOff);
+    if (res.error) setError(res.error);
+    else if (res.optOuts) setOptOuts(res.optOuts);
+    setTypeBusy(null);
+  }
+
   const [marketingUnsubscribed, setMarketingUnsubscribed] = useState(
     initialMarketingUnsubscribed
   );
@@ -86,6 +148,26 @@ export function EmailPreferencesSection({
       </h2>
 
       <div className="mt-5 space-y-4">
+        {boardEnabled
+          ? BOARD_EMAILS.map((e) => (
+              <div
+                key={e.type}
+                className="flex items-center justify-between gap-4 rounded-xl border border-card-border bg-card p-5"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{e.label}</p>
+                  <p className="mt-0.5 text-xs text-muted">{e.description}</p>
+                </div>
+                <Toggle
+                  on={!optOuts.includes(e.type) && !allEmailsPaused}
+                  busy={typeBusy === e.type}
+                  disabled={typeBusy !== null || allEmailsPaused}
+                  onClick={() => void toggleType(e.type)}
+                />
+              </div>
+            ))
+          : null}
+
         <div className="flex items-center justify-between rounded-xl border border-card-border bg-card p-5">
           <div>
             <p className="text-sm font-semibold text-foreground">
@@ -117,7 +199,7 @@ export function EmailPreferencesSection({
           <div>
             <p className="text-sm font-semibold text-foreground">All emails</p>
             <p className="mt-0.5 text-xs text-muted">
-              Pause everything including your weekly plan and check-in emails
+              {boardEnabled ? "Master switch for every email from Tempo" : "Pause everything including your weekly plan and check-in emails"}
             </p>
           </div>
           <button
@@ -135,8 +217,9 @@ export function EmailPreferencesSection({
         </div>
 
         <p className="px-1 text-xs text-muted">
-          Note: pausing all emails will stop your weekly content plan and Friday
-          check-in emails. You can re-enable at any time.
+          {boardEnabled
+            ? "Pausing all emails stops everything above. Your board keeps working, and you can switch emails back on at any time."
+            : "Note: pausing all emails will stop your weekly content plan and Friday check-in emails. You can re-enable at any time."}
         </p>
 
         {error ? (

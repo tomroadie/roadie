@@ -122,28 +122,29 @@ export function auditReadyEmail(data: {
   patternAnalysis: string;
   appUrl: string;
 }): { subject: string; html: string } {
-  const subject = `${data.artistName} — your Tempo analysis is here`;
+  // The analysis is model output and the name is user input: escape both.
+  const name = esc(data.artistName);
+  const subject = `${data.artistName}, your Tempo analysis is here`;
   const content = `
-  <h1 style="${H1}">${data.artistName}, your analysis is here</h1>
+  <h1 style="${H1}">${name}, your analysis is here</h1>
 
-  <p style="${P}">We've analysed your Instagram and here's
-  what stands out:</p>
+  <p style="${P}">We've been through your Instagram. Here's what stands out:</p>
 
   ${statRow(data.followers, data.postCount)}
 
-  <p style="${P}"><span style="${HIGHLIGHT}">${data.patternAnalysis}</span></p>
-
-  <p style="${P}">Your full audit breaks this down further —
-  positioning, content patterns, engagement reality,
-  and exactly what to do next.</p>
+  <p style="${P}"><span style="${HIGHLIGHT}">${esc(data.patternAnalysis)}</span></p>
 
   <a href="${data.appUrl}/home?audit=ready" style="${CTA}">
     Read your full audit →
   </a>
 
-  <p style="${P}">Once you've read it, Tempo Pro turns this
-  diagnosis into a weekly plan — 5 specific ideas every
-  Monday shaped by what's working on your account.</p>
+  <p style="${P}">Knowing what works is the easy part. Posting it, week
+  after week, is the hard part. That's what Tempo is for.</p>
+
+  <p style="${P}">Each week you get a few ideas built from your own posts,
+  at a pace that suits you. Start with one post a week if that's where
+  you are; Tempo builds it up as you go. It never posts for you and never
+  nags. One email a week, on the day you choose.</p>
 
   <p style="${SIG}">
   — Tom at Tempo

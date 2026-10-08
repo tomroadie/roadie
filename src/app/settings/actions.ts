@@ -12,6 +12,7 @@ import { revalidatePath } from "next/cache";
 import { getPlanForGating, maxArtistsAllowed, type RoadiePlan } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 import { cleanInstagramHandle } from "@/lib/new-lead-pipeline";
+import { SWITCHABLE_EMAIL_TYPES } from "@/lib/email";
 
 export type AddArtistState =
   | { error?: string; upgrade?: { plan: RoadiePlan; maxArtists: number } }
@@ -291,4 +292,50 @@ export async function addArtist(
   });
 
   redirect("/onboarding");
+}
+
+/**
+ * Turns one email type on or off for the active artist. Returns the new
+ * opt-out list so the switch can show the saved state.
+ */
+export async function setEmailOptOut(
+  type: string,
+  off: boolean
+): Promise<{ error?: string; optOuts?: string[] }> {
+  if (!(SWITCHABLE_EMAIL_TYPES as readonly string[]).includes(type)) {
+    return { error: "Unknown email type." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const cookieStore = await cookies();
+  const artistId = await getActiveArtistIdForUser(supabase, user.id, cookieStore);
+  if (!artistId) return { error: "No active artist selected." };
+
+  const { data: row, error: readError } = await supabase
+    .from("profiles")
+    .select("email_opt_outs")
+    .eq("id", artistId)
+    .eq("owner_user_id", user.id)
+    .maybeSingle();
+  if (readError || !row) return { error: readError?.message ?? "Artist not found." };
+
+  const current = new Set<string>(Array.isArray(row.email_opt_outs) ? row.email_opt_outs : []);
+  if (off) current.add(type);
+  else current.delete(type);
+  const optOuts = [...current];
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ email_opt_outs: optOuts })
+    .eq("id", artistId)
+    .eq("owner_user_id", user.id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings");
+  return { optOuts };
 }

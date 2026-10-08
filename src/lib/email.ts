@@ -16,6 +16,7 @@ export type EmailType =
   | "trial_ending_inactive"
   | "weekly_plan_ready"
   | "your_week"
+  | "post_detected"
   | "checkin_friday"
   | "winback_day1"
   | "winback_day7"
@@ -38,6 +39,7 @@ const TRANSACTIONAL_TYPES: EmailType[] = [
   "trial_ending_inactive",
   "weekly_plan_ready",
   "your_week",
+  "post_detected",
   "checkin_friday",
   "first_plan_generated",
 ];
@@ -57,6 +59,27 @@ export function shouldSendEmail(
   }
 
   return true;
+}
+
+/**
+ * Email types an artist can switch off one by one in Settings. The master
+ * switch (all_emails_paused) and marketing switch cover everything else.
+ */
+export const SWITCHABLE_EMAIL_TYPES = ["your_week", "post_detected"] as const;
+export type SwitchableEmailType = (typeof SWITCHABLE_EMAIL_TYPES)[number];
+
+async function optedOutOf(artistId: string, type: EmailType): Promise<boolean> {
+  if (!(SWITCHABLE_EMAIL_TYPES as readonly string[]).includes(type)) return false;
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("email_opt_outs")
+    .eq("id", artistId)
+    .maybeSingle();
+  // If we can't check, don't send: a missed email beats an unwanted one.
+  if (error) return true;
+  const outs = Array.isArray(data?.email_opt_outs) ? data.email_opt_outs : [];
+  return outs.includes(type);
 }
 
 export async function alreadySentToday(
@@ -188,6 +211,10 @@ export async function sendEmail({
   metadata?: Record<string, unknown>;
 }): Promise<boolean> {
   if (!shouldSendEmail(recipient, type)) {
+    return false;
+  }
+
+  if (await optedOutOf(recipient.artistId, type)) {
     return false;
   }
 

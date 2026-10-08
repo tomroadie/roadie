@@ -100,16 +100,23 @@ function computeBestTimeLine(
   return `Your top posts tend to go up around ${formatHourPretty(topHour)}.`;
 }
 
+export type InstagramLiveAccount = {
+  username: string | null;
+  profilePictureUrl: string | null;
+};
+
 export function LiveStatsSection({
   insights,
   media,
   followers,
   timestamps,
+  account,
 }: {
   insights: InstagramLiveInsightRow[];
   media: InstagramLiveMediaRow[];
   followers: number;
   timestamps?: string[];
+  account?: InstagramLiveAccount | null;
 }) {
   const [sortBy, setSortBy] = useState<"recent" | "top">("recent");
 
@@ -136,6 +143,28 @@ export function LiveStatsSection({
 
   return (
     <div className="space-y-8">
+      {account?.username ? (
+        <div className="flex items-center gap-3">
+          {account.profilePictureUrl ? (
+            // Instagram CDN image; not worth routing through next/image.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={account.profilePictureUrl}
+              alt=""
+              width={44}
+              height={44}
+              className="h-11 w-11 rounded-full border border-card-border object-cover"
+            />
+          ) : null}
+          <div>
+            <p className="text-sm font-bold text-foreground">@{account.username}</p>
+            <p className="text-xs text-muted">
+              Connected · {followers.toLocaleString("en-GB")} followers
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       {showStatsCards ? (
         <div className="grid gap-3 sm:grid-cols-3">
           {insights.map((row) => (

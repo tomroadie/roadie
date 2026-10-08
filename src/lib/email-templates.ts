@@ -919,7 +919,7 @@ export function inviteEmail(d: { name: string | null; url: string }): { subject:
 <tr><td>
 <p style="font-size:12px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:#00FF87;margin:0 0 24px">Tempo</p>
 <h1 style="${H1_SOFT}">You're in${d.name ? `, ${esc(d.name)}` : ""}.</h1>
-<p style="${P}">Thanks for asking to try Tempo. Your place in the closed beta is ready.</p>
+<p style="${P}">Your place in the Tempo closed beta is ready.</p>
 <p style="${P}">It takes about two minutes to set up: tell us a little about your music and how posting feels, then connect Instagram. We'll read your recent posts, show you what's already working, and put together your first few ideas.</p>
 <a href="${esc(d.url)}" style="${CTA}">Set up your account →</a>
 <p style="${MUTED}">This link is just for you. You'll need an Instagram professional (creator or business) account. Tempo is free during the beta.</p>

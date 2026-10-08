@@ -4,6 +4,7 @@ import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { getMondayDateString } from "@/lib/week";
 import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 import { linkPostsToConcepts } from "@/lib/concepts/link-posts";
+import { sendPostResultEmail } from "@/lib/post-result-email";
 
 
 type ProfileRow = {
@@ -303,6 +304,7 @@ export async function GET(request: Request) {
 
     let synced = 0;
     let linked = 0;
+    let emailsSent = 0;
     const errors: string[] = [];
     const loggedMediaTypes = new Set<string>();
 
@@ -507,6 +509,14 @@ export async function GET(request: Request) {
         linked += conceptLink.linked;
         if (conceptLink.error) errors.push(`${artistId}: linking board ideas failed: ${conceptLink.error}`);
 
+        // "You posted, here's how it did" for the newest settled post, if due.
+        try {
+          const outcome = await sendPostResultEmail(supabase, artistId);
+          if (outcome.sent) emailsSent += 1;
+        } catch (e) {
+          errors.push(`${artistId}: post result email failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+        }
+
         try {
           const linkResult = await linkPostsToPlanIdeas(supabase, artistId);
           linked += linkResult.linked;
@@ -542,6 +552,7 @@ export async function GET(request: Request) {
         synced,
         artists: connectedProfiles.length,
         linked,
+        emails_sent: emailsSent,
         errors,
       },
       { status }

@@ -1,4 +1,5 @@
 import type { PostResult, PostResultsData } from "@/lib/post-results";
+import { UsualToggle } from "./usual-toggle";
 
 const TYPE_LABEL: Record<string, string> = {
   IMAGE: "Photo",
@@ -64,7 +65,7 @@ function PostRow({ post }: { post: PostResult }) {
     </>
   );
 
-  return post.permalink ? (
+  const row = post.permalink ? (
     <a
       href={post.permalink}
       target="_blank"
@@ -75,6 +76,13 @@ function PostRow({ post }: { post: PostResult }) {
     </a>
   ) : (
     <div className="flex gap-4 p-2 -mx-2">{body}</div>
+  );
+
+  return (
+    <div>
+      {row}
+      {post.unusual || post.excluded ? <UsualToggle postId={post.id} excluded={post.excluded} /> : null}
+    </div>
   );
 }
 

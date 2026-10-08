@@ -1,5 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { compareToUsual, describeComparison, type Comparison, type PerfPost } from "@/lib/performance";
+import {
+  compareToUsual,
+  describeComparison,
+  UNUSUAL_RATIO,
+  type Comparison,
+  type PerfPost,
+} from "@/lib/performance";
 
 const DAY_MS = 86400000;
 /** Posts loaded: enough for the list plus a usual for each of them. */
@@ -21,6 +27,10 @@ export type PostResult = {
   line: string | null;
   /** Board idea this post came from, if linked. */
   ideaTitle: string | null;
+  /** Marked as an ad or collab. */
+  excluded: boolean;
+  /** Far above the usual: worth asking whether it was an ad or collab. */
+  unusual: boolean;
 };
 
 export type WeekCount = { label: string; posts: number; current: boolean };
@@ -60,7 +70,9 @@ export async function loadPostResults(
   const [{ data: rows }, { data: ideas }, { data: snapshots }] = await Promise.all([
     supabase
       .from("post_performance")
-      .select("instagram_post_id, post_date, ig_media_type, caption, permalink, thumbnail_url, reach, likes, comments")
+      .select(
+        "instagram_post_id, post_date, ig_media_type, caption, permalink, thumbnail_url, reach, likes, comments, excluded_from_usual"
+      )
       .eq("artist_id", artistId)
       .not("post_date", "is", null)
       .order("post_date", { ascending: false })
@@ -87,17 +99,30 @@ export async function loadPostResults(
     reach: typeof r.reach === "number" ? r.reach : null,
     likes: typeof r.likes === "number" ? r.likes : null,
     comments: typeof r.comments === "number" ? r.comments : null,
+    excluded: r.excluded_from_usual === true,
   }));
 
   const posts: PostResult[] = rows.map((r, i) => {
+    const excluded = perf[i].excluded === true;
     const comparison = compareToUsual(perf[i], perf, now);
     return {
       ...perf[i],
+      excluded,
+      unusual:
+        !excluded &&
+        comparison !== null &&
+        comparison.settled &&
+        comparison.metric === "reach" &&
+        comparison.ratio >= UNUSUAL_RATIO,
       caption: firstLine(r.caption),
       permalink: r.permalink ?? null,
       thumbnailUrl: r.thumbnail_url ?? null,
       comparison,
-      line: comparison ? describeComparison(comparison) : null,
+      line: excluded
+        ? `${perf[i].reach !== null ? `Reached ${perf[i].reach.toLocaleString("en-GB")}. ` : ""}Marked as an ad or collab, so it's left out of your usual.`
+        : comparison
+          ? describeComparison(comparison)
+          : null,
       ideaTitle: ideaByPost.get(perf[i].id) ?? null,
     };
   });
@@ -129,7 +154,7 @@ export async function loadPostResults(
   }
 
   const typicalReach = median(
-    perf.map((p) => p.reach).filter((r): r is number => r !== null && r > 0).slice(0, 20)
+    perf.filter((p) => !p.excluded).map((p) => p.reach).filter((r): r is number => r !== null && r > 0).slice(0, 20)
   );
 
   const snaps = (snapshots ?? []).filter((s) => typeof s.followers_count === "number");

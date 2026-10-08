@@ -819,3 +819,91 @@ ${easyIdea}
 
   return { subject, html: baseTemplate(content, d.artistId) };
 }
+
+export type PostResultData = {
+  artistId: string;
+  artistName: string;
+  appUrl: string;
+  /** e.g. "Tuesday" */
+  postDay: string;
+  /** One plain line from describeComparison. */
+  line: string;
+  band: "well_above" | "above" | "usual" | "quieter";
+  metric: "reach" | "interactions";
+  value: number;
+  caption: string;
+  permalink: string | null;
+  thumbnailUrl: string | null;
+  /** Board idea the post came from, if linked. */
+  ideaTitle: string | null;
+  /** Posts so far this week and the target, when known. */
+  week: { posted: number; target: number } | null;
+  nextIdea: { title: string; idea: string } | null;
+};
+
+const BAND_NOTE: Record<PostResultData["band"], string> = {
+  well_above: "Whatever you did there, it's worth doing again.",
+  above: "That landed better than most of your posts.",
+  usual: "Steady. That's what a habit looks like.",
+  quieter: "One post doesn't make a pattern, and it still counts towards your week.",
+};
+
+/** "You posted, here's how it did": sent once a post's numbers have settled. */
+export function postResultEmail(d: PostResultData): { subject: string; html: string } {
+  const subject =
+    d.metric === "reach"
+      ? `Your ${d.postDay} post reached ${d.value.toLocaleString("en-GB")}`
+      : `How your ${d.postDay} post did`;
+
+  const thumb = d.thumbnailUrl
+    ? `<img src="${esc(d.thumbnailUrl)}" alt="" width="72" height="72" style="width:72px;height:72px;object-fit:cover;border-radius:8px;display:block" />`
+    : "";
+
+  const postCard = `<div style="background:#1A1A1A;border:1px solid #333333;border-radius:8px;padding:16px;margin:0 0 16px">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+    ${thumb ? `<td width="88" valign="top">${thumb}</td>` : ""}
+    <td valign="top">
+      ${d.caption ? `<p style="font-size:15px;color:#ffffff;line-height:1.5;margin:0 0 6px">${esc(d.caption)}</p>` : ""}
+      <p style="font-size:15px;color:${d.band === "well_above" || d.band === "above" ? "#00FF87" : "#aaaaaa"};line-height:1.5;margin:0">${esc(d.line)}</p>
+      ${d.ideaTitle ? `<p style="font-size:13px;color:#666666;margin:6px 0 0">From your board: ${esc(d.ideaTitle)}</p>` : ""}
+    </td>
+  </tr></table>
+</div>`;
+
+  const weekLine = d.week
+    ? d.week.posted >= d.week.target
+      ? ` That's your week done: ${plural(d.week.posted, "post")} against a target of ${d.week.target}.`
+      : ` That's ${d.week.posted} of ${d.week.target} this week.`
+    : "";
+
+  const nextIdea = d.nextIdea
+    ? `<p style="${P}">If you fancy another, here's an easy one from your board:</p>
+<div style="background:#1A1A1A;border:1px solid #333333;border-radius:8px;padding:16px;margin:0 0 16px">
+  <p style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#00FF87;margin:0 0 8px">${esc(d.nextIdea.title)}</p>
+  <p style="font-size:15px;color:#ffffff;line-height:1.5;margin:0">${esc(d.nextIdea.idea)}</p>
+</div>`
+    : "";
+
+  const content = `
+<h1 style="${H1_SOFT}">Here's how your ${esc(d.postDay)} post did</h1>
+
+<p style="${P}">Hi ${esc(d.artistName)},</p>
+
+${d.permalink ? `<a href="${esc(d.permalink)}" style="text-decoration:none">${postCard}</a>` : postCard}
+
+<p style="${P}">${esc(BAND_NOTE[d.band])}${esc(weekLine)}</p>
+
+${nextIdea}
+
+<a href="${d.appUrl}/home" style="${CTA}">
+  See how all your posts did →
+</a>
+
+<p style="${MUTED}">We compare each post with your own usual, never with other artists.</p>
+
+<p style="${SIG}">
+— Tom at Tempo
+</p>`;
+
+  return { subject, html: baseTemplate(content, d.artistId) };
+}

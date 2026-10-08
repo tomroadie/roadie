@@ -60,10 +60,10 @@ export default function DataDeletionPage() {
         <p className={pClass}>
           Email{" "}
           <a
-            href="mailto:tom@roadie.media?subject=Delete%20my%20Tempo%20data"
+            href="mailto:hello@roadie.media?subject=Delete%20my%20Tempo%20data"
             className={linkClass}
           >
-            tom@roadie.media
+            hello@roadie.media
           </a>{" "}
           with the subject line “Delete my Tempo data”. Include the email
           address you signed up with and your Instagram username, so we can
@@ -112,8 +112,8 @@ export default function DataDeletionPage() {
         <h2 className={h2Class}>Questions</h2>
         <p className={pClass}>
           For anything else about your data, contact{" "}
-          <a href="mailto:tom@roadie.media" className={linkClass}>
-            tom@roadie.media
+          <a href="mailto:hello@roadie.media" className={linkClass}>
+            hello@roadie.media
           </a>
           , or read our{" "}
           <Link href="/privacy" className={linkClass}>

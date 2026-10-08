@@ -1,3 +1,4 @@
+import { MAX_WEEKLY_TARGET } from "@/lib/starting-point";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   ConceptContext,
@@ -132,15 +133,10 @@ export function numberPosts(posts: RawPost[]): ContextPost[] {
  * Someone who hasn't posted in a month starts at 1; someone active starts
  * one above their recent rate, capped by what they said they want.
  */
-export function startingWeeklyTarget(
-  postsLast28Days: number,
-  postingFrequency: string | null | undefined
-): number {
-  const wanted =
-    postingFrequency === "weekly" ? 1 : postingFrequency === "active" ? 4 : 3;
+export function startingWeeklyTarget(postsLast28Days: number): number {
   if (postsLast28Days <= 0) return 1;
   const recentRate = Math.round(postsLast28Days / 4);
-  return Math.max(1, Math.min(wanted, recentRate + 1));
+  return Math.max(1, Math.min(MAX_WEEKLY_TARGET, recentRate + 1));
 }
 
 function addDaysISO(iso: string, days: number): string {
@@ -168,7 +164,7 @@ export async function loadConceptContext(
       supabase
         .from("profiles")
         .select(
-          "artist_name, genre, sound_description, voice_description, posting_frequency, weekly_target, posting_confidence, tone_tag, content_days, coming_up_note"
+          "artist_name, genre, sound_description, voice_description, weekly_target, posting_confidence, content_days, coming_up_note"
         )
         .eq("id", artistId)
         .maybeSingle(),
@@ -288,7 +284,6 @@ export async function loadConceptContext(
     sound: profile.sound_description?.trim() || null,
     voice: profile.voice_description?.trim() || null,
     confidence: profile.posting_confidence ?? null,
-    toneTag: profile.tone_tag ?? null,
     contentDays: Array.isArray(profile.content_days) ? profile.content_days.map(Number) : [],
     comingUpNote: profile.coming_up_note?.trim() || null,
     handle: audit?.instagram_handle
@@ -304,7 +299,7 @@ export async function loadConceptContext(
     weeklyTarget:
       typeof profile.weekly_target === "number" && profile.weekly_target > 0
         ? profile.weekly_target
-        : startingWeeklyTarget(postsLast28Days, profile.posting_frequency),
+        : startingWeeklyTarget(postsLast28Days),
     auditPattern: audit?.ai_pattern_analysis
       ? String(audit.ai_pattern_analysis).trim()
       : null,

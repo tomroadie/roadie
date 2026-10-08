@@ -17,12 +17,6 @@ export const CURRENT_POSTING_OPTIONS = [
   { value: "most_days", label: "Most days" },
 ] as const;
 
-export const WANTED_FREQUENCY_OPTIONS = [
-  { value: "weekly", label: "Once or twice a week" },
-  { value: "regular", label: "Three or four times a week" },
-  { value: "active", label: "Five or more" },
-] as const;
-
 /** Monday first, as people think about their week. Values match Date.getDay(). */
 export const WEEKDAYS = [
   { value: 1, short: "Mon" },
@@ -34,18 +28,8 @@ export const WEEKDAYS = [
   { value: 0, short: "Sun" },
 ] as const;
 
-export const TONE_TAGS = [
-  "Chatty",
-  "Low-key",
-  "Funny",
-  "Heartfelt",
-  "Arty",
-  "Loud and proud",
-] as const;
-
 export type Confidence = (typeof CONFIDENCE_OPTIONS)[number]["value"];
 export type CurrentPosting = (typeof CURRENT_POSTING_OPTIONS)[number]["value"];
-export type WantedFrequency = (typeof WANTED_FREQUENCY_OPTIONS)[number]["value"];
 
 const CURRENT_TO_TARGET: Record<CurrentPosting, number> = {
   rarely: 1,
@@ -54,25 +38,24 @@ const CURRENT_TO_TARGET: Record<CurrentPosting, number> = {
   most_days: 3,
 };
 
-const WANTED_CEILING: Record<WantedFrequency, number> = {
-  weekly: 2,
-  regular: 4,
-  active: 6,
-};
+/**
+ * The most Tempo will ever ask for in a week. The app decides how far an
+ * artist goes, not the artist: the target only climbs one step at a time,
+ * and only after a week where they hit it.
+ */
+export const MAX_WEEKLY_TARGET = 4;
 
 /**
- * Start where they are, not where they want to be: roughly what they do now,
- * never above what they asked for, and one a week for anyone who finds it
- * hard. The weekly job raises it as they hit it.
+ * Start where they are: roughly what they post now, and one a week for
+ * anyone who finds it hard, whatever they currently do.
  */
 export function startingTargetFromAnswers(a: {
   confidence: Confidence | null;
   currentPosting: CurrentPosting | null;
-  wanted: WantedFrequency;
 }): number {
   if (a.confidence === "hard") return 1;
   const now = a.currentPosting ? CURRENT_TO_TARGET[a.currentPosting] : 1;
-  return Math.max(1, Math.min(now, WANTED_CEILING[a.wanted]));
+  return Math.max(1, Math.min(now, MAX_WEEKLY_TARGET));
 }
 
 /**
@@ -91,7 +74,4 @@ export function isConfidence(v: string): v is Confidence {
 }
 export function isCurrentPosting(v: string): v is CurrentPosting {
   return CURRENT_POSTING_OPTIONS.some((o) => o.value === v);
-}
-export function isWantedFrequency(v: string): v is WantedFrequency {
-  return WANTED_FREQUENCY_OPTIONS.some((o) => o.value === v);
 }

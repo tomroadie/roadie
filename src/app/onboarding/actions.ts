@@ -11,9 +11,7 @@ import { parseKeyDates } from "@/lib/key-dates";
 import {
   isConfidence,
   isCurrentPosting,
-  isWantedFrequency,
   startingTargetFromAnswers,
-  TONE_TAGS,
   weekStartFromDays,
 } from "@/lib/starting-point";
 
@@ -41,13 +39,6 @@ export async function completeOnboarding(
   const voiceDescription = String(formData.get("voice_description") ?? "").trim();
   const instagramRaw = String(formData.get("instagram_handle") ?? "").trim();
   const instagramHandle = cleanInstagramHandle(instagramRaw);
-  const postingFrequencyRaw = String(
-    formData.get("posting_frequency") ?? ""
-  ).trim();
-  const postingFrequency = isWantedFrequency(postingFrequencyRaw)
-    ? postingFrequencyRaw
-    : "regular";
-
   // "Where are you starting?" answers.
   const confidenceRaw = String(formData.get("posting_confidence") ?? "").trim();
   const confidence = isConfidence(confidenceRaw) ? confidenceRaw : null;
@@ -61,8 +52,6 @@ export async function completeOnboarding(
         .filter((n) => Number.isInteger(n) && n >= 0 && n <= 6)
     ),
   ];
-  const toneRaw = String(formData.get("tone_tag") ?? "").trim();
-  const toneTag = (TONE_TAGS as readonly string[]).includes(toneRaw) ? toneRaw : null;
   const comingUp = String(formData.get("coming_up") ?? "").trim().slice(0, 1000);
 
   if (!artistName || !genre) {
@@ -156,17 +145,11 @@ export async function completeOnboarding(
       similar_artists: similarArtists || null,
       instagram_handle: instagramHandle,
       voice_description: voiceDescription || null,
-      posting_frequency: postingFrequency,
       posting_confidence: confidence,
       current_posting: currentPosting,
       content_days: contentDays,
-      tone_tag: toneTag,
       coming_up_note: comingUp || null,
-      weekly_target: startingTargetFromAnswers({
-        confidence,
-        currentPosting,
-        wanted: postingFrequency,
-      }),
+      weekly_target: startingTargetFromAnswers({ confidence, currentPosting }),
       week_start_day: weekStartFromDays(contentDays),
     },
     { onConflict: "id" }

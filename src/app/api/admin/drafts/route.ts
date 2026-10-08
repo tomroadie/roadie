@@ -58,7 +58,6 @@ export async function GET(request: Request) {
     sound: null,
     voice: null,
     confidence: null,
-    toneTag: null,
     contentDays: [],
     comingUpNote: null,
     handle: null,

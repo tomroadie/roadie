@@ -55,7 +55,6 @@ export function buildConceptPrompt(ctx: ConceptContext, today: string): string {
     `- Genre: ${ctx.genre ?? "not given"}`,
     ctx.sound ? `- How they describe their sound: ${ctx.sound}` : null,
     ctx.voice ? `- In their own words: ${ctx.voice}` : null,
-    ctx.toneTag ? `- How they describe their posting tone: ${ctx.toneTag}. Write the ideas so they'd sound like that.` : null,
     ctx.confidence === "hard"
       ? "- They find posting hard. Keep every idea gentle and low-exposure: no talking to camera required for the low-effort options."
       : ctx.confidence === "getting_there"

@@ -7,12 +7,9 @@ import { GENRES } from "./genres";
 import {
   CONFIDENCE_OPTIONS,
   CURRENT_POSTING_OPTIONS,
-  TONE_TAGS,
-  WANTED_FREQUENCY_OPTIONS,
   WEEKDAYS,
   type Confidence,
   type CurrentPosting,
-  type WantedFrequency,
 } from "@/lib/starting-point";
 
 type Step = 1 | 2 | 3;
@@ -114,10 +111,8 @@ export function OnboardingForm() {
 
   const [confidence, setConfidence] = useState<Confidence | null>(null);
   const [currentPosting, setCurrentPosting] = useState<CurrentPosting | null>(null);
-  const [wanted, setWanted] = useState<WantedFrequency>("regular");
 
   const [days, setDays] = useState<number[]>([]);
-  const [tone, setTone] = useState<string | null>(null);
   const [comingUp, setComingUp] = useState("");
 
   const step1Valid = Boolean(artistName.trim() && genre);
@@ -142,11 +137,9 @@ export function OnboardingForm() {
       <input type="hidden" name="instagram_handle" value={instagramHandle} />
       <input type="hidden" name="posting_confidence" value={confidence ?? ""} />
       <input type="hidden" name="current_posting" value={currentPosting ?? ""} />
-      <input type="hidden" name="posting_frequency" value={wanted} />
       {days.map((d) => (
         <input key={d} type="hidden" name="content_days" value={d} />
       ))}
-      <input type="hidden" name="tone_tag" value={tone ?? ""} />
       <input type="hidden" name="coming_up" value={comingUp} />
 
       {step === 1 ? (
@@ -213,7 +206,7 @@ export function OnboardingForm() {
           <div>
             <h2 className="text-base font-semibold text-foreground">Where are you starting?</h2>
             <p className="mt-1 text-sm text-muted">
-              No wrong answers. We start you where you are and build up from there.
+              No wrong answers. We start you where you are and build up gently from there.
             </p>
           </div>
 
@@ -228,12 +221,6 @@ export function OnboardingForm() {
             options={CURRENT_POSTING_OPTIONS}
             value={currentPosting}
             onChange={setCurrentPosting}
-          />
-          <Choice
-            legend="Where would you like to get to?"
-            options={WANTED_FREQUENCY_OPTIONS}
-            value={wanted}
-            onChange={setWanted}
           />
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
@@ -285,30 +272,6 @@ export function OnboardingForm() {
             <p className="mt-2 text-xs text-muted">Your weekly ideas arrive on the first of these.</p>
           </fieldset>
 
-          <fieldset>
-            <legend className={LABEL}>How would you describe how you post?</legend>
-            <div className="flex flex-wrap gap-2">
-              {TONE_TAGS.map((t) => {
-                const on = tone === t;
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => setTone(on ? null : t)}
-                    className={[
-                      "rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors",
-                      on
-                        ? "border-brand bg-brand/15 text-brand"
-                        : "border-card-border bg-input text-foreground hover:border-brand",
-                    ].join(" ")}
-                  >
-                    {t}
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
 
           <div>
             <label htmlFor="coming_up" className={LABEL}>

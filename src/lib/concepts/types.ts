@@ -74,7 +74,6 @@ export type ConceptContext = {
   voice: string | null;
   /** Onboarding answers. */
   confidence: string | null;
-  toneTag: string | null;
   contentDays: number[];
   comingUpNote: string | null;
   handle: string | null;

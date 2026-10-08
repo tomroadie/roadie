@@ -588,9 +588,10 @@ export default async function HomePage({
         .gte("posted_at", week.startsAt),
       supabase
         .from("post_performance")
-        .select("id", { count: "exact", head: true })
+        .select("permalink, post_date")
         .eq("artist_id", activeArtistId)
-        .gte("post_date", week.startsAt),
+        .gte("post_date", week.startsAt)
+        .order("post_date", { ascending: true }),
       supabase
         .from("events")
         .select("id, title, event_date, event_type, notes")
@@ -605,7 +606,9 @@ export default async function HomePage({
           ? profile.weekly_target
           : 1,
       marked: markedRes.count ?? 0,
-      synced: syncedRes.count ?? 0,
+      verified: (syncedRes.data ?? []).map((p) => ({
+        permalink: typeof p.permalink === "string" ? p.permalink : null,
+      })),
     };
     comingUp = (eventsRes.data ?? []) as EventRow[];
   }

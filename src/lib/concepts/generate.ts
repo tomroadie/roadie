@@ -111,6 +111,16 @@ export function validatePool(
       warnings.push(msg);
     }
 
+    // NEWS and STANDOUT are our labels, not the artist's.
+    if (/\b(STANDOUT|NEWS)\b/.test(why) || /\bmarked (as )?(standout|news)\b/i.test(why)) {
+      const msg = `${label} ("${title}"): why uses an internal label (NEWS/STANDOUT)`;
+      if (opts.strict) {
+        errors.push(msg);
+        return;
+      }
+      warnings.push(msg);
+    }
+
     const evidenceRaw = Array.isArray(c.evidence_posts) ? c.evidence_posts : [];
     let evidence = evidenceRaw.map(Number).filter(Number.isInteger);
     const bogus = evidence.filter((n) => !validPostNumbers.has(n));

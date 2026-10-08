@@ -124,7 +124,7 @@ export function auditReadyEmail(data: {
 }): { subject: string; html: string } {
   // The analysis is model output and the name is user input: escape both.
   const name = esc(data.artistName);
-  const subject = `${data.artistName}, your Tempo analysis is here`;
+  const subject = `${data.artistName}, here's what's working on your Instagram`;
   const content = `
   <h1 style="${H1}">${name}, your analysis is here</h1>
 
@@ -144,7 +144,8 @@ export function auditReadyEmail(data: {
   <p style="${P}">Each week you get a few ideas built from your own posts,
   at a pace that suits you. Start with one post a week if that's where
   you are; Tempo builds it up as you go. It never posts for you and never
-  nags. One email a week, on the day you choose.</p>
+  nags. One planning email a week, on the day you choose, plus a short note
+  on how each post did.</p>
 
   <p style="${SIG}">
   — Tom at Tempo

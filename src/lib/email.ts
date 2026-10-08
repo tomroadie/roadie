@@ -1,3 +1,4 @@
+import { createEmailToken } from "@/lib/email-token";
 import { Resend } from "resend";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 
@@ -141,9 +142,7 @@ export function unsubscribeUrl(
   const base =
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
     "https://tempo.roadie.media";
-  const token = Buffer.from(
-    JSON.stringify({ artistId, type, ts: Date.now() })
-  ).toString("base64url");
+  const token = createEmailToken({ artistId, type, ts: Date.now() });
   return `${base}/api/email/unsubscribe?token=${token}`;
 }
 
@@ -223,12 +222,20 @@ export async function sendEmail({
   }
 
   try {
-    await resend.emails.send({
+    // One-click unsubscribe headers (Gmail and Yahoo expect these).
+    const oneClick = unsubscribeUrl(recipient.artistId, "marketing");
+    const { error: sendError } = await resend.emails.send({
       from: "Tom at Tempo <hello@roadie.media>",
       to,
       subject,
       html,
+      headers: {
+        "List-Unsubscribe": `<${oneClick}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
     });
+    // Resend reports failures in the result rather than throwing.
+    if (sendError) throw new Error(sendError.message);
 
     await logEmail(recipient.userId, recipient.artistId, type, metadata);
 

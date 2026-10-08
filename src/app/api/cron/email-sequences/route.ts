@@ -29,6 +29,15 @@ import {
   winbackDay7Email,
 } from "@/lib/email-templates";
 
+/**
+ * The day 3/7/14, trial and win-back emails sell the old weekly plan
+ * ("5 ideas every Monday"). They're off unless LEGACY_EMAIL_SEQUENCES=on,
+ * and artists on the board never get them. The audit-ready email still sends.
+ */
+function legacySequencesOn(): boolean {
+  return process.env.LEGACY_EMAIL_SEQUENCES?.trim().toLowerCase() === "on";
+}
+
 type SendStats = { sent: number; skipped: number; failed: number };
 
 function emptyStats(): SendStats {
@@ -75,7 +84,7 @@ async function runFreeToPaidSequence(
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select(
-      "id, artist_name, owner_user_id, plan, genre, marketing_unsubscribed, all_emails_paused, cron_active, audit_completed_at"
+      "id, artist_name, owner_user_id, plan, genre, marketing_unsubscribed, all_emails_paused, cron_active, audit_completed_at, board_enabled"
     )
     .eq("plan", "free")
     .not("audit_completed_at", "is", null)
@@ -145,7 +154,9 @@ async function runFreeToPaidSequence(
       );
     }
 
-    if (daysSinceAudit >= 3) {
+    const legacyNudges = legacySequencesOn() && profile.board_enabled !== true;
+
+    if (legacyNudges && daysSinceAudit >= 3) {
       const email = freeDay3Email({
         artistId,
         artistName: recipient.artistName,
@@ -163,7 +174,7 @@ async function runFreeToPaidSequence(
       );
     }
 
-    if (daysSinceAudit >= 7) {
+    if (legacyNudges && daysSinceAudit >= 7) {
       const email = freeDay7Email({
         artistId,
         artistName: recipient.artistName,
@@ -180,7 +191,7 @@ async function runFreeToPaidSequence(
       );
     }
 
-    if (daysSinceAudit >= 14) {
+    if (legacyNudges && daysSinceAudit >= 14) {
       const email = freeDay14Email({
         artistId,
         artistName: recipient.artistName,
@@ -543,9 +554,13 @@ export async function GET(request: Request) {
     const totals = emptyStats();
     const results = await Promise.allSettled([
       runFreeToPaidSequence(supabase, appUrl),
-      runTrialOnboardingSequence(supabase, appUrl),
-      runTrialEndingSequence(supabase, appUrl),
-      runWinbackSequence(supabase, appUrl),
+      ...(legacySequencesOn()
+        ? [
+            runTrialOnboardingSequence(supabase, appUrl),
+            runTrialEndingSequence(supabase, appUrl),
+            runWinbackSequence(supabase, appUrl),
+          ]
+        : []),
     ]);
 
     for (const result of results) {

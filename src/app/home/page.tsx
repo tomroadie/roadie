@@ -615,7 +615,11 @@ export default async function HomePage({
       key={activeArtistId}
       initialBoard={board}
       initialProgress={weekProgress}
-      weekLabel={week?.label}
+      nextIdeasDay={
+        ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][
+          typeof profile?.week_start_day === "number" ? profile.week_start_day : 1
+        ]
+      }
     />
   ) : (
     <WeeklyPlanSection
@@ -1019,6 +1023,43 @@ export default async function HomePage({
       </section>
     );
 
+    // A compact Instagram box: live account once connected, otherwise a
+    // connect prompt first and only a few audit posts underneath.
+    const boardInstagramSection =
+      canViewLiveSocialData && liveSocialStats ? (
+        instagramSection
+      ) : (
+        <section className="mt-10 rounded-xl border border-card-border bg-card p-7">
+          <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
+            Your Instagram
+          </h2>
+          {canViewLiveSocialData ? (
+            <div className="mt-4 flex flex-col gap-3 rounded-lg border border-card-border bg-input p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-strong">
+                Connect Instagram so Tempo can see what you post and how it does.
+              </p>
+              <Link
+                href="/api/auth/instagram"
+                className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground hover:brightness-95"
+              >
+                Connect Instagram
+              </Link>
+            </div>
+          ) : null}
+          {hasAudit && audit?.recent_posts_raw?.trim() ? (
+            <div className="mt-5">
+              <p className="mb-3 text-xs text-muted">
+                Recent posts from your audit ({formatRelativeDate(audit.created_at)})
+              </p>
+              <RecentPostsCards
+                raw={sortRecentPostsRawByDateDesc(audit.recent_posts_raw)}
+                previewCount={3}
+              />
+            </div>
+          ) : null}
+        </section>
+      );
+
     return (
       <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1048,7 +1089,7 @@ export default async function HomePage({
 
         {weeklyPlanSection}
         {comingUpSection}
-        {instagramSection}
+        {boardInstagramSection}
 
         {audit ? (
           <details className="group mt-10 rounded-xl border border-card-border bg-card p-6">

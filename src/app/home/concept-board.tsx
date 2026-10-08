@@ -224,11 +224,12 @@ function WeekBubbles({ progress }: { progress: WeekProgress }) {
 export function ConceptBoard({
   initialBoard,
   initialProgress,
-  weekLabel,
+  nextIdeasDay,
 }: {
   initialBoard: BoardState;
   initialProgress?: WeekProgress;
-  weekLabel?: string;
+  /** Weekday their next ideas arrive, e.g. "Friday". */
+  nextIdeasDay?: string;
 }) {
   const [progress, setProgress] = useState<WeekProgress | null>(initialProgress ?? null);
   const [board, setBoard] = useState(initialBoard);
@@ -291,9 +292,20 @@ export function ConceptBoard({
         {progress ? (
           <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-card-border pt-5">
             <WeekBubbles progress={progress} />
-            <p className="text-sm text-muted">
-              {weekLabel ? `Your week · ${weekLabel}` : "This week"}
-            </p>
+            {(() => {
+              const posted = Math.max(progress.marked, progress.synced);
+              if (posted >= Math.max(1, progress.target)) {
+                return (
+                  <p className="text-sm font-semibold text-brand">
+                    That&rsquo;s your week done. Anything else is a bonus.
+                  </p>
+                );
+              }
+              if (posted === 0) {
+                return <p className="text-sm text-muted">Your week&rsquo;s just started.</p>;
+              }
+              return null;
+            })()}
           </div>
         ) : (
           <p className="mt-2 text-sm text-muted">
@@ -329,11 +341,17 @@ export function ConceptBoard({
               key={`empty-${i}`}
               className="rounded-xl border border-dashed border-card-border p-6 text-sm text-muted"
             >
-              You&rsquo;ve worked through this week&rsquo;s ideas. Fresh ones arrive with your next weekly update
+              You&rsquo;ve worked through this week&rsquo;s ideas.{" "}
+              {nextIdeasDay ? `Fresh ones arrive ${nextIdeasDay}` : "Fresh ones arrive with your next weekly update"}
               {board.shelf.length > 0 ? ", and your pinned ideas are below" : ""}.
             </div>
           ) : null
         )}
+        {hasCards && board.cards.some((c) => !c) ? (
+          <p className="px-1 text-sm text-muted">
+            {nextIdeasDay ? `More ideas arrive ${nextIdeasDay}.` : "More ideas arrive with your next weekly update."}
+          </p>
+        ) : null}
       </div>
 
       {board.shelf.length > 0 && (

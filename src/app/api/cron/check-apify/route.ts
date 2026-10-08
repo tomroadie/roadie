@@ -81,6 +81,8 @@ export async function GET(request: Request) {
       .from("pending_leads")
       .select("id, apify_posts_run_id, apify_profile_run_id")
       .eq("status", "processing")
+      // Connected-account audits use pending_leads for progress but have no Apify runs.
+      .not("apify_posts_run_id", "is", null)
       .gte("created_at", cutoff);
 
     if (queryError) {

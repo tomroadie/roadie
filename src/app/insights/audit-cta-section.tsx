@@ -10,14 +10,21 @@ export function AuditCTASection({
   instagramHandle,
   initialHasPending,
   initialTriggeredAt,
+  connected = false,
+  isAdmin = false,
 }: {
   artistId: string;
   instagramHandle: string | null;
   initialHasPending: boolean;
   initialTriggeredAt: string | null;
+  /** Instagram connected: the audit reads their own account. */
+  connected?: boolean;
+  /** Admins can still audit a handle without connecting (Roadie use only). */
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const hasHandle = Boolean(instagramHandle?.trim());
+  const canRun = connected || (isAdmin && hasHandle);
 
   const [isPending, setIsPending] = useState(initialHasPending);
   const [triggeredAt, setTriggeredAt] = useState<string | null>(
@@ -82,29 +89,29 @@ export function AuditCTASection({
         Next step
       </p>
       <h2 className="mt-3 text-2xl font-black uppercase tracking-tight text-foreground">
-        Run your free Instagram audit
+        {connected ? "Get your free audit" : "Connect Instagram for your free audit"}
       </h2>
       <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-strong">
-        We&apos;ll analyse your last 10 posts, follower patterns, and content
-        style — takes about 3 minutes. Your content plan will be shaped by what we
-        find.
+        {connected
+          ? "We'll read your recent posts and show you what's already working, plus one easy first step. Takes a minute or two."
+          : "We read your posts through Instagram's official connection, never by scraping, and show you what's already working. Your weekly ideas are built from it too."}
       </p>
       <div className="mt-6">
-        {hasHandle ? (
+        {canRun ? (
           <button
             type="button"
             onClick={() => void handleRunAudit()}
             disabled={loading}
             className="inline-flex h-11 items-center justify-center rounded-lg bg-brand px-6 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "Starting…" : "Run my Instagram audit"}
+            {loading ? "Starting…" : connected ? "Run my audit" : "Run audit from handle (admin)"}
           </button>
         ) : (
           <Link
-            href="/settings"
+            href="/api/auth/instagram"
             className="inline-flex h-11 items-center justify-center rounded-lg bg-brand px-6 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
           >
-            Go to settings →
+            Connect Instagram →
           </Link>
         )}
       </div>

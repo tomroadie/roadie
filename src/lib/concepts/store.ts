@@ -86,7 +86,7 @@ export async function publishGeneration(
 ): Promise<{ artistId: string }> {
   const { data: gen, error } = await admin
     .from("concept_generations")
-    .select("artist_id, status")
+    .select("artist_id, status, context_summary")
     .eq("id", generationId)
     .maybeSingle();
   if (error || !gen) throw new Error("Generation not found");
@@ -104,6 +104,19 @@ export async function publishGeneration(
     .update({ board_enabled: true })
     .eq("id", gen.artist_id);
   if (flagError) throw new Error(`enable board: ${flagError.message}`);
+
+  // First board: keep the starting target the generator worked out, so Home
+  // and the weekly job agree. An existing target is left alone.
+  const summary = (gen.context_summary ?? {}) as Record<string, unknown>;
+  const startTarget = Number(summary.weekly_target);
+  if (Number.isInteger(startTarget) && startTarget > 0) {
+    const { error: tErr } = await admin
+      .from("profiles")
+      .update({ weekly_target: startTarget })
+      .eq("id", gen.artist_id)
+      .is("weekly_target", null);
+    if (tErr) throw new Error(`target: ${tErr.message}`);
+  }
 
   return { artistId: gen.artist_id as string };
 }

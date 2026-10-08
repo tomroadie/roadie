@@ -8,6 +8,7 @@ const KNOWN_SECTIONS = [
   "What Happens If Nothing Changes",
   "WHAT HAPPENS IF NOTHING CHANGES",
   "Your Next Move",
+  "Your First Week",
   "Core Problem",
   "Core Opportunity",
   "Opportunity",

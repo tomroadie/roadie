@@ -2,7 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { ACTIVE_ARTIST_COOKIE } from "@/lib/active-artist";
-import { enqueueNewLead, cleanInstagramHandle } from "@/lib/new-lead-pipeline";
+import { cleanInstagramHandle } from "@/lib/new-lead-pipeline";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { GENRES } from "./genres";
@@ -177,17 +177,7 @@ export async function completeOnboarding(
     }
   }
 
-  if (instagramHandle && artistName && user.email) {
-    try {
-      await enqueueNewLead({
-        email: user.email,
-        artist_name: artistName,
-        instagram_input: instagramHandle,
-      });
-    } catch {
-      // Don't block onboarding if audit fails to start
-    }
-  }
+  // No audit here: it's built once they connect Instagram (no scraping).
 
   redirect("/home?registered=true");
 }

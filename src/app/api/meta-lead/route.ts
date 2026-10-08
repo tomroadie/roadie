@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { publicScrapeAuditsOn } from "@/lib/public-scrape";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 
 type MetaLeadFieldDataItem = {
@@ -167,6 +168,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!publicScrapeAuditsOn()) {
+    return NextResponse.json(
+      { error: "Audits from a typed-in handle are switched off. Sign up and connect Instagram instead." },
+      { status: 410 }
+    );
+  }
   const metaToken = process.env.META_PAGE_ACCESS_TOKEN;
   const apifyToken = process.env.APIFY_API_TOKEN;
   if (!metaToken || !apifyToken) {

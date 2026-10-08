@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { publicScrapeAuditsOn } from "@/lib/public-scrape";
 import { timingSafeEqual } from "crypto";
 import { enqueueNewLead } from "@/lib/new-lead-pipeline";
 
@@ -11,6 +12,12 @@ function verifyWebhookSecret(headerValue: string | null, secret: string): boolea
 }
 
 export async function POST(request: Request) {
+  if (!publicScrapeAuditsOn()) {
+    return NextResponse.json(
+      { error: "Audits from a typed-in handle are switched off. Sign up and connect Instagram instead." },
+      { status: 410 }
+    );
+  }
   const webhookSecret = process.env.WEBHOOK_SECRET;
   if (!webhookSecret) {
     return NextResponse.json(

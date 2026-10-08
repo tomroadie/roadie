@@ -1,4 +1,6 @@
 import { createServiceRoleClient } from "@/utils/supabase/admin";
+import { after } from "next/server";
+import { runConnectedAudit, startAuditProgress } from "@/lib/audit/connected-audit";
 import { NextResponse } from "next/server";
 import { cleanInstagramHandle } from "@/lib/new-lead-pipeline";
 import {
@@ -33,6 +35,9 @@ type MeResponse = {
   account_type?: string;
   error?: IgGraphError;
 };
+
+// Leaves room for the background audit after a first connection.
+export const maxDuration = 120;
 
 export async function GET(request: Request) {
   // Until the state is verified, send people back to the main domain.
@@ -143,12 +148,47 @@ export async function GET(request: Request) {
         instagram_access_token: longJson.access_token,
         instagram_user_id: igUserId,
         instagram_token_expires_at: expiresAtFromSeconds(longJson.expires_in),
+        // Fill in the handle from the account they actually connected.
+        ...(!expectedHandle && connectedHandle ? { instagram_handle: connectedHandle } : {}),
       })
       .eq("id", artistId)
       .select("id");
 
     if (dbError || !updated?.length) {
       return fail(`saving connection failed: ${dbError?.message ?? "no matching artist profile"}`);
+    }
+
+    // First connection (or an audit over a month old): build the free audit
+    // from the connected account in the background.
+    const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+    const { data: recentAudit } = await supabase
+      .from("audits")
+      .select("id")
+      .eq("artist_id", artistId)
+      .gte("created_at", monthAgo)
+      .limit(1)
+      .maybeSingle();
+    if (!recentAudit) {
+      const { data: owner } = await supabase
+        .from("profiles")
+        .select("artist_name, instagram_handle, owner_user_id")
+        .eq("id", artistId)
+        .maybeSingle();
+      const { data: ownerUser } = owner?.owner_user_id
+        ? await supabase.auth.admin.getUserById(String(owner.owner_user_id))
+        : { data: null };
+      const pendingLeadId = await startAuditProgress(supabase, {
+        email: ownerUser?.user?.email ?? "",
+        handle: cleanInstagramHandle(String(owner?.instagram_handle ?? connectedHandle ?? "")) ?? "",
+        artistName: String(owner?.artist_name ?? ""),
+      });
+      after(async () => {
+        try {
+          await runConnectedAudit(supabase, artistId, { pendingLeadId: pendingLeadId ?? undefined });
+        } catch (e) {
+          console.error("instagram callback: connected audit failed", artistId, e);
+        }
+      });
     }
 
     return go("/insights?connected=true");

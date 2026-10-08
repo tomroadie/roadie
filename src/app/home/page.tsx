@@ -1099,6 +1099,8 @@ export default async function HomePage({
             instagramHandle={profile?.instagram_handle ?? null}
             initialHasPending={auditPending}
             initialTriggeredAt={pendingAuditTriggeredAt}
+            connected={Boolean(profile?.instagram_user_id?.trim())}
+            isAdmin={isAdmin}
           />
         ) : null}
 
@@ -1183,6 +1185,8 @@ export default async function HomePage({
           instagramHandle={profile?.instagram_handle ?? null}
           initialHasPending={auditPending}
           initialTriggeredAt={pendingAuditTriggeredAt}
+          connected={Boolean(profile?.instagram_user_id?.trim())}
+          isAdmin={isAdmin}
         />
       ) : null}
 

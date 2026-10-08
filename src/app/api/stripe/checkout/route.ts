@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { CONSENT_COOKIE, parseConsent } from "@/lib/consent";
 import { createClient } from "@/utils/supabase/server";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import {
@@ -108,6 +109,8 @@ export async function POST(request: Request) {
       userId: user.id,
       plan,
       artistId: activeArtistId,
+      // The webhook only tells Meta about the purchase if they accepted cookies.
+      marketing_consent: parseConsent((await cookies()).get(CONSENT_COOKIE)?.value) ?? "none",
     },
   });
 

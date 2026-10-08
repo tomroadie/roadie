@@ -318,13 +318,16 @@ export default function LoginClient() {
               Back to home
             </Link>
           </p>
-          <p className="text-center">
-            <Link
-              href="/terms"
-              className="text-sm text-muted underline-offset-4 hover:text-brand hover:underline"
-            >
-              Terms of Service
+          <p className="text-center text-xs leading-relaxed text-muted">
+            By creating an account you agree to our{" "}
+            <Link href="/terms" className="underline underline-offset-4 hover:text-brand">
+              terms
+            </Link>{" "}
+            and confirm you&apos;ve read our{" "}
+            <Link href="/privacy" className="underline underline-offset-4 hover:text-brand">
+              privacy policy
             </Link>
+            .
           </p>
         </footer>
       </div>

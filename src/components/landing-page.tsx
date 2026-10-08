@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
-import { MetaPixelScript } from "@/components/meta-pixel-script";
 import { trackMeta } from "@/lib/meta-pixel";
 
 const BRAND_GREEN = "#00FF87";
@@ -320,7 +319,6 @@ export function LandingPage() {
       className="min-h-screen font-sans text-white"
       style={{ backgroundColor: BRAND_DARK }}
     >
-      <MetaPixelScript />
       <style jsx global>{`
         html {
           scroll-behavior: smooth;

@@ -2,166 +2,181 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Tempo",
-  description:
-    "Terms of Service for Tempo, the content planning tool for music artists operated by Roadie Media.",
+  title: "Terms — Tempo",
+  description: "The terms for using Tempo, run by Roadie Media Ltd.",
 };
+
+const UPDATED = "8 October 2026";
+
+const h2Class = "text-base font-black uppercase tracking-tight text-foreground";
+const linkClass =
+  "font-semibold text-foreground underline underline-offset-4 hover:text-brand hover:no-underline";
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <h2 className={h2Class}>{title}</h2>
+      {children}
+    </section>
+  );
+}
 
 export default function TermsPage() {
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">
-        Legal
-      </p>
-      <h1 className="mt-2 text-4xl font-black uppercase tracking-tight text-foreground sm:text-5xl">
-        Terms of Service
-      </h1>
-      <p className="mt-3 text-sm text-muted">
-        Last updated: 5 May 2026. By using Tempo you agree to these terms.
-      </p>
+      <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">Legal</p>
+      <h1 className="mt-2 text-4xl font-black uppercase tracking-tight text-foreground sm:text-5xl">Terms</h1>
+      <p className="mt-3 text-sm text-muted">Last updated {UPDATED}. By using Tempo you agree to these terms.</p>
 
-      <div className="mt-10 space-y-10 text-sm leading-relaxed text-muted">
-        <section className="space-y-3">
-          <h2 className="text-base font-black uppercase tracking-tight text-foreground">
-            Introduction
-          </h2>
+      <div className="mt-10 space-y-10 text-sm leading-relaxed text-muted-strong">
+        <Section title="Who we are">
           <p>
-            Tempo is a software-as-a-service content planning tool designed for music artists and
-            their teams. The service is operated by Roadie Media (“Tempo”, “we”, “us”). These Terms
-            of Service (“Terms”) govern your access to and use of our websites, applications, and
-            related services (collectively, the “Service”). If you do not agree, do not use the
-            Service.
-          </p>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-base font-black uppercase tracking-tight text-foreground">
-            Eligibility
-          </h2>
-          <p>
-            You must be at least 18 years old and have full legal capacity to enter into a binding
-            agreement in your jurisdiction. You represent that you own or have all rights,
-            permissions, and authority necessary to connect any Instagram account or other third-party
-            account you link to the Service, including where you act on behalf of an artist or
-            organisation.
-          </p>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-base font-black uppercase tracking-tight text-foreground">
-            Subscription and billing
-          </h2>
-          <p>
-            Paid plans are billed in advance on a monthly recurring basis unless otherwise stated at
-            checkout. New subscribers receive a 14-day free trial as described on our pricing page;
-            payment details may be required before or after the trial depending on the flow presented
-            to you.
-          </p>
-          <p>
-            You may cancel your subscription at any time through the billing controls we provide or,
-            where applicable, via your payment provider. Cancellation stops future renewals; access
-            typically continues until the end of the current paid period. Fees are non-refundable
-            except where required by law. We do not provide refunds or credits for partial months or
-            unused time.
-          </p>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-base font-black uppercase tracking-tight text-foreground">
-            Acceptable use
-          </h2>
-          <p>You agree not to:</p>
-          <ul className="list-disc space-y-2 pl-5">
-            <li>
-              Use the Service to scrape, harvest, automate access to, or systematically extract data
-              from Instagram, Tempo, or third parties in breach of their terms or applicable law.
-            </li>
-            <li>
-              Resell, sublicense, or commercially redistribute access to the Service without our
-              written consent.
-            </li>
-            <li>
-              Share login credentials or maintain more than one personal account where prohibited by
-              us; team or roster features must be used as intended under your plan.
-            </li>
-            <li>
-              Interfere with or disrupt the Service, attempt unauthorised access, or misuse support
-              channels.
-            </li>
-          </ul>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-base font-black uppercase tracking-tight text-foreground">
-            Instagram data
-          </h2>
-          <p>
-            Where you connect Instagram through Meta’s APIs or OAuth, we retrieve and analyse data
-            you authorise (such as public profile and media insights) to generate suggestions and
-            reports inside Tempo. We do not ask for or store your Instagram password. Unless you
-            explicitly use features that send content on your behalf (if we offer them), we do not
-            post to Instagram or change your account settings for you. Your use of Instagram remains
-            subject to Meta’s terms and policies.
-          </p>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-base font-black uppercase tracking-tight text-foreground">
-            Intellectual property
-          </h2>
-          <p>
-            Tempo and its branding, software, and documentation are protected by intellectual
-            property laws. Subject to these Terms, outputs such as content ideas, captions, or plans
-            generated for you are yours to use for your creative and commercial purposes; we do not
-            claim ownership of those outputs. You grant us a limited licence to host and process your
-            content and inputs solely to operate and improve the Service.
-          </p>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-base font-black uppercase tracking-tight text-foreground">
-            Disclaimers
-          </h2>
-          <p>
-            The Service is provided “as is” and “as available”. To the fullest extent permitted by
-            law, we disclaim warranties of merchantability, fitness for a particular purpose, and
-            non-infringement. Tempo provides planning assistance and analytics-style insights only.
-            We do not guarantee any particular level of follower growth, engagement, revenue, or
-            other business outcome. You are responsible for your posts, releases, and compliance with
-            platform rules and applicable law.
-          </p>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-base font-black uppercase tracking-tight text-foreground">
-            Termination
-          </h2>
-          <p>
-            You may stop using the Service at any time. We may suspend or terminate accounts or
-            access if you violate these Terms, misuse the Service, create risk or legal exposure for
-            us, or where we are required to do so by law or by a platform partner.
-          </p>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-base font-black uppercase tracking-tight text-foreground">Contact</h2>
-          <p>
-            Questions about these Terms:{" "}
-            <a
-              href="mailto:hello@roadie.media"
-              className="font-semibold text-foreground underline underline-offset-4 hover:text-brand hover:no-underline"
-            >
+            Tempo is run by Roadie Media Ltd (&ldquo;we&rdquo;, &ldquo;us&rdquo;), a company registered
+            in England and Wales, company number 14753427, registered office 128 City Road, London,
+            EC1V 2NX. Contact us at{" "}
+            <a href="mailto:hello@roadie.media" className={linkClass}>
               hello@roadie.media
             </a>
+            .
           </p>
-        </section>
+          <p>
+            Tempo helps music artists post more consistently: weekly ideas drawn from your own posts, a
+            weekly target that starts where you are, and a view of how your posts did against your own
+            usual.
+          </p>
+        </Section>
+
+        <Section title="Who can use Tempo">
+          <p>
+            You must be 18 or over. If you connect an Instagram account or add an artist, you must own
+            it or have permission to manage it.
+          </p>
+        </Section>
+
+        <Section title="The beta">
+          <p>
+            Tempo is in a closed beta. Features will change, some things won&apos;t work perfectly, and we
+            may pause or end the beta. During the closed beta Tempo is free. We&apos;ll tell you before
+            anything you use starts costing money, and nothing will be charged without you choosing a
+            paid plan.
+          </p>
+        </Section>
+
+        <Section title="Your account">
+          <p>
+            Keep your login details to yourself and tell us if you think someone else has used your
+            account. You&apos;re responsible for what happens in your account.
+          </p>
+        </Section>
+
+        <Section title="Ideas written by AI">
+          <p>
+            Tempo&apos;s ideas, audits and summaries are written with AI, based on your posts and
+            answers. They&apos;re suggestions, not professional advice, and they can be wrong. Check
+            anything before you post it, especially facts, names, dates and anything about other
+            people. You decide what to post, and you&apos;re responsible for what you post.
+          </p>
+          <p>
+            What Tempo writes for you is yours to use. We don&apos;t claim ownership of it. You give us
+            permission to store and process your content and answers only to run Tempo for you.
+          </p>
+        </Section>
+
+        <Section title="Instagram">
+          <p>
+            If you connect Instagram, we use Meta&apos;s official API to read the data you allow (your
+            profile, posts and their insights). We never see your Instagram password, and Tempo never
+            posts, likes or comments for you. You can remove our access at any time in Instagram&apos;s
+            settings; see{" "}
+            <Link href="/data-deletion" className={linkClass}>
+              Delete your data
+            </Link>
+            .
+          </p>
+          <p>
+            Tempo isn&apos;t affiliated with, endorsed by or sponsored by Meta or Instagram. Your use of
+            Instagram is still covered by Meta&apos;s own terms.
+          </p>
+        </Section>
+
+        <Section title="Paid plans">
+          <p>
+            If you choose a paid plan after the beta, the price, what&apos;s included and how often
+            you&apos;re billed will be shown before you pay. Payments are handled by Stripe. You can
+            cancel at any time from Settings; you keep access until the end of the period you&apos;ve
+            paid for, and you won&apos;t be charged again.
+          </p>
+          <p>
+            If you&apos;re a consumer, you have legal rights, including cancellation rights, that these
+            terms don&apos;t take away.
+          </p>
+        </Section>
+
+        <Section title="Fair use">
+          <p>Please don&apos;t:</p>
+          <ul className="list-disc space-y-2 pl-5">
+            <li>use Tempo for accounts you don&apos;t have permission to manage;</li>
+            <li>scrape, copy or automatically extract data from Tempo or Instagram;</li>
+            <li>resell or share access to Tempo without our written agreement;</li>
+            <li>try to break, overload or get around the security of Tempo.</li>
+          </ul>
+        </Section>
+
+        <Section title="No promises about results">
+          <p>
+            We work hard to make Tempo useful, but we can&apos;t promise any particular growth, reach,
+            engagement or income. Tempo is provided as it is, and may sometimes be unavailable.
+          </p>
+        </Section>
+
+        <Section title="Our liability">
+          <p>
+            Nothing in these terms limits our liability for death or personal injury caused by our
+            negligence, for fraud, or for anything else the law doesn&apos;t allow us to limit.
+          </p>
+          <p>
+            Otherwise, we&apos;re not liable for indirect losses or for loss of profit, income, followers
+            or opportunity, and our total liability to you is limited to the greater of the amount
+            you&apos;ve paid us in the 12 months before the claim and £100.
+          </p>
+        </Section>
+
+        <Section title="Ending things">
+          <p>
+            You can stop using Tempo and ask us to delete your data at any time. We may suspend or close
+            an account that breaks these terms, puts others at risk, or where the law or a platform
+            partner such as Meta requires it. Where we reasonably can, we&apos;ll tell you first.
+          </p>
+        </Section>
+
+        <Section title="Changes to these terms">
+          <p>
+            If we change these terms in a way that matters, we&apos;ll email you at least 14 days before
+            the change takes effect. If you don&apos;t agree, you can stop using Tempo before then.
+          </p>
+        </Section>
+
+        <Section title="Law">
+          <p>
+            These terms are governed by the law of England and Wales, and the courts of England and Wales
+            can hear any dispute. If you live in Scotland or Northern Ireland, you can also bring a claim
+            in your local courts.
+          </p>
+        </Section>
+
+        <Section title="Privacy">
+          <p>
+            How we handle your data is explained in our{" "}
+            <Link href="/privacy" className={linkClass}>
+              privacy policy
+            </Link>
+            .
+          </p>
+        </Section>
       </div>
 
       <p className="mt-12 text-sm text-muted">
-        <Link
-          href="/"
-          className="underline underline-offset-4 hover:text-brand hover:no-underline"
-        >
+        <Link href="/" className="underline underline-offset-4 hover:text-brand hover:no-underline">
           Back to home
         </Link>
       </p>

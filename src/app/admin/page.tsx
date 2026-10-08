@@ -451,6 +451,12 @@ export default async function AdminPage() {
             >
               Concept preview →
             </Link>
+            <Link
+              href="/admin/access"
+              className="text-sm font-semibold text-brand transition-colors hover:text-brand/80"
+            >
+              Beta access →
+            </Link>
           </div>
           <p className="mt-2 text-muted">
             Browse every artist, switch context, create managed clients, or enqueue

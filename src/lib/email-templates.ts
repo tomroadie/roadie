@@ -908,3 +908,23 @@ ${nextIdea}
 
   return { subject, html: baseTemplate(content, d.artistId) };
 }
+
+/** Closed-beta invite with a one-time sign-up link. No unsubscribe footer: it's a one-off they asked for. */
+export function inviteEmail(d: { name: string | null; url: string }): { subject: string; html: string } {
+  const subject = "You're in: your Tempo invite";
+  const html = `<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:#0A0A0F;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0A0A0F"><tr><td align="center" style="padding:40px 20px">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px">
+<tr><td>
+<p style="font-size:12px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:#00FF87;margin:0 0 24px">Tempo</p>
+<h1 style="${H1_SOFT}">You're in${d.name ? `, ${esc(d.name)}` : ""}.</h1>
+<p style="${P}">Your place in the Tempo closed beta is ready.</p>
+<p style="${P}">It takes about two minutes to set up: tell us a little about your music and how posting feels, then connect Instagram. We'll read your recent posts, show you what's already working, and put together your first few ideas.</p>
+<a href="${esc(d.url)}" style="${CTA}">Set up your account →</a>
+<p style="${MUTED}">This link is just for you. You'll need an Instagram professional (creator or business) account. Tempo is free during the beta.</p>
+<p style="${P}">Any questions, just reply to this email.</p>
+<p style="${SIG}">— Tom at Tempo</p>
+</td></tr></table></td></tr></table></body></html>`;
+  return { subject, html };
+}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { cleanInstagramHandle } from "@/lib/new-lead-pipeline";
 import { escapeHtml, notifyAdminEmail } from "@/lib/admin-notify";
+import { appBaseUrl } from "@/lib/email";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
     `Tempo: access request from ${artistName || email}`,
     `<p><strong>${escapeHtml(artistName || "(no name)")}</strong>${handle ? ` · @${escapeHtml(handle)}` : ""}<br/>${escapeHtml(email)}</p>${
       note ? `<p>${escapeHtml(note)}</p>` : ""
-    }`
+    }<p><a href="${appBaseUrl()}/admin/access">Invite or decline</a></p>`
   );
   return NextResponse.json({ ok: true });
 }

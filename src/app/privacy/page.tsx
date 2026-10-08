@@ -62,6 +62,13 @@ export default function PrivacyPage() {
 
       <section>
         <h2 className={h2Class}>What we collect</h2>
+        <h3 className={h3Class}>If you request access</h3>
+        <p className={pClass}>
+          Your email, artist name and Instagram handle (if you give it), so we can let you know when
+          there&apos;s a place for you. We delete these when the closed beta ends unless you&apos;ve
+          signed up, or sooner if you ask.
+        </p>
+
         <h3 className={h3Class}>When you sign up and set up</h3>
         <ul className={listClass}>
           <li>Your email address and password (stored scrambled; we can&apos;t read it).</li>

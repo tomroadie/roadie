@@ -4,6 +4,7 @@ import { saveDraftGeneration, publishGeneration } from "./store";
 import { appBaseUrl, buildEmailRecipient, sendEmail } from "@/lib/email";
 import { yourWeekEmail } from "@/lib/email-templates";
 import type { ConceptExecution } from "./types";
+import { MAX_WEEKLY_TARGET } from "@/lib/starting-point";
 
 export const BOARD_TIMEZONE = "Europe/London";
 
@@ -13,12 +14,6 @@ export function weekdayInTimezone(now: Date, timeZone = BOARD_TIMEZONE): number 
   return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(name);
 }
 
-/** Highest weekly target the artist asked for, via their posting frequency. */
-export function targetCeiling(postingFrequency: string | null | undefined): number {
-  if (postingFrequency === "weekly") return 2;
-  if (postingFrequency === "active") return 6;
-  return 4;
-}
 
 /**
  * Couch to 5K: hit it and it rises by one; post nothing and it eases off by
@@ -78,7 +73,7 @@ export async function runWeeklyForArtist(
 
   const { data: profile, error } = await admin
     .from("profiles")
-    .select("artist_name, posting_frequency, weekly_target")
+    .select("artist_name, weekly_target")
     .eq("id", artistId)
     .maybeSingle();
   if (error || !profile) throw new Error(`profile: ${error?.message ?? "not found"}`);
@@ -89,7 +84,7 @@ export async function runWeeklyForArtist(
 
   // First week: let the generator derive a starting target from history.
   if (previousTarget !== null) {
-    const next = adaptTarget(previousTarget, postedLastWeek, targetCeiling(profile.posting_frequency));
+    const next = adaptTarget(previousTarget, postedLastWeek, MAX_WEEKLY_TARGET);
     if (next !== previousTarget) {
       const { error: tErr } = await admin.from("profiles").update({ weekly_target: next }).eq("id", artistId);
       if (tErr) throw new Error(`target: ${tErr.message}`);

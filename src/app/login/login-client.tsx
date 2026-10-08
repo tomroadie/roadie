@@ -7,13 +7,16 @@ import { useEffect, useState } from "react";
 import Turnstile from "react-turnstile";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+/** Closed beta: sign-up needs an invite link unless this is "on" (pair with BETA_OPEN_SIGNUP). */
+const OPEN_SIGNUP = process.env.NEXT_PUBLIC_BETA_OPEN_SIGNUP === "on";
 
 export default function LoginClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
   const [isSignup, setIsSignup] = useState(mode === "signup");
-  const [email, setEmail] = useState("");
+  const invite = searchParams.get("invite")?.trim() ?? "";
+  const [email, setEmail] = useState(searchParams.get("email")?.trim() ?? "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +76,7 @@ export default function LoginClient() {
             email,
             password,
             turnstile_token: turnstileToken ?? "",
+            invite,
           }),
         });
         if (!res.ok) {
@@ -174,6 +178,21 @@ export default function LoginClient() {
           </button>
         </div>
 
+        {isSignup && !invite && !OPEN_SIGNUP ? (
+          <div className="space-y-4 rounded-xl border border-card-border bg-card p-6 text-center">
+            <p className="text-base font-bold text-foreground">Tempo is invite-only during the beta.</p>
+            <p className="text-sm leading-relaxed text-muted-strong">
+              If you&apos;ve been invited, use the link in your invite email. Otherwise, request access and
+              we&apos;ll let you know when there&apos;s a place.
+            </p>
+            <Link
+              href="/#request-access"
+              className="inline-flex h-11 items-center justify-center rounded-lg bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground hover:brightness-95"
+            >
+              Request access
+            </Link>
+          </div>
+        ) : (
         <form
           onSubmit={handleSubmit}
           className="space-y-6 rounded-xl border border-card-border bg-card p-6"
@@ -308,6 +327,7 @@ export default function LoginClient() {
             )}
           </button>
         </form>
+        )}
 
         <footer className="space-y-4 border-t border-card-border pt-8">
           <p className="text-center">

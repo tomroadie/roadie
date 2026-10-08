@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
+import { findInvite, markInviteJoined, openSignupOn } from "@/lib/invites";
 
 export async function POST(request: Request) {
   const secretKey = process.env.TURNSTILE_SECRET_KEY;
@@ -13,12 +14,14 @@ export async function POST(request: Request) {
   let email = "";
   let password = "";
   let token = "";
+  let invite = "";
   try {
     const body = (await request.json()) as Record<string, unknown>;
     email = typeof body.email === "string" ? body.email.trim() : "";
     password = typeof body.password === "string" ? body.password : "";
     token =
       typeof body.turnstile_token === "string" ? body.turnstile_token : "";
+    invite = typeof body.invite === "string" ? body.invite.trim() : "";
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -69,6 +72,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 
+  // Closed beta: you need an invite link for this email address.
+  const inviteRow = openSignupOn() ? null : await findInvite(admin, invite, email);
+  if (!openSignupOn() && !inviteRow) {
+    return NextResponse.json(
+      {
+        error:
+          "Tempo is invite-only during the beta. Use the link from your invite email, or request access on our homepage.",
+      },
+      { status: 403 }
+    );
+  }
+
   const { error: createError } = await admin.auth.admin.createUser({
     email,
     password,
@@ -88,6 +103,8 @@ export async function POST(request: Request) {
       { status: isDuplicate ? 409 : 500 }
     );
   }
+
+  if (inviteRow) await markInviteJoined(admin, inviteRow.id);
 
   return NextResponse.json({ success: true });
 }

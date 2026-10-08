@@ -164,13 +164,13 @@ ${newsOnlyNote}
 ${coldStartNote}
 
 ## What to produce
-1. A focus line for this week's board: one encouraging sentence, at most 90 characters, naming the direction that's working or worth trying. It's the first thing the artist reads.
+1. A focus line for this week's board: one short instruction, at most 70 characters, phrased as something to do this week ("Show the stories behind the songs people already know"). It's the first thing the artist reads. No numbers, no comparisons, no dashes, no "your X outperform your Y"; the evidence belongs in focus_why.
 2. focus_why: one or two sentences for the Tempo team on why this focus, citing post numbers.
 3. Exactly ${POOL_SIZE} concepts. For each:
    - title: the direction, phrased as something to do, at most 55 characters ("Spotlight the photographers who shoot your gigs").
    - why: one or two sentences in second person, pointing at what happened on specific posts.
    - evidence_posts: the post numbers the why refers to.
-   - executions: two or three ways to do it. Each has format (reel, carousel, photo, story or text), idea (one or two sentences, concrete enough to start on today) and effort (low, medium or high). At least one must be low.
+   - executions: two or three ways to do it. Each has format (reel, carousel, photo, story or text), idea (one or two sentences, concrete enough to start on today; one clear thing to make and where it goes, never two options that contradict each other) and effort (low, medium or high). At least one must be low.
    - key_date: the ISO date of the key date it serves, or null.
    - basis: "from_data" or "starting_point".
    - about_news: true only if the concept is about sharing a release, gig or announcement. At most two concepts should be about news; the artist needs things to post between announcements.

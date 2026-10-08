@@ -59,7 +59,8 @@ export default async function SettingsPage({
 
   const isAdmin = await userIsAdmin(supabase, user.id);
   const plan = getPlanForGating(profile ?? {});
-  const canConnectLiveStats = canDo(plan, "canViewLiveSocialData", isAdmin);
+  const canConnectLiveStats =
+    canDo(plan, "canViewLiveSocialData", isAdmin) || profile?.board_enabled === true;
 
   const stripeCustomerId = profile?.stripe_customer_id?.trim() ?? "";
   const showBilling = plan !== "free" && stripeCustomerId.length > 0;

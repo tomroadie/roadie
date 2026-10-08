@@ -4,6 +4,7 @@ import { IG_GRAPH_BASE } from "@/lib/instagram-graph";
 import { buildEmailRecipient, everSent, sendEmail, appBaseUrl } from "@/lib/email";
 import { auditReadyEmail } from "@/lib/email-templates";
 import { buildArtistFullAuditPrompt, buildArtistPatternPrompt } from "./prompts";
+import { requestFirstBoard } from "@/lib/concepts/first-board";
 
 /**
  * The free audit, built only from the artist's connected Instagram account
@@ -111,7 +112,7 @@ export async function runConnectedAudit(
     const { data: profile, error } = await admin
       .from("profiles")
       .select(
-        "id, owner_user_id, artist_name, genre, plan, instagram_handle, instagram_user_id, instagram_access_token, marketing_unsubscribed, all_emails_paused"
+        "id, owner_user_id, artist_name, genre, plan, instagram_handle, instagram_user_id, instagram_access_token, marketing_unsubscribed, all_emails_paused, board_enabled"
       )
       .eq("id", artistId)
       .maybeSingle();
@@ -206,6 +207,9 @@ export async function runConnectedAudit(
       });
       await sendEmail({ to: recipient.email, subject: email.subject, html: email.html, recipient, type: "audit_ready" });
     }
+
+    // A board artist with no ideas yet gets a first draft for review.
+    if (profile.board_enabled) await requestFirstBoard(artistId);
 
     return { auditId: String(inserted.id), posts: media.length };
   } catch (e) {

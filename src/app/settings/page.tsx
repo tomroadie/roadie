@@ -44,7 +44,7 @@ export default async function SettingsPage({
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, instagram_handle, instagram_user_id, voice_description, posting_frequency, plan, plan_override, marketing_unsubscribed, all_emails_paused, stripe_customer_id, trial_started_at, tiktok_waitlist"
+      "artist_name, instagram_handle, instagram_user_id, voice_description, posting_frequency, plan, plan_override, marketing_unsubscribed, all_emails_paused, stripe_customer_id, trial_started_at, tiktok_waitlist, board_enabled, email_opt_outs"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -121,12 +121,15 @@ export default async function SettingsPage({
 
       <VoiceForm initialVoice={profile.voice_description ?? null} />
 
-      <PostingGoalForm
-        initialPostingFrequency={
-          (profile.posting_frequency as "weekly" | "regular" | "active" | null) ??
-          null
-        }
-      />
+      {/* On the board, Tempo sets the pace, so there's no goal to pick. */}
+      {profile.board_enabled ? null : (
+        <PostingGoalForm
+          initialPostingFrequency={
+            (profile.posting_frequency as "weekly" | "regular" | "active" | null) ??
+            null
+          }
+        />
+      )}
 
       <AddArtistForm />
 
@@ -136,6 +139,8 @@ export default async function SettingsPage({
           profile.marketing_unsubscribed ?? false
         }
         initialAllEmailsPaused={profile.all_emails_paused ?? false}
+        boardEnabled={profile.board_enabled === true}
+        initialOptOuts={Array.isArray(profile.email_opt_outs) ? profile.email_opt_outs : []}
       />
 
       {showBilling ? (

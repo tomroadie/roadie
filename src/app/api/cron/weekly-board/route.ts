@@ -1,18 +1,13 @@
 import { after, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { appBaseUrl } from "@/lib/email";
-import {
-  runWeeklyForArtist,
-  weekdayInTimezone,
-  type WeeklyOutcome,
-} from "@/lib/concepts/weekly";
+import { runWeeklyForArtist, weekdayInTimezone, type WeeklyOutcome } from "@/lib/concepts/weekly";
+import { boardWeek } from "@/lib/board-week";
 
 export const maxDuration = 300;
 
 /** Stop starting new artists after this; leftovers run on the next call. */
 const TIME_BUDGET_MS = 200_000;
-/** A weekly run newer than this means the artist is done for the week. */
-const RECENT_RUN_DAYS = 5;
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -102,21 +97,40 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const today = weekdayInTimezone(now);
-  let due = (profiles ?? []).filter(
-    (p) => forced || Number(p.week_start_day ?? 1) === today
-  );
+  // Due: the artist's current board week started (today or earlier this
+  // week, so a missed run catches up on the next call), their board was
+  // already live before it started, and nothing has been generated for
+  // them since it started.
+  let due = (profiles ?? []).map((p) => ({ ...p, weekStartsAt: boardWeek(p.week_start_day, now).startsAt }));
 
   if (!forced && due.length > 0) {
-    const since = new Date(now.getTime() - RECENT_RUN_DAYS * 86400000).toISOString();
-    const { data: recent } = await admin
-      .from("concept_generations")
-      .select("artist_id")
-      .in("artist_id", due.map((p) => p.id))
-      .eq("context_summary->>kind", "weekly")
-      .gte("created_at", since);
-    const doneAlready = new Set((recent ?? []).map((r) => String(r.artist_id)));
-    due = due.filter((p) => !doneAlready.has(String(p.id)));
+    const ids = due.map((p) => p.id);
+    const [{ data: gens }, { data: lives }] = await Promise.all([
+      admin
+        .from("concept_generations")
+        .select("artist_id, created_at")
+        .in("artist_id", ids)
+        .gte("created_at", new Date(now.getTime() - 8 * 86400000).toISOString()),
+      admin
+        .from("concept_generations")
+        .select("artist_id, published_at")
+        .in("artist_id", ids)
+        .not("published_at", "is", null)
+        .order("published_at", { ascending: true }),
+    ]);
+    const firstLive = new Map<string, number>();
+    for (const g of lives ?? []) {
+      const id = String(g.artist_id);
+      if (!firstLive.has(id)) firstLive.set(id, Date.parse(String(g.published_at)));
+    }
+    due = due.filter((p) => {
+      const start = Date.parse(p.weekStartsAt);
+      const live = firstLive.get(String(p.id));
+      if (live === undefined || live >= start) return false; // no board yet, or it went live this week
+      return !(gens ?? []).some(
+        (g) => String(g.artist_id) === String(p.id) && Date.parse(String(g.created_at)) >= start
+      );
+    });
   }
 
   // cron-job.org gives up after 30 seconds and a run takes about a minute
@@ -152,7 +166,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json(
     {
-      weekday: today,
+      weekday: weekdayInTimezone(now),
       due: due.map((p) => String(p.artist_name ?? p.id)),
       auto_publish: autoPublish,
       note:

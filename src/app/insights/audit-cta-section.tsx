@@ -94,7 +94,7 @@ export function AuditCTASection({
       <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-strong">
         {connected
           ? "We'll read your recent posts and show you what's already working, plus one easy first step. Takes a minute or two."
-          : "We read your posts through Instagram's official connection, never by scraping, and show you what's already working. Your weekly ideas are built from it too."}
+          : "Connect your Instagram and we'll show you what's already working, then build your weekly ideas from your own posts. Takes a minute or two."}
       </p>
       <div className="mt-6">
         {canRun ? (

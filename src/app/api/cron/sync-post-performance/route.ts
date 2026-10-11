@@ -1,3 +1,4 @@
+import { recordCronRun } from "@/lib/cron-log";
 import { NextResponse } from "next/server";
 import { IG_GRAPH_BASE } from "@/lib/instagram-graph";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
@@ -551,6 +552,13 @@ export async function GET(request: Request) {
           ? 207
           : 200;
 
+    await recordCronRun("sync-post-performance", status !== 502, {
+      only: onlyArtist,
+      synced,
+      artists: connectedProfiles.length,
+      errors: errors.slice(0, 10),
+    });
+
     return NextResponse.json(
       {
         synced,
@@ -562,6 +570,7 @@ export async function GET(request: Request) {
       { status }
     );
   } catch (err) {
+    await recordCronRun("sync-post-performance", false, { error: String(err) });
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }

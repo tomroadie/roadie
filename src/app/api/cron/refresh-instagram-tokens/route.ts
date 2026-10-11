@@ -1,3 +1,4 @@
+import { recordCronRun } from "@/lib/cron-log";
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import {
@@ -92,6 +93,13 @@ export async function GET(request: Request) {
       errors.push(`${artistId}: ${e instanceof Error ? e.message : "Unknown error"}`);
     }
   }
+
+  await recordCronRun("refresh-instagram-tokens", errors.length === 0, {
+    checked: profiles?.length ?? 0,
+    refreshed,
+    disconnected,
+    errors: errors.slice(0, 10),
+  });
 
   return NextResponse.json({
     checked: profiles?.length ?? 0,

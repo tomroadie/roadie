@@ -1,3 +1,4 @@
+import { recordCronRun } from "@/lib/cron-log";
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import {
@@ -572,8 +573,10 @@ export async function GET(request: Request) {
       }
     }
 
+    await recordCronRun("email-sequences", totals.failed === 0, totals);
     return NextResponse.json(totals);
   } catch (err) {
+    await recordCronRun("email-sequences", false, { error: String(err) });
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }

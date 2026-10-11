@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server";
+import { recordCronRun } from "@/lib/cron-log";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { appBaseUrl } from "@/lib/email";
 import { runWeeklyForArtist, weekdayInTimezone, type WeeklyOutcome } from "@/lib/concepts/weekly";
@@ -162,7 +163,20 @@ export async function GET(request: Request) {
       remaining,
     });
     await notifyAdmin(done, failed, remaining, autoPublish);
+    if (due.length > 0) {
+      await recordCronRun("weekly-board", failed.length === 0, {
+        done: done.map((o) => o.artistName),
+        failed: failed.map((f) => `${f.artistName}: ${f.error}`),
+        remaining,
+      });
+    }
   });
+
+  // Every call is logged (even "nobody due") so the health check knows the
+  // hourly schedule is alive.
+  if (due.length === 0) {
+    await recordCronRun("weekly-board", true, { forced: Boolean(forced), due: 0 });
+  }
 
   return NextResponse.json(
     {

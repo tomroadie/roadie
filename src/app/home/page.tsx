@@ -32,6 +32,7 @@ import { boardWeek } from "@/lib/board-week";
 import { computeLearnings, loadThemes } from "@/lib/themes/load";
 import { LearningsSection } from "./learnings";
 import { RecentPostsGrid } from "./recent-posts-grid";
+import { DateSuggestions, type DateSuggestion } from "./date-suggestions";
 
 type ContentReviewRow = {
   idea_hook: string;
@@ -1042,6 +1043,22 @@ export default async function HomePage({
   // Board artists get one focused page: the week, the ideas, dates, then
   // their Instagram. The old plan-era sections stay for everyone else.
   if (board && week) {
+    // Dates spotted in their captions, waiting for a yes or no.
+    const { data: suggestionRows } = await supabase
+      .from("date_suggestions")
+      .select("id, title, event_date, source_excerpt")
+      .eq("artist_id", activeArtistId)
+      .eq("status", "pending")
+      .gte("event_date", isoToday())
+      .order("event_date")
+      .limit(5);
+    const dateSuggestions: DateSuggestion[] = (suggestionRows ?? []).map((r) => ({
+      id: String(r.id),
+      title: String(r.title),
+      eventDate: String(r.event_date),
+      excerpt: r.source_excerpt ? String(r.source_excerpt) : null,
+    }));
+
     const comingUpSection = (
       <section className="rounded-2xl border border-card-border bg-card p-5">
         <h2 className="text-xl font-bold text-foreground">Coming up</h2>
@@ -1063,6 +1080,7 @@ export default async function HomePage({
         ) : (
           <p className="mt-3 text-sm text-muted">Nothing in the next four weeks.</p>
         )}
+        <DateSuggestions suggestions={dateSuggestions} />
         <p className="mt-4 text-sm">
           <Link href="/events" className="font-semibold text-brand hover:underline">
             Add a date →

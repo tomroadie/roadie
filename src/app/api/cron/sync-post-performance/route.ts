@@ -7,6 +7,7 @@ import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 import { linkPostsToConcepts } from "@/lib/concepts/link-posts";
 import { sendPostResultEmail } from "@/lib/post-result-email";
 import { refreshThemesForArtist } from "@/lib/themes/refresh";
+import { suggestDatesFromPosts } from "@/lib/key-dates-from-posts";
 
 
 type ProfileRow = {
@@ -522,6 +523,12 @@ export async function GET(request: Request) {
             await refreshThemesForArtist(supabase, artistId);
           } catch (e) {
             errors.push(`${artistId}: sorting posts into themes failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+          }
+          // Dates they've announced in captions become suggestions on Home.
+          try {
+            await suggestDatesFromPosts(supabase, artistId);
+          } catch (e) {
+            errors.push(`${artistId}: reading dates from captions failed: ${e instanceof Error ? e.message : "Unknown error"}`);
           }
         }
 

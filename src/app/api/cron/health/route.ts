@@ -22,9 +22,23 @@ const JOB_LABEL: Record<string, string> = {
   "email-sequences": "Email sequences (daily)",
 };
 
-function ago(ms: number): string {
+/** Where each job is scheduled, so the email says where to look. */
+const JOB_HOME: Record<string, string> = {
+  "refresh-instagram-tokens": "Vercel (Settings → Cron Jobs)",
+};
+
+function where(job: string): string {
+  return JOB_HOME[job] ?? "cron-job.org";
+}
+
+/** "46 hours", "3 days". */
+function duration(ms: number): string {
   const h = Math.round(ms / HOUR);
-  return h < 48 ? `${h} hours ago` : `${Math.round(h / 24)} days ago`;
+  return h < 48 ? `${h} hour${h === 1 ? "" : "s"}` : `${Math.round(h / 24)} days`;
+}
+
+function ago(ms: number): string {
+  return `${duration(ms)} ago`;
 }
 
 /**
@@ -56,12 +70,12 @@ export async function GET(request: Request) {
     const last = jobRuns[0];
     const label = JOB_LABEL[job] ?? job;
     if (!last) {
-      problems.push(`<strong>${label}</strong> hasn't run in the last 8 days. Check it's enabled in cron-job.org.`);
+      problems.push(`<strong>${label}</strong> hasn't run in the last 8 days. Check it's enabled in ${where(job)}.`);
       continue;
     }
     const age = now - Date.parse(String(last.created_at));
     if (age > (maxHours as number) * HOUR) {
-      problems.push(`<strong>${label}</strong> last ran ${ago(age)}. Check it's enabled in cron-job.org.`);
+      problems.push(`<strong>${label}</strong> last ran ${ago(age)}. Check it's enabled in ${where(job)}.`);
     } else if (!last.ok) {
       const detail = JSON.stringify(last.summary ?? {}).slice(0, 300);
       problems.push(`<strong>${label}</strong> ran ${ago(age)} but reported errors: <code>${escapeHtml(detail)}</code>`);
@@ -99,7 +113,7 @@ export async function GET(request: Request) {
     );
     if (age > 12 * HOUR && !newerLive) {
       reminders.push(
-        `<strong>${escapeHtml(names.get(String(g.artist_id)) ?? "An artist")}</strong>'s ${g.kind === "first" ? "first ideas have" : "weekly board has"} been waiting for review for ${ago(age)}.`
+        `<strong>${escapeHtml(names.get(String(g.artist_id)) ?? "An artist")}</strong>'s ${g.kind === "first" ? "first ideas have" : "weekly board has"} been waiting for review for ${duration(age)}.`
       );
     }
   }

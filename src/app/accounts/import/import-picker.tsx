@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABEL, type AccountType } from "@/lib/account-types";
 
 export type PickerAccount = {
   pageId: string;
@@ -13,13 +14,16 @@ export type PickerAccount = {
   existing: { artistName: string; mine: boolean; viaFacebook: boolean } | null;
 };
 
-type Row = { selected: boolean; artistName: string; genre: string };
+type Row = { selected: boolean; artistName: string; genre: string; accountType: AccountType };
 type Result = { page_id: string; status: "created" | "updated" | "skipped"; artist_id?: string; note?: string };
 
 export function ImportPicker({ accounts, genres }: { accounts: PickerAccount[]; genres: readonly string[] }) {
   const [rows, setRows] = useState<Record<string, Row>>(() =>
     Object.fromEntries(
-      accounts.map((a) => [a.pageId, { selected: false, artistName: a.name || a.username || a.pageName, genre: "" }])
+      accounts.map((a) => [
+        a.pageId,
+        { selected: false, artistName: a.name || a.username || a.pageName, genre: "", accountType: "artist" as AccountType },
+      ])
     )
   );
   const [busy, setBusy] = useState(false);
@@ -45,6 +49,7 @@ export function ImportPicker({ accounts, genres }: { accounts: PickerAccount[]; 
             page_id: a.pageId,
             artist_name: rows[a.pageId].artistName,
             genre: rows[a.pageId].genre,
+            account_type: rows[a.pageId].accountType,
           })),
         }),
       });
@@ -119,8 +124,23 @@ export function ImportPicker({ accounts, genres }: { accounts: PickerAccount[]; 
                 </span>
               ) : (
                 <div className="flex flex-wrap gap-2">
+                  <label className="sr-only" htmlFor={`type-${a.pageId}`}>
+                    Account type
+                  </label>
+                  <select
+                    id={`type-${a.pageId}`}
+                    value={row.accountType}
+                    onChange={(e) => set(a.pageId, { accountType: e.target.value as AccountType })}
+                    className="min-h-10 rounded-lg border border-card-border bg-background px-2 text-sm"
+                  >
+                    {ACCOUNT_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {ACCOUNT_TYPE_LABEL[t]}
+                      </option>
+                    ))}
+                  </select>
                   <label className="sr-only" htmlFor={`name-${a.pageId}`}>
-                    Artist name
+                    Name
                   </label>
                   <input
                     id={`name-${a.pageId}`}
@@ -134,6 +154,7 @@ export function ImportPicker({ accounts, genres }: { accounts: PickerAccount[]; 
                   </label>
                   <select
                     id={`genre-${a.pageId}`}
+                    hidden={row.accountType !== "artist"}
                     value={row.genre}
                     onChange={(e) => set(a.pageId, { genre: e.target.value })}
                     className="min-h-10 rounded-lg border border-card-border bg-background px-2 text-sm"

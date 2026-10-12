@@ -13,6 +13,8 @@ export type ThemeSuggestion = { name: string; description: string };
 
 export type SuggestInput = {
   artistName: string;
+  /** profiles.account_type; anything but "artist" gets examples for that kind of account. */
+  accountType?: string;
   genre: string | null;
   auditPattern: string | null;
   /** Recent captions, newest first. */
@@ -57,15 +59,25 @@ async function ask(system: string, prompt: string, maxTokens: number): Promise<u
   return extractJson(text);
 }
 
-const SUGGEST_SYSTEM = `You help independent music artists organise their social media into a few broad content themes.
-A theme is a durable area their posts live in, not a one-off idea: "Behind the record", "Live moments", "Everyday life", "Release news".
-Names are 2-3 plain, everyday words a musician would actually say out loud, in British English: "Gig nights", "In the studio", "New music", "Band life".
-Never put the artist's name in a theme name. No made-up compounds ("journey markers", "night after moments"), no emoji, no hashtags, no marketing jargon.
+const SUGGEST_SYSTEM = `You help music artists and music businesses (venues, labels, promoters) organise their social media into a few broad content themes.
+A theme is a durable area their posts live in, not a one-off idea.
+Names are 2-3 plain, everyday words the account owner would actually say out loud, in British English.
+Never put the account's own name in a theme name. No made-up compounds ("journey markers", "night after moments"), no emoji, no hashtags, no marketing jargon.
 Descriptions are one short sentence (under 100 characters) saying what belongs in it, written to the artist.
 Reply with JSON only.`;
 
+const THEME_EXAMPLES: Record<string, string> = {
+  artist: '"Gig nights", "In the studio", "New music", "Band life"',
+  venue: '"On sale now", "Last night", "Coming up", "Behind the bar"',
+  label: '"New releases", "Roster news", "On tour", "From the archive"',
+  promoter: '"Just announced", "On the night", "Last few tickets", "Line-ups"',
+  agency: '"Client wins", "Behind the scenes", "How we work", "Team"',
+  brand: '"New in", "Behind the scenes", "Community", "Events"',
+  other: '"News", "Behind the scenes", "Events", "Community"',
+};
+
 /**
- * Starting themes for an artist: a handful drawn from what they already post,
+ * Starting themes for an account: a handful drawn from what they already post,
  * plus at most one gap worth suggesting.
  */
 export async function suggestThemes(
@@ -76,12 +88,15 @@ export async function suggestThemes(
     .map((c, i) => `${i + 1}. ${c.replace(/\s+/g, " ").slice(0, 220)}`)
     .join("\n");
 
-  const prompt = `Artist: ${input.artistName}${input.genre ? ` (${input.genre})` : ""}
+  const kind = input.accountType && input.accountType !== "artist" ? input.accountType : "artist";
+  const prompt = `Account: ${input.artistName}${input.genre ? ` (${input.genre})` : ""}
+Type of account: ${kind}
+Example theme names for this kind of account: ${THEME_EXAMPLES[kind] ?? THEME_EXAMPLES.other}
 
 ${input.auditPattern ? `What we noticed about their account:\n${input.auditPattern.slice(0, 1200)}\n\n` : ""}Recent post captions, newest first:
 ${captions || "(no posts yet)"}
 
-Give 4 themes that cover what this artist already posts (or, with no posts, what most artists like them would post), and at most 1 extra theme they don't post yet but plausibly should.
+Give 4 themes that cover what this account already posts (or, with no posts, what most accounts like it would post), and at most 1 extra theme they don't post yet but plausibly should.
 Only suggest the extra theme if there's a real gap; otherwise null.
 
 {"themes":[{"name":"","description":""}],"suggested":{"name":"","description":""} | null}`;

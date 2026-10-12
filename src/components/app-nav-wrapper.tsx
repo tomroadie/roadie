@@ -33,10 +33,11 @@ export async function AppNavWrapper() {
   if (activeArtistId) {
     const { data: active } = await supabase
       .from("profiles")
-      .select("board_enabled")
+      .select("board_enabled, account_type")
       .eq("id", activeArtistId)
       .maybeSingle();
-    showConceptsLink = active?.board_enabled === true;
+    showConceptsLink =
+      active?.board_enabled === true || (Boolean(active?.account_type) && active?.account_type !== "artist");
   }
 
   let artists: AppNavArtist[] = [];

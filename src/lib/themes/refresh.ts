@@ -34,9 +34,13 @@ export async function refreshThemesForArtist(
 
   // First run: suggest starting themes from their posts and audit.
   if ((everCount ?? 0) === 0) {
-    const ctx = await loadConceptContext(admin, artistId, now);
+    const [ctx, { data: typeRow }] = await Promise.all([
+      loadConceptContext(admin, artistId, now),
+      admin.from("profiles").select("account_type").eq("id", artistId).maybeSingle(),
+    ]);
     const { active, suggested } = await suggestThemes({
       artistName: ctx.artistName,
+      accountType: typeRow?.account_type ? String(typeRow.account_type) : "artist",
       genre: ctx.genre,
       auditPattern: ctx.auditPattern,
       captions: ctx.posts.map((p) => p.caption).filter(Boolean),

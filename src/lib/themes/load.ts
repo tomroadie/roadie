@@ -118,14 +118,83 @@ function bestGroup(groups: Group[]): { group: Group; ratio: number } | null {
   return best;
 }
 
+/** Fewer posts than this in RHYTHM_DAYS and posting more often is the first learning. */
+const RHYTHM_DAYS = 90;
+const RHYTHM_MIN_POSTS = 6;
+/** Comments need a clearer gap than reach before we call it a pattern. */
+const COMMENTS_RATIO = 1.3;
+
+function monthYear(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "Europe/London" });
+}
+
+/** Most of their recent reach-compared posts land close to their usual. */
+function steadyReach(settled: PostResult[]): { within: number; of: number } | null {
+  const recent = settled.filter((p) => p.comparison!.metric === "reach").slice(0, 12);
+  if (recent.length < 6) return null;
+  const within = recent.filter((p) => p.comparison!.ratio >= 0.8 && p.comparison!.ratio <= 1.25).length;
+  return within / recent.length >= 0.7 ? { within, of: recent.length } : null;
+}
+
+/** The theme or format that gets clearly more comments than their usual. */
+function commentsLeader(
+  settled: PostResult[],
+  themes: Theme[]
+): { label: string; kind: "theme" | "format"; ratio: number; n: number } | null {
+  const withComments = settled.filter((p) => p.comments !== null);
+  if (withComments.length < 6) return null;
+  const usual = median(withComments.map((p) => p.comments!));
+  if (usual <= 0) return null;
+
+  const groups: { label: string; kind: "theme" | "format"; posts: PostResult[] }[] = [
+    ...themes.map((t) => ({ label: t.name, kind: "theme" as const, posts: withComments.filter((p) => p.themeId === t.id) })),
+  ];
+  const formats = new Map<string, PostResult[]>();
+  for (const p of withComments) {
+    const f = formatName(p.mediaType);
+    formats.set(f, [...(formats.get(f) ?? []), p]);
+  }
+  for (const [f, ps] of formats) groups.push({ label: f, kind: "format", posts: ps });
+
+  let best: { label: string; kind: "theme" | "format"; ratio: number; n: number } | null = null;
+  for (const g of groups) {
+    if (g.posts.length < MIN_COMPARED) continue;
+    const r = median(g.posts.map((p) => p.comments!)) / usual;
+    if (r >= COMMENTS_RATIO && (!best || r > best.ratio)) best = { label: g.label, kind: g.kind, ratio: r, n: g.posts.length };
+  }
+  return best;
+}
+
 /**
- * What's working, in plain words, from the artist's own settled posts. Only
- * positive patterns with enough posts behind them; never a telling-off.
- * Returns up to three, strongest kind first.
+ * What's working, in plain words, from the artist's own posts. Positive and
+ * practical, never a telling-off. Posting rhythm comes first because it's
+ * readable from day one, even with very little data. Returns up to three.
  */
-export function computeLearnings(posts: PostResult[], themes: Theme[]): Learning[] {
+export function computeLearnings(posts: PostResult[], themes: Theme[], now: Date = new Date()): Learning[] {
   const settled = comparable(posts);
   const out: Learning[] = [];
+  const steady = steadyReach(settled);
+
+  // Rhythm: how often they've posted lately. Works with almost no data.
+  const dated = posts.filter((p) => p.postDate).sort((a, b) => Date.parse(b.postDate!) - Date.parse(a.postDate!));
+  if (dated.length > 0) {
+    const since = now.getTime() - RHYTHM_DAYS * 86400000;
+    const recent = dated.filter((p) => Date.parse(p.postDate!) >= since).length;
+    if (recent < RHYTHM_MIN_POSTS) {
+      const audience = steady
+        ? "Your audience still turns up when you do post, so"
+        : "Every post is a chance to learn what works, so";
+      out.push({
+        stat: String(recent),
+        title: recent === 1 ? "Post in the last 3 months" : "Posts in the last 3 months",
+        body:
+          recent === 0
+            ? `Your last post was in ${monthYear(dated[0].postDate!)}. ${audience} getting a steady rhythm going is the biggest win. One post this week is a good start.`
+            : `${audience} posting more often is the biggest lever right now. Tempo's weekly pace is built for exactly that.`,
+        tag: "Rhythm",
+      });
+    }
+  }
 
   const byTheme = bestGroup(
     themes.map((t) => ({ key: t.id, label: t.name, posts: settled.filter((p) => p.themeId === t.id) }))
@@ -137,6 +206,19 @@ export function computeLearnings(posts: PostResult[], themes: Theme[]): Learning
       title: `${byTheme.group.label} is landing`,
       body: `Your ${byTheme.group.label.toLowerCase()} posts get more ${m} than your usual, across ${byTheme.group.posts.length} posts.`,
       tag: byTheme.group.label,
+    });
+  }
+
+  const talk = commentsLeader(settled, themes);
+  if (talk) {
+    out.push({
+      stat: formatRatio(talk.ratio),
+      title: talk.kind === "theme" ? `${talk.label} gets people talking` : `${talk.label}s get people talking`,
+      body:
+        talk.kind === "theme"
+          ? `Your ${talk.label.toLowerCase()} posts get more comments than your usual, across ${talk.n} posts.`
+          : `Your ${talk.label.toLowerCase()}s get more comments than your usual, across ${talk.n} posts.`,
+      tag: "Comments",
     });
   }
 
@@ -153,6 +235,15 @@ export function computeLearnings(posts: PostResult[], themes: Theme[]): Learning
       title: `${byFormat.group.label}s work for you`,
       body: `Your ${byFormat.group.label.toLowerCase()}s get more ${m} than your usual. Worth leaning on.`,
       tag: "Format",
+    });
+  }
+
+  if (steady) {
+    out.push({
+      stat: `${steady.within}/${steady.of}`,
+      title: "Your reach is steady",
+      body: `${steady.within} of your last ${steady.of} posts reached within about 20% of your usual. Your audience turns up whatever you post.`,
+      tag: "Reach",
     });
   }
 

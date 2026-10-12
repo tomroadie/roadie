@@ -146,12 +146,18 @@ export async function loadPostResults(
     reassured = true;
   }
 
-  // Posts per board week, oldest first, ending with the current week.
+  // Posts per board week, oldest first, ending with the current week. Weeks
+  // from before the oldest synced post are left out: we don't know them, and
+  // showing 0 would say they didn't post.
   const currentStart = Date.parse(weekStartsAt);
+  const oldestSynced = Math.min(
+    ...perf.map((p) => (p.postDate ? Date.parse(p.postDate) : Infinity))
+  );
   const weeks: WeekCount[] = [];
   for (let k = WEEKS_SHOWN - 1; k >= 0; k--) {
     const start = currentStart - k * 7 * DAY_MS;
     const end = start + 7 * DAY_MS;
+    if (k > 0 && end <= oldestSynced) continue;
     const count = perf.filter((p) => {
       const t = p.postDate ? Date.parse(p.postDate) : NaN;
       return t >= start && t < end;

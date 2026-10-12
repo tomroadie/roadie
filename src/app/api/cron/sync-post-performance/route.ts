@@ -335,7 +335,14 @@ export async function GET(request: Request) {
           "fields",
           "id,caption,media_type,timestamp,like_count,comments_count,thumbnail_url,media_url,permalink"
         );
-        mediaUrl.searchParams.set("limit", "20");
+        // Daily runs only need the latest posts. A new account backfills
+        // further, so busy accounts (a venue posting ten times a week) get
+        // more than a fortnight of history to compare against.
+        const { count: storedPosts } = await supabase
+          .from("post_performance")
+          .select("id", { count: "exact", head: true })
+          .eq("artist_id", artistId);
+        mediaUrl.searchParams.set("limit", (storedPosts ?? 0) < 40 ? "60" : "20");
         mediaUrl.searchParams.set("access_token", accessToken);
 
         const mediaRes = await fetch(mediaUrl.toString());

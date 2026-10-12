@@ -2,27 +2,22 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { userIsAdmin } from "@/lib/is-admin";
-import type {
-  Concept,
-  ConceptContext,
-  ConceptExecution,
-  ContextKeyDate,
-  ContextPost,
-} from "@/lib/concepts/types";
+import {
+  editConcept,
+  editFocus,
+  loadDraftView,
+  moveConcept,
+  regenerateDraft,
+  replaceConcept,
+} from "@/lib/concepts/edit";
+
+/** Replacing or redoing calls the model, which can take a minute. */
+export const maxDuration = 120;
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-/**
- * Admin-only: load a saved generation (usually a draft from the weekly job)
- * in the same shape the preview page renders, evidence posts included.
- */
-export async function GET(request: Request) {
-  const id = new URL(request.url).searchParams.get("generation_id")?.trim() ?? "";
-  if (!UUID_RE.test(id)) {
-    return NextResponse.json({ error: "Invalid generation_id" }, { status: 400 });
-  }
-
+async function requireAdmin(): Promise<NextResponse | null> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -31,71 +26,91 @@ export async function GET(request: Request) {
   if (!(await userIsAdmin(supabase, user.id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  return null;
+}
+
+/**
+ * Admin-only: load a saved generation (usually a draft from the weekly job)
+ * in the same shape the review page renders, evidence posts included.
+ */
+export async function GET(request: Request) {
+  const id = new URL(request.url).searchParams.get("generation_id")?.trim() ?? "";
+  if (!UUID_RE.test(id)) {
+    return NextResponse.json({ error: "Invalid generation_id" }, { status: 400 });
+  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
+  try {
+    return NextResponse.json(await loadDraftView(createServiceRoleClient(), id));
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: message }, { status: message === "Draft not found" ? 404 : 500 });
+  }
+}
+
+/**
+ * Admin-only: change a draft before publishing. Body:
+ *   { generation_id, action: "focus", focus }
+ *   { generation_id, action: "edit", concept_id, title, why, executions }
+ *   { generation_id, action: "move", concept_id, direction: "up" | "down" }
+ *   { generation_id, action: "replace", concept_id, note? }
+ *   { generation_id, action: "regenerate", note? }
+ * Returns the updated draft.
+ */
+export async function POST(request: Request) {
+  let body: Record<string, unknown>;
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  const generationId = typeof body.generation_id === "string" ? body.generation_id.trim() : "";
+  const conceptId = typeof body.concept_id === "string" ? body.concept_id.trim() : "";
+  const note = typeof body.note === "string" ? body.note : undefined;
+  if (!UUID_RE.test(generationId)) {
+    return NextResponse.json({ error: "Invalid generation_id" }, { status: 400 });
+  }
+  const needsConcept = ["edit", "move", "replace"].includes(String(body.action));
+  if (needsConcept && !UUID_RE.test(conceptId)) {
+    return NextResponse.json({ error: "Invalid concept_id" }, { status: 400 });
+  }
+
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const admin = createServiceRoleClient();
-  const [{ data: gen }, { data: rows }] = await Promise.all([
-    admin
-      .from("concept_generations")
-      .select("id, artist_id, focus, focus_why, status, model, attempts, warnings, context_summary, created_at")
-      .eq("id", id)
-      .maybeSingle(),
-    admin
-      .from("concepts")
-      .select("title, why, evidence_posts, executions, key_date, basis, about_news")
-      .eq("generation_id", id)
-      .order("position"),
-  ]);
-  if (!gen) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const s = (gen.context_summary ?? {}) as Record<string, unknown>;
-  const snap = (s.snapshot ?? {}) as Record<string, unknown>;
-  const posts = (Array.isArray(snap.posts) ? snap.posts : []) as ContextPost[];
-
-  const context: ConceptContext = {
-    artistId: String(gen.artist_id),
-    artistName: String(snap.artist_name ?? ""),
-    genre: null,
-    sound: null,
-    voice: null,
-    confidence: null,
-    contentDays: [],
-    comingUpNote: null,
-    handle: null,
-    followers: null,
-    postSource: (s.post_source as ConceptContext["postSource"]) ?? "none",
-    auditCreatedAt: typeof s.audit_created_at === "string" ? s.audit_created_at : null,
-    posts,
-    postsLast28Days: Number(s.posts_last_28_days ?? 0),
-    daysSinceLastPost: typeof s.days_since_last_post === "number" ? s.days_since_last_post : null,
-    weeklyTarget: Number(s.target ?? s.weekly_target ?? 1),
-    auditPattern: null,
-    keyDates: (Array.isArray(snap.key_dates) ? snap.key_dates : []) as ContextKeyDate[],
-    declined: [],
-    postedIdeas: [],
-    pinnedIdeas: [],
-    coldStart: Boolean(s.cold_start),
-  };
-
-  const concepts: Concept[] = (rows ?? []).map((r) => ({
-    title: String(r.title),
-    why: String(r.why),
-    evidence_posts: (r.evidence_posts ?? []) as number[],
-    executions: (Array.isArray(r.executions) ? r.executions : []) as ConceptExecution[],
-    key_date: r.key_date ? String(r.key_date) : null,
-    basis: r.basis as Concept["basis"],
-    about_news: r.about_news === true,
-  }));
-
-  return NextResponse.json({
-    generation_id: gen.id,
-    status: gen.status,
-    kind: s.kind ?? "manual",
-    created_at: gen.created_at,
-    pool: { focus: gen.focus, focus_why: gen.focus_why ?? "", concepts },
-    context,
-    warnings: Array.isArray(gen.warnings) ? gen.warnings : [],
-    attempts: Number(gen.attempts ?? 1),
-    model: String(gen.model ?? ""),
-    ms: 0,
-  });
+  try {
+    switch (body.action) {
+      case "focus":
+        await editFocus(admin, generationId, body.focus);
+        break;
+      case "edit":
+        await editConcept(admin, generationId, conceptId, {
+          title: body.title,
+          why: body.why,
+          executions: body.executions,
+        });
+        break;
+      case "move":
+        if (body.direction !== "up" && body.direction !== "down") {
+          return NextResponse.json({ error: "Invalid direction" }, { status: 400 });
+        }
+        await moveConcept(admin, generationId, conceptId, body.direction);
+        break;
+      case "replace":
+        await replaceConcept(admin, generationId, conceptId, note);
+        break;
+      case "regenerate":
+        await regenerateDraft(admin, generationId, note);
+        break;
+      default:
+        return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+    }
+    return NextResponse.json(await loadDraftView(admin, generationId));
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("drafts action failed", { generationId, action: body.action, message });
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }

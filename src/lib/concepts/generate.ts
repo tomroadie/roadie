@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadConceptContext } from "./context";
 import {
   buildConceptPrompt,
+  buildReplacementPrompt,
   CONCEPT_SYSTEM_PROMPT,
   POOL_SIZE,
 } from "./prompt";
@@ -55,7 +56,7 @@ function normaliseFormat(v: unknown): ExecutionFormat | null {
 export function validatePool(
   raw: unknown,
   ctx: ConceptContext,
-  opts: { strict?: boolean } = {}
+  opts: { strict?: boolean; single?: boolean } = {}
 ): { pool: ConceptPool | null; errors: string[]; warnings: string[] } {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -204,8 +205,9 @@ export function validatePool(
     });
   });
 
+  // A single replacement doesn't have to cover the key date; the rest of the draft may.
   const missingKeyDate =
-    ctx.keyDates.length > 0 && !concepts.some((c) => c.key_date);
+    !opts.single && ctx.keyDates.length > 0 && !concepts.some((c) => c.key_date);
   if (missingKeyDate) errors.push("No concept serves the upcoming key date");
 
   // One spike explained several different ways is a sign the model is
@@ -234,7 +236,7 @@ export function validatePool(
 
   // Strict (first attempt): anything short of a full, date-aware pool is
   // worth one retry. Lenient (retry): accept what holds up.
-  const needed = opts.strict ? POOL_SIZE : MIN_VALID_CONCEPTS;
+  const needed = opts.single ? 1 : opts.strict ? POOL_SIZE : MIN_VALID_CONCEPTS;
   if (
     !focus ||
     concepts.length < needed ||
@@ -263,7 +265,7 @@ export function validatePool(
 export async function generateConceptPool(
   supabase: SupabaseClient,
   artistId: string,
-  opts: { apiKey?: string; model?: string; now?: Date } = {}
+  opts: { apiKey?: string; model?: string; now?: Date; note?: string } = {}
 ): Promise<GenerateResult> {
   const apiKey = opts.apiKey ?? process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
@@ -271,7 +273,7 @@ export async function generateConceptPool(
   const now = opts.now ?? new Date();
 
   const context = await loadConceptContext(supabase, artistId, now);
-  const prompt = buildConceptPrompt(context, now.toISOString().slice(0, 10));
+  const prompt = buildConceptPrompt(context, now.toISOString().slice(0, 10), { note: opts.note });
   const anthropic = new Anthropic({ apiKey });
 
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: prompt }];
@@ -316,4 +318,75 @@ export async function generateConceptPool(
   }
 
   throw new Error(`Concept generation failed: ${lastErrors.join("; ")}`);
+}
+
+/**
+ * One new concept to replace a weak one in a draft. `ctx` should carry the
+ * draft's own post list so evidence numbers match the rest of the draft.
+ */
+export async function generateReplacementConcept(
+  ctx: ConceptContext,
+  input: { focus: string; keep: Concept[]; replacing: Concept; note?: string },
+  opts: { apiKey?: string; model?: string; now?: Date } = {}
+): Promise<{ concept: Concept; warnings: string[]; model: string }> {
+  const apiKey = opts.apiKey ?? process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
+  const model = opts.model ?? process.env.CONCEPT_MODEL ?? DEFAULT_MODEL;
+  const now = opts.now ?? new Date();
+  const anthropic = new Anthropic({ apiKey });
+
+  const taken = new Set([...input.keep, input.replacing].map((c) => c.title.trim().toLowerCase()));
+  const messages: Anthropic.MessageParam[] = [
+    { role: "user", content: buildReplacementPrompt(ctx, now.toISOString().slice(0, 10), input) },
+  ];
+  let lastErrors: string[] = [];
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const res = await anthropic.messages.create({
+      model,
+      max_tokens: 1500,
+      system: CONCEPT_SYSTEM_PROMPT,
+      messages,
+    });
+    const text = res.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+
+    try {
+      const parsed = extractJson(text) as Record<string, unknown>;
+      const { pool, errors, warnings } = validatePool(
+        { focus: input.focus, concepts: [parsed.concept] },
+        ctx,
+        { strict: attempt === 1, single: true }
+      );
+      const concept = pool?.concepts[0];
+      if (concept && taken.has(concept.title.toLowerCase())) {
+        lastErrors = [`"${concept.title}" is already on the list`];
+      } else if (concept) {
+        // Flag evidence the rest of the draft already leans on.
+        for (const n of concept.evidence_posts) {
+          const others = input.keep.filter((c) => c.evidence_posts.includes(n));
+          if (others.length > 0) {
+            warnings.push(`Post ${n} also backs "${others.map((c) => c.title).join('" and "')}"`);
+          }
+        }
+        return { concept, warnings, model };
+      } else {
+        lastErrors = errors.length ? errors : ["No usable concept"];
+      }
+    } catch (e) {
+      lastErrors = [`Invalid JSON: ${e instanceof Error ? e.message : String(e)}`];
+    }
+
+    messages.push(
+      { role: "assistant", content: text },
+      {
+        role: "user",
+        content: `That didn't pass checks:\n${lastErrors.map((e) => `- ${e}`).join("\n")}\nSend the JSON again with these fixed. Only cite post numbers from the list.`,
+      }
+    );
+  }
+
+  throw new Error(`Couldn't write a replacement: ${lastErrors.join("; ")}`);
 }

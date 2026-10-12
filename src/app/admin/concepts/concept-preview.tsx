@@ -1,11 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type {
-  Concept,
-  ContextPost,
-  GenerateResult,
-} from "@/lib/concepts/types";
+import type { ConceptExecution, ContextPost, GenerateResult } from "@/lib/concepts/types";
+import type { DraftConcept, DraftView } from "@/lib/concepts/edit";
 
 export type PreviewArtist = {
   id: string;
@@ -24,12 +21,17 @@ export type PendingDraft = {
   kind?: "weekly" | "first";
 };
 
-type PreviewResponse = GenerateResult & {
-  ms: number;
-  generation_id: string;
-  kind?: string;
-  created_at?: string;
-};
+type PreviewResponse = DraftView;
+
+type ConceptEdit = { title: string; why: string; executions: ConceptExecution[] };
+
+const FORMATS: ConceptExecution["format"][] = ["reel", "carousel", "photo", "story", "text"];
+const EFFORTS: ConceptExecution["effort"][] = ["low", "medium", "high"];
+
+const smallBtn =
+  "rounded-md border border-card-border px-2.5 py-1 text-xs font-semibold text-muted-strong hover:border-foreground/40 hover:text-foreground disabled:opacity-40";
+const inputClass =
+  "w-full rounded-lg border border-card-border bg-input px-3 py-2 text-base text-foreground sm:text-sm";
 
 /** Audit scrapes over a month old miss recent posts. */
 function isAuditStale(ctx: GenerateResult["context"]): boolean {
@@ -89,17 +91,55 @@ function ConceptCard({
   concept,
   posts,
   onBoard,
+  isFirst,
+  isLast,
+  editable,
+  busy,
+  onSave,
+  onMove,
+  onReplace,
 }: {
-  concept: Concept;
+  concept: DraftConcept;
   posts: ContextPost[];
   onBoard: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+  editable: boolean;
+  /** Any action on the draft is running; this card's own, if it's "replace". */
+  busy: string | null;
+  onSave: (edit: ConceptEdit) => Promise<boolean>;
+  onMove: (direction: "up" | "down") => void;
+  onReplace: (note: string) => Promise<boolean>;
 }) {
+  const [mode, setMode] = useState<"view" | "edit" | "replace">("view");
+  const [form, setForm] = useState<ConceptEdit>({
+    title: concept.title,
+    why: concept.why,
+    executions: concept.executions,
+  });
+  const [note, setNote] = useState("");
+
   const cited = concept.evidence_posts
     .map((n) => posts.find((p) => p.n === n))
     .filter((p): p is ContextPost => !!p);
+  const replacing = busy === `replace:${concept.id}`;
+
+  function startEdit() {
+    setForm({ title: concept.title, why: concept.why, executions: concept.executions });
+    setMode("edit");
+  }
+
+  function setExecution(i: number, patch: Partial<ConceptExecution>) {
+    setForm((f) => ({
+      ...f,
+      executions: f.executions.map((e, j) => (j === i ? { ...e, ...patch } : e)),
+    }));
+  }
 
   return (
-    <article className="flex min-w-0 flex-col rounded-xl border border-card-border bg-card p-5">
+    <article
+      className={`flex min-w-0 flex-col rounded-xl border bg-card p-5 ${replacing ? "border-brand/50 opacity-60" : "border-card-border"}`}
+    >
       <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-widest">
         <span className={onBoard ? "text-brand" : "text-muted"}>
           {onBoard ? "On the board" : "Spare"}
@@ -112,23 +152,146 @@ function ConceptCard({
           <span className="text-sky-300">For {concept.key_date}</span>
         )}
       </div>
-      <h3 className="mt-2 text-lg font-bold text-foreground">
-        {concept.title}
-      </h3>
-      <p className="mt-2 text-sm text-muted-strong">{concept.why}</p>
 
-      <ul className="mt-4 space-y-2">
-        {concept.executions.map((e, i) => (
-          <li key={i} className="text-sm text-foreground">
-            <span className="mr-2 inline-block rounded bg-input px-1.5 py-0.5 text-xs font-semibold uppercase text-muted">
-              {e.format} · {e.effort}
-            </span>
-            {e.idea}
-          </li>
-        ))}
-      </ul>
+      {mode === "edit" ? (
+        <form
+          className="mt-3 space-y-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (await onSave(form)) setMode("view");
+          }}
+        >
+          <label className="block text-xs font-semibold text-muted">
+            Title
+            <input
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              maxLength={80}
+              className={`mt-1 ${inputClass} font-bold`}
+            />
+          </label>
+          <label className="block text-xs font-semibold text-muted">
+            Why (the artist sees this)
+            <textarea
+              value={form.why}
+              onChange={(e) => setForm({ ...form, why: e.target.value })}
+              maxLength={600}
+              rows={4}
+              className={`mt-1 ${inputClass}`}
+            />
+          </label>
+          <p className="text-xs font-semibold text-muted">Ways to do it (clear a box to remove it)</p>
+          {form.executions.map((ex, i) => (
+            <div key={i} className="space-y-2 rounded-lg border border-card-border p-3">
+              <div className="flex gap-2">
+                <select
+                  value={ex.format}
+                  onChange={(e) => setExecution(i, { format: e.target.value as ConceptExecution["format"] })}
+                  className="rounded-md border border-card-border bg-input px-2 py-1 text-base text-foreground sm:text-xs"
+                >
+                  {FORMATS.map((f) => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+                <select
+                  value={ex.effort}
+                  onChange={(e) => setExecution(i, { effort: e.target.value as ConceptExecution["effort"] })}
+                  className="rounded-md border border-card-border bg-input px-2 py-1 text-base text-foreground sm:text-xs"
+                >
+                  {EFFORTS.map((f) => (
+                    <option key={f} value={f}>{f} effort</option>
+                  ))}
+                </select>
+              </div>
+              <textarea
+                value={ex.idea}
+                onChange={(e) => setExecution(i, { idea: e.target.value })}
+                maxLength={400}
+                rows={3}
+                className={inputClass}
+              />
+            </div>
+          ))}
+          {form.executions.length < 3 && (
+            <button
+              type="button"
+              onClick={() =>
+                setForm({ ...form, executions: [...form.executions, { format: "photo", idea: "", effort: "low" }] })
+              }
+              className={smallBtn}
+            >
+              Add a way
+            </button>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={!!busy}
+              className="rounded-lg bg-brand px-3 py-1.5 text-sm font-bold text-brand-foreground disabled:opacity-50"
+            >
+              {busy === `save:${concept.id}` ? "Saving…" : "Save"}
+            </button>
+            <button type="button" onClick={() => setMode("view")} className={smallBtn}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <h3 className="mt-2 text-lg font-bold text-foreground">{concept.title}</h3>
+          <p className="mt-2 text-sm text-muted-strong">{concept.why}</p>
 
-      {cited.length > 0 && (
+          <ul className="mt-4 space-y-2">
+            {concept.executions.map((e, i) => (
+              <li key={i} className="text-sm text-foreground">
+                <span className="mr-2 inline-block rounded bg-input px-1.5 py-0.5 text-xs font-semibold uppercase text-muted">
+                  {e.format} · {e.effort}
+                </span>
+                {e.idea}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {mode === "replace" && (
+        <form
+          className="mt-4 space-y-2 rounded-lg border border-card-border p-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (await onReplace(note)) {
+              setNote("");
+              setMode("view");
+            }
+          }}
+        >
+          <label className="block text-xs font-semibold text-muted">
+            What should the new idea do differently? (optional)
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={1000}
+              rows={2}
+              placeholder="e.g. something about the new single, no talking to camera"
+              className={`mt-1 ${inputClass}`}
+            />
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={!!busy}
+              className="rounded-lg bg-brand px-3 py-1.5 text-sm font-bold text-brand-foreground disabled:opacity-50"
+            >
+              {replacing ? "Writing a new idea…" : "Replace this idea"}
+            </button>
+            <button type="button" onClick={() => setMode("view")} disabled={replacing} className={smallBtn}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {cited.length > 0 && mode !== "edit" && (
         <details className="mt-4">
           <summary className="cursor-pointer text-xs font-semibold text-muted">
             Check the evidence ({cited.length} post{cited.length === 1 ? "" : "s"})
@@ -140,7 +303,81 @@ function ConceptCard({
           </ul>
         </details>
       )}
+
+      {editable && mode === "view" && (
+        <div className="mt-auto flex flex-wrap gap-2 pt-4">
+          <button type="button" onClick={startEdit} disabled={!!busy} className={smallBtn}>
+            Edit
+          </button>
+          <button type="button" onClick={() => setMode("replace")} disabled={!!busy} className={smallBtn}>
+            Replace
+          </button>
+          <button
+            type="button"
+            onClick={() => onMove("up")}
+            disabled={!!busy || isFirst}
+            className={smallBtn}
+            aria-label="Move earlier"
+            title="Move earlier (the first three go on the board)"
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            onClick={() => onMove("down")}
+            disabled={!!busy || isLast}
+            className={smallBtn}
+            aria-label="Move later"
+            title="Move later"
+          >
+            →
+          </button>
+        </div>
+      )}
     </article>
+  );
+}
+
+function FocusEditor({
+  focus,
+  busy,
+  onSave,
+  onCancel,
+}: {
+  focus: string;
+  busy: boolean;
+  onSave: (focus: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(focus);
+  return (
+    <form
+      className="mt-2 flex flex-col gap-2 sm:flex-row"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSave(value);
+      }}
+    >
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        maxLength={120}
+        className={`${inputClass} text-lg font-bold`}
+        autoFocus
+      />
+      <div className="flex shrink-0 gap-2">
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-lg bg-brand px-3 py-1.5 text-sm font-bold text-brand-foreground disabled:opacity-50"
+        >
+          {busy ? "Saving…" : "Save"}
+        </button>
+        <button type="button" onClick={onCancel} className={smallBtn}>
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -161,6 +398,9 @@ export function ConceptPreview({
   const [publishing, setPublishing] = useState(false);
   const [publishedId, setPublishedId] = useState<string | null>(null);
   const [auditStale, setAuditStale] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [editingFocus, setEditingFocus] = useState(false);
+  const [redoNote, setRedoNote] = useState("");
 
   const selected = artists.find((a) => a.id === artistId) ?? null;
 
@@ -226,7 +466,8 @@ export function ConceptPreview({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? `Request failed (${res.status})`);
-      const r = json as PreviewResponse;
+      // Load the saved draft so it can be edited.
+      const r = { ...(await fetchDraft(json.generation_id)), ms: Number(json.ms ?? 0) };
       setResult(r);
       setNotify(false);
       setAuditStale(
@@ -239,6 +480,36 @@ export function ConceptPreview({
     }
   }
 
+  async function fetchDraft(generationId: string): Promise<PreviewResponse> {
+    const res = await fetch(`/api/admin/drafts?generation_id=${generationId}`);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error ?? `Request failed (${res.status})`);
+    return json as PreviewResponse;
+  }
+
+  /** Runs an edit on the open draft and shows the updated version. */
+  async function draftAction(key: string, body: Record<string, unknown>): Promise<boolean> {
+    if (!result) return false;
+    setBusy(key);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/drafts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ generation_id: result.generation_id, ...body }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? `Request failed (${res.status})`);
+      setResult({ ...(json as PreviewResponse), ms: result.ms });
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      return false;
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function loadDraft(d: PendingDraft) {
     setLoading(true);
     setError(null);
@@ -246,10 +517,7 @@ export function ConceptPreview({
     setPublishedId(null);
     setArtistId(d.artistId);
     try {
-      const res = await fetch(`/api/admin/drafts?generation_id=${d.generationId}`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? `Request failed (${res.status})`);
-      const r = json as PreviewResponse;
+      const r = await fetchDraft(d.generationId);
       setResult(r);
       // Weekly drafts and first ideas both tell the artist their board is ready.
       setNotify(r.kind === "weekly" || r.kind === "first");
@@ -264,6 +532,8 @@ export function ConceptPreview({
   }
 
   const ctx = result?.context;
+  const editable =
+    !!result && result.status === "draft" && publishedId !== result.generation_id;
 
   return (
     <div className="mt-8">
@@ -344,9 +614,30 @@ export function ConceptPreview({
             <p className="text-xs font-bold uppercase tracking-widest text-muted">
               Focus line
             </p>
-            <p className="mt-2 text-xl font-bold text-foreground">
-              {result.pool.focus}
-            </p>
+            {editingFocus ? (
+              <FocusEditor
+                focus={result.pool.focus}
+                busy={busy === "focus"}
+                onCancel={() => setEditingFocus(false)}
+                onSave={async (focus) => {
+                  if (await draftAction("focus", { action: "focus", focus })) setEditingFocus(false);
+                }}
+              />
+            ) : (
+              <div className="mt-2 flex flex-wrap items-baseline gap-3">
+                <p className="text-xl font-bold text-foreground">{result.pool.focus}</p>
+                {editable && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingFocus(true)}
+                    disabled={!!busy}
+                    className={smallBtn}
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
+            )}
             {result.pool.focus_why && (
               <p className="mt-2 text-sm text-muted">{result.pool.focus_why}</p>
             )}
@@ -382,7 +673,7 @@ export function ConceptPreview({
                   <button
                     type="button"
                     onClick={publish}
-                    disabled={publishing}
+                    disabled={publishing || !!busy}
                     className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-foreground disabled:opacity-50"
                   >
                     {publishing ? "Publishing…" : "Publish to board"}
@@ -413,15 +704,71 @@ export function ConceptPreview({
                 ))}
               </ul>
             )}
+            {result.notes.length > 0 && (
+              <ul className="mt-3 space-y-1 text-xs text-muted">
+                {result.notes.map((n, i) => (
+                  <li key={i}>
+                    Your note ({n.action}, {formatWhen(n.at)}): &ldquo;{n.note}&rdquo;
+                  </li>
+                ))}
+              </ul>
+            )}
+            {editable && (
+              <details className="mt-4 rounded-lg border border-card-border p-3" open={busy === "regenerate" || undefined}>
+                <summary className="cursor-pointer text-sm font-semibold text-muted-strong">
+                  Redo the whole draft
+                </summary>
+                <form
+                  className="mt-3 space-y-2"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (await draftAction("regenerate", { action: "regenerate", note: redoNote })) {
+                      setRedoNote("");
+                      setEditingFocus(false);
+                    }
+                  }}
+                >
+                  <label className="block text-xs font-semibold text-muted">
+                    What should change? (optional, but it helps)
+                    <textarea
+                      value={redoNote}
+                      onChange={(e) => setRedoNote(e.target.value)}
+                      maxLength={1000}
+                      rows={2}
+                      placeholder="e.g. less about photographers, they've got a single out on the 24th"
+                      className={`mt-1 ${inputClass}`}
+                    />
+                  </label>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="submit"
+                      disabled={!!busy}
+                      className="rounded-lg border border-brand px-3 py-1.5 text-sm font-bold text-brand disabled:opacity-50"
+                    >
+                      {busy === "regenerate" ? "Redoing… (up to a minute)" : "Redo with this note"}
+                    </button>
+                    <span className="text-xs text-muted">Replaces every idea in this draft. Uses the latest posts.</span>
+                  </div>
+                </form>
+              </details>
+            )}
           </section>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {result.pool.concepts.map((c, i) => (
               <ConceptCard
-                key={i}
+                // Remount after a replace or redo so edit forms start from the new text.
+                key={`${c.id}:${c.title}:${c.why}`}
                 concept={c}
                 posts={ctx.posts}
                 onBoard={i < BOARD_SLOTS}
+                isFirst={i === 0}
+                isLast={i === result.pool.concepts.length - 1}
+                editable={editable}
+                busy={busy}
+                onSave={(edit) => draftAction(`save:${c.id}`, { action: "edit", concept_id: c.id, ...edit })}
+                onMove={(direction) => draftAction(`move:${c.id}`, { action: "move", concept_id: c.id, direction })}
+                onReplace={(note) => draftAction(`replace:${c.id}`, { action: "replace", concept_id: c.id, note })}
               />
             ))}
           </div>

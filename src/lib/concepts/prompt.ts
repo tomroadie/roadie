@@ -1,4 +1,4 @@
-import type { ConceptContext, ContextPost } from "./types";
+import type { Concept, ConceptContext, ContextPost } from "./types";
 
 export const POOL_SIZE = 5;
 
@@ -48,7 +48,19 @@ function postingSituation(ctx: ConceptContext): string {
   return `${ctx.postsLast28Days} post${ctx.postsLast28Days === 1 ? "" : "s"} in the last 4 weeks. ${since} This week's target is ${ctx.weeklyTarget} post${ctx.weeklyTarget === 1 ? "" : "s"}.`;
 }
 
-export function buildConceptPrompt(ctx: ConceptContext, today: string): string {
+/** A reviewer's note on a redo. Theirs to steer with, within the rules. */
+function reviewNoteSection(note: string | undefined): string {
+  const n = note?.trim();
+  return n
+    ? `## Note from the Tempo team on the last draft (follow it)\n"${n.slice(0, 1000)}"\nThe rules above still apply: stay grounded in the posts.`
+    : "";
+}
+
+export function buildConceptPrompt(
+  ctx: ConceptContext,
+  today: string,
+  opts: { note?: string } = {}
+): string {
   const about = [
     `- Name: ${ctx.artistName}`,
     ctx.handle ? `- Instagram: @${ctx.handle}` : null,
@@ -164,6 +176,8 @@ ${newsOnlyNote}
 
 ${coldStartNote}
 
+${reviewNoteSection(opts.note)}
+
 ## What to produce
 1. A focus line for this week's board: one short instruction, at most 70 characters, phrased as something to do this week ("Show the stories behind the songs people already know"). It's the first thing the artist reads. No numbers, no comparisons, no dashes, no "your X outperform your Y"; the evidence belongs in focus_why.
 2. focus_why: one or two sentences for the Tempo team on why this focus, citing post numbers.
@@ -178,6 +192,39 @@ ${coldStartNote}
 
 Respond with only this JSON, no commentary or code fences:
 {"focus":"...","focus_why":"...","concepts":[{"title":"...","why":"...","evidence_posts":[1,3],"executions":[{"format":"reel","idea":"...","effort":"low"}],"key_date":null,"basis":"from_data","about_news":false}]}`.replace(
+    /\n{3,}/g,
+    "\n\n"
+  );
+}
+
+function conceptLine(c: Concept): string {
+  const ev = c.evidence_posts.length ? `posts ${c.evidence_posts.join(", ")}` : "no posts (starting point)";
+  return `- "${c.title}" (${ev})`;
+}
+
+/**
+ * Asks for one concept to replace a weak one in a draft. The rest of the
+ * draft stays as it is, so the new one must differ from all of them.
+ */
+export function buildReplacementPrompt(
+  ctx: ConceptContext,
+  today: string,
+  input: { focus: string; keep: Concept[]; replacing: Concept; note?: string }
+): string {
+  const base = buildConceptPrompt(ctx, today).split("## What to produce")[0];
+  const note = input.note?.trim();
+  return `${base}
+## This time: replace one concept
+This week's focus line is "${input.focus}". These concepts are staying on the list:
+${input.keep.map(conceptLine).join("\n")}
+
+This one is being replaced, so don't write it again or anything close to it:
+${conceptLine(input.replacing)}
+${note ? `\nWhat the Tempo team wants instead (follow it): "${note.slice(0, 1000)}"\n` : ""}
+Write ONE new concept that's a genuinely different direction from all of the above. Prefer evidence posts the staying concepts don't already cite. Same fields and rules as always: title (at most 55 characters), why, evidence_posts, two or three executions with at least one low effort, key_date, basis, about_news.
+
+Respond with only this JSON, no commentary or code fences:
+{"concept":{"title":"...","why":"...","evidence_posts":[1],"executions":[{"format":"photo","idea":"...","effort":"low"}],"key_date":null,"basis":"from_data","about_news":false}}`.replace(
     /\n{3,}/g,
     "\n\n"
   );

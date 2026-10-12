@@ -8,6 +8,9 @@ import { boardWeek } from "@/lib/board-week";
 import { loadPostResults, type PostResult } from "@/lib/post-results";
 import { CONCEPT_COLUMNS, toBoardConcept, type BoardConcept, type ConceptRow } from "@/lib/concepts/store";
 import type { ExecutionFormat } from "@/lib/concepts/types";
+import { getsWeeklyIdeas } from "@/lib/account-types";
+
+const isMonitored = (t: string | null | undefined) => !getsWeeklyIdeas(t);
 import { computeLearnings, formatName, formatRatio, loadThemes, statsFor, type Theme } from "@/lib/themes/load";
 import {
   AddThemeForm,
@@ -87,11 +90,11 @@ export default async function ConceptsPage({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("artist_name, board_enabled, week_start_day")
+    .select("artist_name, board_enabled, week_start_day, account_type")
     .eq("id", activeArtistId)
     .maybeSingle();
   // Concepts sit on top of the board; artists on the old weekly plan don't have them.
-  if (!profile?.board_enabled) redirect("/home");
+  if (!profile || (!profile.board_enabled && !isMonitored(profile.account_type))) redirect("/home");
 
   const week = boardWeek(profile.week_start_day);
   const eightWeeksAgo = new Date(daysAgo(56)).toISOString().slice(0, 10);

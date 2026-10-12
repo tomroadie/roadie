@@ -7,10 +7,11 @@ import { GENRES } from "@/app/onboarding/genres";
 import { appBaseUrl } from "@/lib/email";
 import { runConnectedAudit } from "@/lib/audit/connected-audit";
 import { listBusinessInstagramAccounts } from "@/lib/facebook-business";
+import { asAccountType } from "@/lib/account-types";
 
 export const maxDuration = 300;
 
-type Requested = { page_id: string; artist_name: string; genre: string };
+type Requested = { page_id: string; artist_name: string; genre: string; account_type: string };
 type Result = { page_id: string; status: "created" | "updated" | "skipped"; artist_id?: string; note?: string };
 
 async function syncNow(artistId: string): Promise<void> {
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
         page_id: typeof a.page_id === "string" ? a.page_id.trim() : "",
         artist_name: typeof a.artist_name === "string" ? a.artist_name.trim().slice(0, 80) : "",
         genre: typeof a.genre === "string" ? a.genre : "",
+        account_type: asAccountType(a.account_type),
       }))
       .filter((a) => /^\d{1,32}$/.test(a.page_id))
       .slice(0, 50);
@@ -129,7 +131,8 @@ export async function POST(request: Request) {
     }
 
     const name = r.artist_name || acct.name || acct.username || acct.pageName;
-    const genre = (GENRES as readonly string[]).includes(r.genre) ? r.genre : null;
+    const accountType = asAccountType(r.account_type);
+    const genre = accountType === "artist" && (GENRES as readonly string[]).includes(r.genre) ? r.genre : null;
     const id = crypto.randomUUID();
     const { error: artistErr } = await admin.from("artists").insert({ id, owner_user_id: user.id });
     if (artistErr) {
@@ -142,6 +145,7 @@ export async function POST(request: Request) {
       artist_name: name,
       plan,
       genre,
+      account_type: accountType,
       is_managed: true,
       is_private: true,
       cron_active: false,

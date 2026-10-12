@@ -1,5 +1,6 @@
 "use client";
 
+import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABEL, asAccountType, type AccountType } from "@/lib/account-types";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { adminRunAuditForArtist, adminSwitchArtist } from "./actions";
 
@@ -16,7 +17,7 @@ export type AdminArtistDirectoryRow = {
   cron_active: boolean;
   is_managed: boolean;
   is_private: boolean;
-  account_type: "artist" | "venue";
+  account_type: AccountType;
   last_plan_at: string | null;
 };
 
@@ -52,7 +53,7 @@ type ArtistPatch = {
   plan?: string;
   is_managed?: boolean;
   is_private?: boolean;
-  account_type?: "artist" | "venue";
+  account_type?: AccountType;
 };
 
 async function patchArtist(
@@ -133,7 +134,7 @@ export function AdminArtistsTable({
         r.is_managed ? "managed" : "self-serve",
         r.cron_active ? "active" : "inactive",
         r.is_private ? "private" : "public",
-        r.account_type === "venue" ? "venue" : "artist",
+        r.account_type,
       ]
         .join(" ")
         .toLowerCase();
@@ -237,7 +238,7 @@ export function AdminArtistsTable({
 
   async function handleToggleAccountType(
     artistId: string,
-    nextType: "artist" | "venue"
+    nextType: AccountType
   ) {
     setControlsError(null);
     setAccountTypeBusy(artistId);
@@ -424,28 +425,22 @@ export function AdminArtistsTable({
                   </button>
                 </td>
                 <td className="px-4 py-3">
-                  <button
-                    type="button"
+                  <label className="sr-only" htmlFor={`type-${r.id}`}>
+                    Account type
+                  </label>
+                  <select
+                    id={`type-${r.id}`}
+                    value={r.account_type}
                     disabled={accountTypeBusy === r.id}
-                    onClick={() =>
-                      void handleToggleAccountType(
-                        r.id,
-                        r.account_type === "venue" ? "artist" : "venue"
-                      )
-                    }
-                    className={[
-                      "rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-60",
-                      r.account_type === "venue"
-                        ? "bg-blue-500/20 text-blue-700"
-                        : "bg-input text-muted",
-                    ].join(" ")}
+                    onChange={(e) => void handleToggleAccountType(r.id, asAccountType(e.target.value))}
+                    className="rounded-full border border-card-border bg-input px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted disabled:opacity-60"
                   >
-                    {accountTypeBusy === r.id
-                      ? "Saving…"
-                      : r.account_type === "venue"
-                        ? "Venue"
-                        : "Artist"}
-                  </button>
+                    {ACCOUNT_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {ACCOUNT_TYPE_LABEL[t]}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col gap-1">

@@ -30,6 +30,7 @@ import { userIsAdmin } from "@/lib/is-admin";
 import type { EventRow } from "@/types/event";
 import { boardWeek } from "@/lib/board-week";
 import { computeLearnings, learningHint, loadThemes } from "@/lib/themes/load";
+import { ACCOUNT_TYPE_LABEL, asAccountType, getsWeeklyIdeas } from "@/lib/account-types";
 import { LearningsSection } from "./learnings";
 import { RecentPostsGrid } from "./recent-posts-grid";
 import { DateSuggestions, type DateSuggestion } from "./date-suggestions";
@@ -289,7 +290,7 @@ export default async function HomePage({
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, genre, instagram_handle, plan, plan_override, voice_description, posting_frequency, is_managed, instagram_user_id, instagram_access_token, trial_started_at, board_enabled, week_start_day, weekly_target"
+      "artist_name, genre, instagram_handle, plan, plan_override, voice_description, posting_frequency, is_managed, instagram_user_id, instagram_access_token, trial_started_at, board_enabled, week_start_day, weekly_target, account_type"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -313,6 +314,73 @@ export default async function HomePage({
     "canViewEngagementTrends",
     isAdmin
   );
+
+  // Venues, labels and other non-artist accounts: monitored only. Their
+  // posts, learnings and concepts, but no weekly ideas (those are written
+  // for artists) unless the board has been switched on for them.
+  if (!profile?.board_enabled && !getsWeeklyIdeas(profile?.account_type)) {
+    const mWeek = boardWeek(profile?.week_start_day);
+    const [mResults, mThemes] = await Promise.all([
+      loadPostResults(supabase, activeArtistId, mWeek.startsAt),
+      loadThemes(supabase, activeArtistId).catch(() => ({ active: [], suggested: [] })),
+    ]);
+    const mLearnings = mResults ? computeLearnings(mResults.posts, mThemes.active) : [];
+    const mHint = mResults && mLearnings.length === 0 ? learningHint(mResults.posts, mThemes.active) : null;
+    return (
+      <div className="mx-auto flex min-h-full w-full max-w-6xl flex-1 flex-col px-4 py-6 sm:px-8">
+        <AppNavWrapper />
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
+              {ACCOUNT_TYPE_LABEL[asAccountType(profile?.account_type)]}
+            </p>
+            <h1 className="text-3xl font-bold text-foreground sm:text-4xl">{artistName}</h1>
+          </div>
+          <LogoutButton />
+        </div>
+        <div className="mt-6 flex flex-wrap items-start gap-7">
+          <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-8">
+            <LearningsSection learnings={mLearnings} hint={mHint} />
+            {mResults ? (
+              <>
+                <RecentPostsGrid posts={mResults.posts} />
+                <details className="group rounded-2xl border border-card-border bg-card p-5">
+                  <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
+                    <span className="group-open:hidden">All post results</span>
+                    <span className="hidden group-open:inline">Hide post results</span>
+                  </summary>
+                  <PostResultsSection
+                    data={mResults}
+                    handle={profile?.instagram_handle ?? null}
+                    target={null}
+                  />
+                </details>
+              </>
+            ) : (
+              <p className="rounded-2xl border border-dashed border-card-border bg-card p-5 text-sm text-muted">
+                No posts synced yet. They&rsquo;ll show here after the next sync.
+              </p>
+            )}
+          </div>
+          <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-3">
+            <div className="rounded-2xl border border-card-border bg-card p-5">
+              <h2 className="text-xl font-bold text-foreground">Concepts</h2>
+              <p className="mt-2 text-sm text-muted">
+                The themes these posts fall into, and which ones are working.
+              </p>
+              <Link href="/concepts" className="mt-3 inline-block text-sm font-semibold text-brand hover:underline">
+                Open concepts
+              </Link>
+            </div>
+            <div className="rounded-2xl border border-dashed border-card-border p-5 text-sm text-muted">
+              Weekly ideas are written for artists for now. Ideas for{" "}
+              {ACCOUNT_TYPE_LABEL[asAccountType(profile?.account_type)].toLowerCase()} accounts are on the way.
+            </div>
+          </aside>
+        </div>
+      </div>
+    );
+  }
 
   const { data: weeklyPlan } = await supabase
     .from("weekly_plans")

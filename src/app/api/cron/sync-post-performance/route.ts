@@ -16,6 +16,7 @@ type ProfileRow = {
   instagram_access_token: string | null;
   board_enabled?: boolean | null;
   instagram_auth?: string | null;
+  account_type?: string | null;
 };
 
 type MediaItem = {
@@ -285,7 +286,7 @@ export async function GET(request: Request) {
     const onlyArtist = new URL(request.url).searchParams.get("artist_id")?.trim() || null;
     let profilesQuery = supabase
       .from("profiles")
-      .select("id, instagram_user_id, instagram_access_token, board_enabled, instagram_auth")
+      .select("id, instagram_user_id, instagram_access_token, board_enabled, instagram_auth, account_type")
       .not("instagram_access_token", "is", null)
       .not("instagram_user_id", "is", null);
     if (onlyArtist) profilesQuery = profilesQuery.eq("id", onlyArtist);
@@ -521,8 +522,10 @@ export async function GET(request: Request) {
         linked += conceptLink.linked;
         if (conceptLink.error) errors.push(`${artistId}: linking board ideas failed: ${conceptLink.error}`);
 
-        // Board artists: sort new posts into their content themes.
-        if ((profile as ProfileRow).board_enabled === true) {
+        // Board artists and monitored accounts (venues, labels…): sort new
+        // posts into their content themes.
+        const row = profile as ProfileRow;
+        if (row.board_enabled === true || (row.account_type && row.account_type !== "artist")) {
           try {
             await refreshThemesForArtist(supabase, artistId);
           } catch (e) {

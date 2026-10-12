@@ -5,8 +5,7 @@ import { userIsAdmin } from "@/lib/is-admin";
 import { normalizePlan, type RoadiePlan } from "@/lib/plan-limits";
 
 const PLAN_VALUES: RoadiePlan[] = ["free", "starter", "pro", "label"];
-const ACCOUNT_TYPE_VALUES = ["artist", "venue"] as const;
-type AccountType = (typeof ACCOUNT_TYPE_VALUES)[number];
+import { ACCOUNT_TYPES as ACCOUNT_TYPE_VALUES, type AccountType } from "@/lib/account-types";
 
 const ARTIST_ID_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

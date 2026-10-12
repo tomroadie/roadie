@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
+import { asAccountType } from "@/lib/account-types";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -175,8 +176,7 @@ export default async function AdminPage() {
           plan: String(p.plan ?? "free"),
           is_managed: p.is_managed === true,
           is_private: p.is_private === true,
-          account_type:
-            p.account_type === "venue" ? ("venue" as const) : ("artist" as const),
+          account_type: asAccountType(p.account_type),
         })),
       };
     })
@@ -236,7 +236,7 @@ export default async function AdminPage() {
       cron_active: p.cron_active !== false,
       is_managed: p.is_managed === true,
       is_private: p.is_private === true,
-      account_type: p.account_type === "venue" ? "venue" : "artist",
+      account_type: asAccountType(p.account_type),
       last_plan_at: lastPlanByArtistId.get(p.id) ?? null,
     };
     });

@@ -1,5 +1,6 @@
 "use client";
 
+import { ACCOUNT_TYPE_LABEL, type AccountType } from "@/lib/account-types";
 import { useEffect, useMemo, useState } from "react";
 import { adminSwitchArtist } from "./actions";
 
@@ -10,7 +11,7 @@ export type AdminUserAccountArtist = {
   plan: string;
   is_managed: boolean;
   is_private: boolean;
-  account_type: "artist" | "venue";
+  account_type: AccountType;
 };
 
 export type AdminUserAccountRow = {
@@ -304,9 +305,9 @@ function UserAccountRow({
                             <span className="rounded-full bg-input px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">
                               {a.plan || "free"}
                             </span>
-                            {a.account_type === "venue" ? (
+                            {a.account_type !== "artist" ? (
                               <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700">
-                                Venue
+                                {ACCOUNT_TYPE_LABEL[a.account_type]}
                               </span>
                             ) : null}
                             {a.is_managed ? (

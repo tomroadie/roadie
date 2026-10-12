@@ -173,3 +173,33 @@ export function computeLearnings(posts: PostResult[], themes: Theme[]): Learning
 
   return out.slice(0, 3);
 }
+
+/**
+ * When there's no learning yet: the concept closest to one, and how many
+ * posts are still settling, so the box says something real instead of
+ * sitting empty. Never negative.
+ */
+export function learningHint(posts: PostResult[], themes: Theme[]): string | null {
+  const settled = comparable(posts);
+  let best: { name: string; ratio: number } | null = null;
+  for (const t of themes) {
+    const ratios = settled.filter((p) => p.themeId === t.id).map((p) => p.comparison!.ratio);
+    if (ratios.length < 2) continue;
+    const r = median(ratios);
+    if (!best || r > best.ratio) best = { name: t.name, ratio: r };
+  }
+
+  const settling = posts.filter((p) => !p.excluded && p.comparison !== null && !p.comparison.settled).length;
+  const parts: string[] = [];
+  if (best && best.ratio >= 1.05) {
+    parts.push(
+      `${best.name} is your strongest concept so far (${formatRatio(best.ratio)} on your usual). A couple more posts there will show whether it's a pattern.`
+    );
+  } else if (best && best.ratio >= 0.95) {
+    parts.push(`${best.name} is holding steady at your usual. A few more posts and the patterns will start to show.`);
+  }
+  if (settling > 0) {
+    parts.push(`${settling} recent ${settling === 1 ? "post is" : "posts are"} still settling.`);
+  }
+  return parts.length > 0 ? parts.join(" ") : null;
+}

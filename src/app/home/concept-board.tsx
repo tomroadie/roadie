@@ -51,7 +51,7 @@ function formatsOf(concept: BoardConcept): ExecutionFormat[] {
 
 /**
  * One idea, compact: its theme, the idea and the formats it suits. The full
- * "starting point" (why it fits, example executions, pin / not for me) opens
+ * "Inspire me" detail (why it fits, example executions, pin / not for me) opens
  * on demand, so Home stays about the week rather than the briefs.
  */
 function ConceptCard({
@@ -100,7 +100,7 @@ function ConceptCard({
           onClick={() => setOpen((o) => !o)}
           className="min-h-11 rounded-xl bg-ink px-4 text-sm font-semibold text-ink-foreground hover:opacity-90"
         >
-          {open ? "Hide starting point" : "Give me a starting point"}
+          {open ? "Hide" : "Inspire me"}
         </button>
         <button
           type="button"

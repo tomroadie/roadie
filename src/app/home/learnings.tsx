@@ -1,7 +1,7 @@
 import type { Learning } from "@/lib/themes/load";
 
 /** "What we're learning": up to three patterns from the artist's own posts. */
-export function LearningsSection({ learnings }: { learnings: Learning[] }) {
+export function LearningsSection({ learnings, hint = null }: { learnings: Learning[]; hint?: string | null }) {
   return (
     <section aria-labelledby="learnings-heading" className="flex flex-col gap-3">
       <h2 id="learnings-heading" className="text-xl font-bold text-foreground">
@@ -23,8 +23,13 @@ export function LearningsSection({ learnings }: { learnings: Learning[] }) {
         </div>
       ) : (
         <div className="rounded-2xl border border-dashed border-card-border bg-card p-5 text-sm leading-relaxed text-muted">
-          Learnings show up once a few of your posts have settled. Every post is compared with your own
-          usual, never with other artists.
+          {hint ? (
+            <p className="text-foreground">{hint}</p>
+          ) : null}
+          <p className={hint ? "mt-2" : undefined}>
+            Learnings show up once a few of your posts have settled. Every post is compared with your own
+            usual, never with other artists.
+          </p>
         </div>
       )}
     </section>

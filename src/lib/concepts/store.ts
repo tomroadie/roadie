@@ -5,6 +5,30 @@ import type {
   GenerateResult,
 } from "./types";
 
+/** The numbers a draft was generated from, shown on review. */
+export function contextStats(context: GenerateResult["context"]): Record<string, unknown> {
+  return {
+    post_source: context.postSource,
+    posts: context.posts.length,
+    news_posts: context.posts.filter((p) => p.news).length,
+    posts_last_28_days: context.postsLast28Days,
+    days_since_last_post: context.daysSinceLastPost,
+    weekly_target: context.weeklyTarget,
+    cold_start: context.coldStart,
+    key_dates: context.keyDates.length,
+    audit_created_at: context.auditCreatedAt,
+  };
+}
+
+/** What the generator saw, so a draft can be reviewed with its evidence. */
+export function contextSnapshot(context: GenerateResult["context"]): Record<string, unknown> {
+  return {
+    posts: context.posts,
+    key_dates: context.keyDates,
+    artist_name: context.artistName,
+  };
+}
+
 /**
  * Saves a generator run as a draft. Nothing reaches the artist until
  * publishGeneration() is called. Needs a service-role client.
@@ -27,24 +51,7 @@ export async function saveDraftGeneration(
       model: result.model,
       attempts: result.attempts,
       warnings: result.warnings,
-      context_summary: {
-        post_source: context.postSource,
-        posts: context.posts.length,
-        news_posts: context.posts.filter((p) => p.news).length,
-        posts_last_28_days: context.postsLast28Days,
-        days_since_last_post: context.daysSinceLastPost,
-        weekly_target: context.weeklyTarget,
-        cold_start: context.coldStart,
-        key_dates: context.keyDates.length,
-        audit_created_at: context.auditCreatedAt,
-        ...extra,
-        // What the generator saw, so a draft can be reviewed with its evidence.
-        snapshot: {
-          posts: context.posts,
-          key_dates: context.keyDates,
-          artist_name: context.artistName,
-        },
-      },
+      context_summary: { ...contextStats(context), ...extra, snapshot: contextSnapshot(context) },
       created_by: createdBy,
     })
     .select("id")
@@ -54,18 +61,7 @@ export async function saveDraftGeneration(
     throw new Error(`save generation: ${genError?.message ?? "no row"}`);
   }
 
-  const rows = pool.concepts.map((c, i) => ({
-    artist_id: context.artistId,
-    generation_id: gen.id,
-    position: i + 1,
-    title: c.title,
-    why: c.why,
-    evidence_posts: c.evidence_posts,
-    executions: c.executions,
-    key_date: c.key_date,
-    basis: c.basis,
-    about_news: c.about_news,
-  }));
+  const rows = conceptRows(context.artistId, gen.id as string, pool.concepts);
 
   const { error: conceptsError } = await admin.from("concepts").insert(rows);
   if (conceptsError) {
@@ -74,6 +70,21 @@ export async function saveDraftGeneration(
   }
 
   return gen.id as string;
+}
+
+export function conceptRows(artistId: string, generationId: string, concepts: Concept[], startAt = 1) {
+  return concepts.map((c, i) => ({
+    artist_id: artistId,
+    generation_id: generationId,
+    position: startAt + i,
+    title: c.title,
+    why: c.why,
+    evidence_posts: c.evidence_posts,
+    executions: c.executions,
+    key_date: c.key_date,
+    basis: c.basis,
+    about_news: c.about_news,
+  }));
 }
 
 /**

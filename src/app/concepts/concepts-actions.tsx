@@ -252,3 +252,84 @@ export function PostThemeReview({
     </div>
   );
 }
+
+/** Rename a concept (and optionally its one-line description) in their own words. */
+export function RenameThemeForm({
+  themeId,
+  name: currentName,
+  description: currentDescription,
+}: {
+  themeId: string;
+  name: string;
+  description: string | null;
+}) {
+  const { busy, error, run } = useAction();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(currentName);
+  const [description, setDescription] = useState(currentDescription ?? "");
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setName(currentName);
+          setDescription(currentDescription ?? "");
+          setOpen(true);
+        }}
+        className="min-h-10 rounded-lg border border-card-border px-3 text-sm font-semibold text-foreground hover:border-muted"
+      >
+        Rename
+      </button>
+    );
+  }
+
+  return (
+    <form
+      className="flex w-full max-w-md flex-col gap-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        void run({ action: "rename", theme_id: themeId, name, description }, () => setOpen(false));
+      }}
+    >
+      <label className="flex flex-col gap-1 text-sm font-semibold text-foreground">
+        Name
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={60}
+          required
+          autoFocus
+          className="min-h-11 rounded-lg border border-card-border bg-background px-3 font-normal"
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm font-semibold text-foreground">
+        What goes in it
+        <input
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          maxLength={200}
+          className="min-h-11 rounded-lg border border-card-border bg-background px-3 font-normal"
+        />
+      </label>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="submit"
+          disabled={busy || !name.trim()}
+          className="min-h-11 rounded-xl bg-ink px-4 text-sm font-semibold text-ink-foreground hover:opacity-90 disabled:opacity-50"
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="min-h-11 px-3 text-sm font-semibold text-muted hover:text-foreground"
+        >
+          Cancel
+        </button>
+      </div>
+      <ErrorLine error={error} />
+    </form>
+  );
+}

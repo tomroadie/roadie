@@ -59,7 +59,8 @@ async function ask(system: string, prompt: string, maxTokens: number): Promise<u
 
 const SUGGEST_SYSTEM = `You help independent music artists organise their social media into a few broad content themes.
 A theme is a durable area their posts live in, not a one-off idea: "Behind the record", "Live moments", "Everyday life", "Release news".
-Names are 2-4 plain words, in British English, no emoji, no hashtags, no marketing jargon.
+Names are 2-3 plain, everyday words a musician would actually say out loud, in British English: "Gig nights", "In the studio", "New music", "Band life".
+Never put the artist's name in a theme name. No made-up compounds ("journey markers", "night after moments"), no emoji, no hashtags, no marketing jargon.
 Descriptions are one short sentence (under 100 characters) saying what belongs in it, written to the artist.
 Reply with JSON only.`;
 

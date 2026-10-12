@@ -29,7 +29,7 @@ import { canDo, getPlanForGating } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 import type { EventRow } from "@/types/event";
 import { boardWeek } from "@/lib/board-week";
-import { computeLearnings, loadThemes } from "@/lib/themes/load";
+import { computeLearnings, learningHint, loadThemes } from "@/lib/themes/load";
 import { LearningsSection } from "./learnings";
 import { RecentPostsGrid } from "./recent-posts-grid";
 import { DateSuggestions, type DateSuggestion } from "./date-suggestions";
@@ -1135,6 +1135,7 @@ export default async function HomePage({
     // shouldn't take Home down, so this falls back to nothing.
     const themes = await loadThemes(supabase, activeArtistId).catch(() => ({ active: [], suggested: [] }));
     const learnings = postResults ? computeLearnings(postResults.posts, themes.active) : [];
+    const hint = postResults && learnings.length === 0 ? learningHint(postResults.posts, themes.active) : null;
 
     return (
       <div className="mx-auto flex min-h-full w-full max-w-6xl flex-1 flex-col px-4 py-6 sm:px-8">
@@ -1171,7 +1172,7 @@ export default async function HomePage({
               ]
             }
           >
-            <LearningsSection learnings={learnings} />
+            <LearningsSection learnings={learnings} hint={hint} />
             {postResults ? <RecentPostsGrid posts={postResults.posts} /> : boardInstagramSection}
             {postResults ? (
               <details className="group rounded-2xl border border-card-border bg-card p-5">

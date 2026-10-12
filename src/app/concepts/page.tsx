@@ -12,6 +12,7 @@ import { computeLearnings, formatName, formatRatio, loadThemes, statsFor, type T
 import {
   AddThemeForm,
   ArchiveThemeButton,
+  RenameThemeForm,
   PostThemeReview,
   SuggestedThemeActions,
   type ReviewPost,
@@ -294,8 +295,8 @@ export default async function ConceptsPage({
                           </div>
                           <details className="group mt-2">
                             <summary className="inline-flex min-h-10 cursor-pointer list-none items-center rounded-lg border border-card-border px-3 text-sm font-semibold text-foreground hover:border-muted">
-                              <span className="group-open:hidden">Starting point</span>
-                              <span className="hidden group-open:inline">Hide starting point</span>
+                              <span className="group-open:hidden">Inspire me</span>
+                              <span className="hidden group-open:inline">Hide</span>
                             </summary>
                             <p className="mt-3 text-sm leading-relaxed text-muted-strong">{idea.why}</p>
                             <ul className="mt-3 space-y-2">
@@ -359,7 +360,13 @@ export default async function ConceptsPage({
                 )}
               </div>
 
-              <div className="border-t border-card-border pt-4">
+              <div className="flex flex-wrap items-start gap-3 border-t border-card-border pt-4">
+                <RenameThemeForm
+                  key={selected.id}
+                  themeId={selected.id}
+                  name={selected.name}
+                  description={selected.description}
+                />
                 <ArchiveThemeButton themeId={selected.id} name={selected.name} />
               </div>
             </section>

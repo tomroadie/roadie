@@ -8,6 +8,7 @@ const UUID_RE =
 /**
  * Artist actions on content themes. The database functions check access.
  *   { action: "add", artist_id, name, description? }
+ *   { action: "rename", theme_id, name, description? }
  *   { action: "accept" | "dismiss" | "archive", theme_id }
  *   { action: "tag_post", instagram_post_id, theme_id | null }
  */
@@ -38,6 +39,18 @@ export async function POST(request: Request) {
     rpc = {
       name: "add_content_theme",
       args: { p_artist_id: artistId, p_name: s("name").slice(0, 60), p_description: s("description").slice(0, 200) || null },
+    };
+  } else if (action === "rename") {
+    if (!UUID_RE.test(s("theme_id")) || !s("name")) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
+    rpc = {
+      name: "rename_content_theme",
+      args: {
+        p_theme_id: s("theme_id"),
+        p_name: s("name").slice(0, 60),
+        p_description: typeof body.description === "string" ? s("description").slice(0, 200) : null,
+      },
     };
   } else if (action === "accept" || action === "dismiss" || action === "archive") {
     if (!UUID_RE.test(s("theme_id"))) {

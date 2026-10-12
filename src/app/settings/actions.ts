@@ -183,6 +183,7 @@ export async function disconnectInstagram(
     .from("profiles")
     .update({
       instagram_access_token: null,
+      instagram_auth: "instagram",
       instagram_user_id: null,
     })
     .eq("id", activeArtistId)

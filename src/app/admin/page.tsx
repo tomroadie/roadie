@@ -470,6 +470,21 @@ export default async function AdminPage() {
 
       <AppNavWrapper />
 
+      <section className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-card-border bg-card p-5">
+        <div>
+          <h2 className="text-lg font-bold text-foreground">Add accounts from Facebook Business</h2>
+          <p className="text-sm text-muted">
+            Connect once and add any Instagram account your Business Manager reaches, without the artist logging in.
+          </p>
+        </div>
+        <Link
+          href="/accounts/import"
+          className="inline-flex min-h-11 items-center rounded-xl bg-ink px-4 text-sm font-semibold text-ink-foreground hover:opacity-90"
+        >
+          Add accounts
+        </Link>
+      </section>
+
       <RevisionRequestsSection
         requests={revisionRequests}
         artistNames={revisionArtistNames}

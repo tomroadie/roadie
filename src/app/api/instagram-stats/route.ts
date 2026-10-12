@@ -1,6 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import {
-  IG_GRAPH_BASE,
+  graphBaseFor,
   isReconnectError,
   type IgGraphError,
 } from "@/lib/instagram-graph";
@@ -81,7 +81,7 @@ export async function GET(request: Request) {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("instagram_access_token, instagram_user_id")
+    .select("instagram_access_token, instagram_user_id, instagram_auth")
     .eq("id", profileId)
     .maybeSingle();
 
@@ -94,13 +94,14 @@ export async function GET(request: Request) {
 
   const accessToken = profile?.instagram_access_token?.trim();
   const instagramUserId = profile?.instagram_user_id?.trim();
+  const graphBase = graphBaseFor(profile?.instagram_auth);
 
   if (!accessToken || !instagramUserId) {
     return NextResponse.json({ error: "not_connected" }, { status: 400 });
   }
 
   const mediaUrl = new URL(
-    `${IG_GRAPH_BASE}/${instagramUserId}/media`
+    `${graphBase}/${instagramUserId}/media`
   );
   mediaUrl.searchParams.set(
     "fields",
@@ -150,12 +151,12 @@ export async function GET(request: Request) {
     Promise.all(
       items.map((item) =>
         typeof item.id === "string"
-          ? fetchMediaInsights(item.id, accessToken)
+          ? fetchMediaInsights(graphBase, item.id, accessToken)
           : Promise.resolve([])
       )
     ),
-    fetchAccountInsights(instagramUserId, accessToken),
-    fetchAccount(instagramUserId, accessToken),
+    fetchAccountInsights(graphBase, instagramUserId, accessToken),
+    fetchAccount(graphBase, instagramUserId, accessToken),
   ]);
   items.forEach((item, i) => {
     item.insights = { data: mediaInsights[i] };
@@ -210,10 +211,10 @@ async function getInsights(url: URL): Promise<MetricRow[]> {
 
 // Reach and views per post. Asked for one at a time because an unsupported
 // metric fails the whole call (availability varies by media type).
-async function fetchMediaInsights(mediaId: string, accessToken: string) {
+async function fetchMediaInsights(graphBase: string, mediaId: string, accessToken: string) {
   const results = await Promise.all(
     ["reach", "views"].map((metric) => {
-      const url = new URL(`${IG_GRAPH_BASE}/${mediaId}/insights`);
+      const url = new URL(`${graphBase}/${mediaId}/insights`);
       url.searchParams.set("metric", metric);
       url.searchParams.set("access_token", accessToken);
       return getInsights(url);
@@ -223,12 +224,12 @@ async function fetchMediaInsights(mediaId: string, accessToken: string) {
 }
 
 // Account totals for the last 7 days.
-async function fetchAccountInsights(igUserId: string, accessToken: string) {
+async function fetchAccountInsights(graphBase: string, igUserId: string, accessToken: string) {
   const until = Math.floor(Date.now() / 1000);
   const since = until - 7 * 24 * 60 * 60;
   const results = await Promise.all(
     ["views", "reach", "profile_views"].map((metric) => {
-      const url = new URL(`${IG_GRAPH_BASE}/${igUserId}/insights`);
+      const url = new URL(`${graphBase}/${igUserId}/insights`);
       url.searchParams.set("metric", metric);
       url.searchParams.set("period", "day");
       url.searchParams.set("metric_type", "total_value");
@@ -242,10 +243,10 @@ async function fetchAccountInsights(igUserId: string, accessToken: string) {
 }
 
 /** The connected account's profile: who they are and how many follow them. */
-async function fetchAccount(igUserId: string, accessToken: string) {
+async function fetchAccount(graphBase: string, igUserId: string, accessToken: string) {
   const empty = { username: null as string | null, profilePictureUrl: null as string | null, followers: null as number | null };
   try {
-    const url = new URL(`${IG_GRAPH_BASE}/${igUserId}`);
+    const url = new URL(`${graphBase}/${igUserId}`);
     url.searchParams.set("fields", "username,profile_picture_url,followers_count");
     url.searchParams.set("access_token", accessToken);
     const res = await fetch(url.toString());

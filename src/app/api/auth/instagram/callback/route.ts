@@ -164,6 +164,8 @@ export async function GET(request: Request) {
         instagram_access_token: longJson.access_token,
         instagram_user_id: igUserId,
         instagram_token_expires_at: expiresAtFromSeconds(longJson.expires_in),
+        instagram_auth: "instagram",
+        instagram_page_id: null,
         // Fill in the handle from the account they actually connected.
         ...(!expectedHandle && connectedHandle ? { instagram_handle: connectedHandle } : {}),
       })

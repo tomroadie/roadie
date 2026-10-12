@@ -1,6 +1,6 @@
 import { recordCronRun } from "@/lib/cron-log";
 import { NextResponse } from "next/server";
-import { IG_GRAPH_BASE } from "@/lib/instagram-graph";
+import { graphBaseFor } from "@/lib/instagram-graph";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { getMondayDateString } from "@/lib/week";
 import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
@@ -15,6 +15,7 @@ type ProfileRow = {
   instagram_user_id: string | null;
   instagram_access_token: string | null;
   board_enabled?: boolean | null;
+  instagram_auth?: string | null;
 };
 
 type MediaItem = {
@@ -111,6 +112,7 @@ type GraphInsightsResponse = {
 // so we can verify what Meta actually returns before trusting the mapped
 // reach/saves/shares columns.
 async function fetchPostInsights(
+  graphBase: string,
   mediaId: string,
   accessToken: string,
   mediaType: string | undefined,
@@ -122,7 +124,7 @@ async function fetchPostInsights(
     metrics: string
   ): Promise<{ ok: boolean; json: GraphInsightsResponse }> {
     const url = new URL(
-      `${IG_GRAPH_BASE}/${mediaId}/insights`
+      `${graphBase}/${mediaId}/insights`
     );
     url.searchParams.set("metric", metrics);
     url.searchParams.set("access_token", accessToken);
@@ -283,7 +285,7 @@ export async function GET(request: Request) {
     const onlyArtist = new URL(request.url).searchParams.get("artist_id")?.trim() || null;
     let profilesQuery = supabase
       .from("profiles")
-      .select("id, instagram_user_id, instagram_access_token, board_enabled")
+      .select("id, instagram_user_id, instagram_access_token, board_enabled, instagram_auth")
       .not("instagram_access_token", "is", null)
       .not("instagram_user_id", "is", null);
     if (onlyArtist) profilesQuery = profilesQuery.eq("id", onlyArtist);
@@ -320,12 +322,13 @@ export async function GET(request: Request) {
       const artistId = String(profile.id ?? "").trim();
       const instagramUserId = String(profile.instagram_user_id ?? "").trim();
       const accessToken = String(profile.instagram_access_token ?? "").trim();
+      const graphBase = graphBaseFor((profile as ProfileRow).instagram_auth);
 
       if (!artistId || !instagramUserId || !accessToken) continue;
 
       try {
         const mediaUrl = new URL(
-          `${IG_GRAPH_BASE}/${instagramUserId}/media`
+          `${graphBase}/${instagramUserId}/media`
         );
         mediaUrl.searchParams.set(
           "fields",
@@ -350,7 +353,7 @@ export async function GET(request: Request) {
         // Today's follower count, kept daily so growth can be shown later.
         let followers = 0;
         try {
-          const accountUrl = new URL(`${IG_GRAPH_BASE}/${instagramUserId}`);
+          const accountUrl = new URL(`${graphBase}/${instagramUserId}`);
           accountUrl.searchParams.set("fields", "followers_count,media_count");
           accountUrl.searchParams.set("access_token", accessToken);
           const accountRes = await fetch(accountUrl.toString());
@@ -432,6 +435,7 @@ export async function GET(request: Request) {
           if (withinInsightsWindow) {
             try {
               insights = await fetchPostInsights(
+                graphBase,
                 instagramPostId,
                 accessToken,
                 post.media_type,

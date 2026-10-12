@@ -25,6 +25,9 @@
 
   /* Quieter-than-usual numbers: warm, never alarm red. */
   --quiet: #9A4A1C;
+
+  --font-body: "IBM Plex Sans";
+  --font-heading: "Space Grotesk";
 }
 
 @theme inline {

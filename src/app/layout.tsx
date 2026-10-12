@@ -1,21 +1,17 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
+// Self-hosted (bundled from npm) rather than fetched from Google at build
+// time, which broke a production build via a stale font cache.
+import "@fontsource/ibm-plex-sans/400.css";
+import "@fontsource/ibm-plex-sans/500.css";
+import "@fontsource/ibm-plex-sans/600.css";
+import "@fontsource/ibm-plex-sans/700.css";
+import "@fontsource/space-grotesk/500.css";
+import "@fontsource/space-grotesk/700.css";
 import { ConsentBanner } from "@/components/consent-banner";
 import { ConsentedScripts } from "@/components/consented-scripts";
 import "./globals.css";
 
 
-const body = IBM_Plex_Sans({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const heading = Space_Grotesk({
-  variable: "--font-heading",
-  subsets: ["latin"],
-  weight: ["500", "700"],
-});
 
 export const metadata: Metadata = {
   title: "Tempo",
@@ -40,7 +36,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${body.variable} ${heading.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
       <body className="min-h-full flex flex-col">
         {children}

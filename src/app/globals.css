@@ -1,18 +1,30 @@
 @import "tailwindcss";
 
+/* Light, warm paper ground with ink text and one green accent.
+   Tokens only: components use bg-card, text-muted, text-brand etc. */
 :root {
-  --background: #0A0A0F;
-  --foreground: #FFFFFF;
+  --background: #F6F5F1;
+  --foreground: #16161A;
 
-  --muted: #9CA3AF; /* gray-400 */
-  --muted-strong: #D1D5DB; /* gray-300 */
+  --muted: #5B5A55;
+  --muted-strong: #3A3935;
 
-  --card: #1A1A1A;
-  --card-border: #2A2A2A;
-  --input: #111111;
+  --card: #FFFFFF;
+  --card-border: #E2E0D8;
+  --input: #F1F0EB;
 
-  --brand: #00FF87;
-  --brand-foreground: #0A0A0F;
+  --brand: #1F6F4A;
+  --brand-foreground: #FFFFFF;
+  --brand-soft: #E3F0E8;
+
+  /* Ink panel (the week strip) and the bright accent used on it. */
+  --ink: #16161A;
+  --ink-foreground: #F6F5F1;
+  --ink-muted: #B9B7AE;
+  --accent: #7BD389;
+
+  /* Quieter-than-usual numbers: warm, never alarm red. */
+  --quiet: #9A4A1C;
 }
 
 @theme inline {
@@ -27,15 +39,30 @@
 
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
+  --color-ink-muted: var(--ink-muted);
+  --color-accent: var(--accent);
+  --color-quiet: var(--quiet);
+
+  --font-sans: var(--font-body);
+  --font-display: var(--font-heading);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading), var(--font-body), system-ui, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 /* iPhones zoom into any text box with text under 16px and stay zoomed,

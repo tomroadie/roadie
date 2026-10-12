@@ -4,6 +4,7 @@ import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { userIsAdmin } from "@/lib/is-admin";
 import { publishGeneration } from "@/lib/concepts/store";
 import { sendYourWeek } from "@/lib/concepts/weekly";
+import { refreshThemesForArtist } from "@/lib/themes/refresh";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -47,6 +48,13 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Invalid generation_id" }, { status: 400 });
       }
       const { artistId: published } = await publishGeneration(admin, generationId);
+      // Sort the new ideas into the artist's themes (seeding them on a first
+      // board). Never blocks publishing.
+      try {
+        await refreshThemesForArtist(admin, published);
+      } catch (e) {
+        console.error("publish-concepts: themes", e);
+      }
       const emailed = body.notify === true ? await sendYourWeek(admin, generationId) : false;
       return NextResponse.json({ ok: true, artist_id: published, emailed });
     }

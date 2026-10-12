@@ -29,6 +29,9 @@ import { canDo, getPlanForGating } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 import type { EventRow } from "@/types/event";
 import { boardWeek } from "@/lib/board-week";
+import { computeLearnings, loadThemes } from "@/lib/themes/load";
+import { LearningsSection } from "./learnings";
+import { RecentPostsGrid } from "./recent-posts-grid";
 
 type ContentReviewRow = {
   idea_hook: string;
@@ -495,12 +498,12 @@ export default async function HomePage({
       ? profileIncomplete
         ? {
             label: "Profile: Get started",
-            cls: "bg-zinc-700 text-white ring-zinc-600/40",
+            cls: "bg-foreground/10 text-foreground ring-foreground/15",
           }
         : auditPending
           ? {
               label: "Audit: Running",
-              cls: "bg-emerald-500/20 text-emerald-200 ring-emerald-500/35",
+              cls: "bg-emerald-500/20 text-emerald-800 ring-emerald-500/35",
             }
           : hasAudit
             ? {
@@ -509,12 +512,12 @@ export default async function HomePage({
               }
             : {
                 label: "Audit: Get started",
-                cls: "bg-zinc-700 text-white ring-zinc-600/40",
+                cls: "bg-foreground/10 text-foreground ring-foreground/15",
               }
       : !hasPlanIdeas
         ? {
             label: "Plan: Generate now",
-            cls: "bg-zinc-700 text-white ring-zinc-600/40",
+            cls: "bg-foreground/10 text-foreground ring-foreground/15",
           }
         : planWeekStart === weekStart
           ? {
@@ -1040,10 +1043,8 @@ export default async function HomePage({
   // their Instagram. The old plan-era sections stay for everyone else.
   if (board && week) {
     const comingUpSection = (
-      <section className="mt-10 rounded-xl border border-card-border bg-card p-6">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand">
-          Coming up
-        </p>
+      <section className="rounded-2xl border border-card-border bg-card p-5">
+        <h2 className="text-xl font-bold text-foreground">Coming up</h2>
         {comingUp.length > 0 ? (
           <ul className="mt-3 space-y-2">
             {comingUp.map((ev) => (
@@ -1081,8 +1082,8 @@ export default async function HomePage({
     ) : canViewLiveSocialData && liveSocialStats ? (
         instagramSection
       ) : (
-        <section className="mt-10 rounded-xl border border-card-border bg-card p-7">
-          <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
+        <section className="rounded-2xl border border-card-border bg-card p-5">
+          <h2 className="text-xl font-bold text-foreground">
             Your Instagram
           </h2>
           {canViewLiveSocialData ? (
@@ -1112,23 +1113,19 @@ export default async function HomePage({
         </section>
       );
 
+    // Themes and learnings. A missing table (migration not applied yet)
+    // shouldn't take Home down, so this falls back to nothing.
+    const themes = await loadThemes(supabase, activeArtistId).catch(() => ({ active: [], suggested: [] }));
+    const learnings = postResults ? computeLearnings(postResults.posts, themes.active) : [];
+
     return (
-      <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">
-              Your week · {week.label}
-            </p>
-            <h1 className="text-5xl font-black uppercase tracking-tight text-foreground sm:text-6xl">
-              {artistName}
-            </h1>
-          </div>
+      <div className="mx-auto flex min-h-full w-full max-w-6xl flex-1 flex-col px-4 py-6 sm:px-8">
+        <AppNavWrapper />
+
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="text-3xl font-bold text-foreground sm:text-4xl">{artistName}</h1>
           <LogoutButton />
         </div>
-
-        <div className="mt-6 h-px w-full bg-[#1a1a1a]" />
-
-        <AppNavWrapper />
 
         {!hasAudit ? (
           <AuditCTASection
@@ -1141,28 +1138,53 @@ export default async function HomePage({
           />
         ) : null}
 
-        {weeklyPlanSection}
-        {comingUpSection}
-        {boardInstagramSection}
-
-        {audit ? (
-          <details className="group mt-10 rounded-xl border border-card-border bg-card p-6">
-            <summary className="cursor-pointer list-none text-sm font-bold uppercase tracking-tight text-muted-strong hover:text-foreground">
-              Your audit <span className="text-xs font-normal normal-case text-muted">· {formatRelativeDate(audit.created_at)}</span>
-            </summary>
-            <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-muted-strong">
-              {audit.ai_pattern_analysis}
-            </p>
-            <div className="mt-6">
-              <FullAnalysisCollapsible
-                sections={fullAnalysisSections}
-                artistId={activeArtistId}
-                updatedAt={audit.created_at}
-                forceOpen={auditReady}
-              />
-            </div>
-          </details>
-        ) : null}
+        <div className="mt-6">
+          <ConceptBoard
+            key={activeArtistId}
+            initialBoard={board}
+            initialProgress={weekProgress}
+            artistId={activeArtistId}
+            unmatchedPosts={unmatchedPosts}
+            postedUnlinked={postedUnlinked}
+            weekLabel={week.label}
+            nextIdeasDay={
+              ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][
+                typeof profile?.week_start_day === "number" ? profile.week_start_day : 1
+              ]
+            }
+          >
+            <LearningsSection learnings={learnings} />
+            {postResults ? <RecentPostsGrid posts={postResults.posts} /> : boardInstagramSection}
+            {postResults ? (
+              <details className="group rounded-2xl border border-card-border bg-card p-5">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
+                  <span className="group-open:hidden">All your post results</span>
+                  <span className="hidden group-open:inline">Hide post results</span>
+                </summary>
+                {boardInstagramSection}
+              </details>
+            ) : null}
+            {comingUpSection}
+            {audit ? (
+              <details className="group rounded-2xl border border-card-border bg-card p-5">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
+                  Your audit <span className="text-xs font-normal text-muted">· {formatRelativeDate(audit.created_at)}</span>
+                </summary>
+                <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-muted-strong">
+                  {audit.ai_pattern_analysis}
+                </p>
+                <div className="mt-6">
+                  <FullAnalysisCollapsible
+                    sections={fullAnalysisSections}
+                    artistId={activeArtistId}
+                    updatedAt={audit.created_at}
+                    forceOpen={auditReady}
+                  />
+                </div>
+              </details>
+            ) : null}
+          </ConceptBoard>
+        </div>
       </div>
     );
   }
@@ -1197,17 +1219,17 @@ export default async function HomePage({
         <LogoutButton />
       </div>
 
-      <div className="mt-6 h-px w-full bg-[#1a1a1a]" />
+      <div className="mt-6 h-px w-full bg-card-border" />
 
       <AppNavWrapper />
 
       {!showAuditFirst && registered === "true" && !hasInstagram && !auditPending ? (
         <div className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-          <p className="text-sm leading-relaxed text-amber-100">
+          <p className="text-sm leading-relaxed text-amber-800">
             Welcome to Tempo. Add your Instagram handle in{" "}
             <Link
               href="/settings"
-              className="font-semibold underline underline-offset-4 hover:text-amber-50"
+              className="font-semibold underline underline-offset-4 hover:text-amber-800"
             >
               Settings
             </Link>{" "}

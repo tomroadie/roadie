@@ -229,7 +229,7 @@ export default function PricingClient({
       </p>
 
       {error ? (
-        <p className="mt-6 text-sm text-red-400" role="alert">
+        <p className="mt-6 text-sm text-red-700" role="alert">
           {error}
         </p>
       ) : null}

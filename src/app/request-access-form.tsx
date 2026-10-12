@@ -100,7 +100,7 @@ export function RequestAccessForm() {
         {state === "sending" ? "Sending…" : "Request access"}
       </button>
       {error ? (
-        <p role="alert" className="text-sm text-red-300">
+        <p role="alert" className="text-sm text-red-800">
           {error}
         </p>
       ) : null}

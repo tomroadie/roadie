@@ -29,6 +29,16 @@ export async function AppNavWrapper() {
     cookieStore
   );
 
+  let showConceptsLink = false;
+  if (activeArtistId) {
+    const { data: active } = await supabase
+      .from("profiles")
+      .select("board_enabled")
+      .eq("id", activeArtistId)
+      .maybeSingle();
+    showConceptsLink = active?.board_enabled === true;
+  }
+
   let artists: AppNavArtist[] = [];
   if (artistsRows.length > 0) {
     const ids = artistsRows.map((a) => a.id);
@@ -56,6 +66,7 @@ export async function AppNavWrapper() {
         artists={artists}
         activeArtistId={activeArtistId}
         showAdminLink={showAdminLink}
+        showConceptsLink={showConceptsLink}
       />
       <FeedbackButton />
     </>

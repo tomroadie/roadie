@@ -292,7 +292,7 @@ export function AdminArtistsTable({
             {localRows.length} artist{localRows.length === 1 ? "" : "s"} in the directory.
           </p>
           {tiktokWaitlistCount > 0 ? (
-            <p className="mt-1 text-xs text-amber-400">
+            <p className="mt-1 text-xs text-amber-700">
               {tiktokWaitlistCount} artist
               {tiktokWaitlistCount !== 1 ? "s" : ""} on TikTok waitlist
             </p>
@@ -317,19 +317,19 @@ export function AdminArtistsTable({
       </div>
 
       {auditError ? (
-        <p className="text-sm text-red-400" role="alert">
+        <p className="text-sm text-red-700" role="alert">
           {auditError}
         </p>
       ) : null}
 
       {controlsError ? (
-        <p className="text-sm text-red-400" role="alert">
+        <p className="text-sm text-red-700" role="alert">
           {controlsError}
         </p>
       ) : null}
 
       <div className="overflow-x-auto rounded-xl border border-card-border bg-card shadow-sm">
-        <table className="min-w-full divide-y divide-[#1a1a1a] text-left text-sm">
+        <table className="min-w-full divide-y divide-card-border text-left text-sm">
           <thead>
             <tr className="text-xs font-bold uppercase tracking-widest text-muted">
               <th className="whitespace-nowrap px-4 py-3">Artist</th>
@@ -344,7 +344,7 @@ export function AdminArtistsTable({
               <th className="whitespace-nowrap px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#1a1a1a]">
+          <tbody className="divide-y divide-card-border">
             {filtered.map((r) => (
               <tr key={r.id} className="text-foreground">
                 <td className="px-4 py-3 font-semibold">
@@ -436,7 +436,7 @@ export function AdminArtistsTable({
                     className={[
                       "rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-60",
                       r.account_type === "venue"
-                        ? "bg-blue-500/20 text-blue-400"
+                        ? "bg-blue-500/20 text-blue-700"
                         : "bg-input text-muted",
                     ].join(" ")}
                   >
@@ -458,7 +458,7 @@ export function AdminArtistsTable({
                       onClick={() => void handleToggleCron(r.id, !r.cron_active)}
                       className={[
                         "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:cursor-not-allowed disabled:opacity-60",
-                        r.cron_active ? "bg-brand" : "bg-zinc-700",
+                        r.cron_active ? "bg-brand" : "bg-foreground/20",
                       ].join(" ")}
                     >
                       <span
@@ -480,7 +480,7 @@ export function AdminArtistsTable({
                     onClick={() => void handleTogglePrivate(r.id, !r.is_private)}
                     className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-60 ${
                       r.is_private
-                        ? "bg-amber-500/20 text-amber-400"
+                        ? "bg-amber-500/20 text-amber-700"
                         : "bg-input text-muted"
                     }`}
                   >
@@ -518,7 +518,7 @@ export function AdminArtistsTable({
                     </button>
                     {confirming === r.id ? (
                       <div className="flex flex-col gap-1.5">
-                        <p className="text-xs font-semibold text-red-400">
+                        <p className="text-xs font-semibold text-red-700">
                           Delete {r.artist_name}?
                         </p>
                         <p className="text-xs text-muted">This cannot be undone.</p>
@@ -544,7 +544,7 @@ export function AdminArtistsTable({
                       <button
                         type="button"
                         onClick={() => setConfirming(r.id)}
-                        className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/20"
+                        className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-500/20"
                       >
                         Delete
                       </button>

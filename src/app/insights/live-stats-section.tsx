@@ -35,7 +35,7 @@ function engagementBadgeClasses(pct: number): string {
     return "bg-brand/15 text-brand ring-1 ring-brand/25";
   }
   if (pct >= 1) {
-    return "bg-amber-500/15 text-amber-600 ring-1 ring-amber-500/25 dark:text-amber-400";
+    return "bg-amber-500/15 text-amber-600 ring-1 ring-amber-500/25 dark:text-amber-700";
   }
   return "bg-input text-muted ring-1 ring-card-border";
 }

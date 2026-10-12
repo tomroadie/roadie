@@ -102,7 +102,7 @@ export function InsightsAuditEmptyState({
           {starting ? "Starting…" : "Run my Instagram audit"}
         </button>
         {error ? (
-          <p role="alert" className="mt-4 text-sm text-red-400">
+          <p role="alert" className="mt-4 text-sm text-red-700">
             {error}
           </p>
         ) : null}
@@ -129,7 +129,7 @@ export function InsightsAuditEmptyState({
         </button>
       </p>
       {error ? (
-        <p role="alert" className="mt-4 text-sm text-red-400">
+        <p role="alert" className="mt-4 text-sm text-red-700">
           {error}
         </p>
       ) : null}

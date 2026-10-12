@@ -133,9 +133,9 @@ export function PostResultsSection({
   const earlier = data.posts.slice(LATEST_SHOWN, LATEST_SHOWN + EARLIER_SHOWN);
 
   return (
-    <section className="mt-10 rounded-xl border border-card-border bg-card p-7">
+    <section className="mt-4">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-        <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">How your posts did</h2>
+        <h2 className="text-lg font-bold text-foreground">How your posts did</h2>
         {handle || data.followers !== null ? (
           <p className="text-xs text-muted">
             {handle ? `@${handle}` : ""}

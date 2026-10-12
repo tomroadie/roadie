@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import Link from "next/link";
 import type { BoardConcept, BoardState } from "@/lib/concepts/store";
 import type { Effort, ExecutionFormat } from "@/lib/concepts/types";
 
@@ -44,6 +45,15 @@ function Executions({ concept }: { concept: BoardConcept }) {
   );
 }
 
+function formatsOf(concept: BoardConcept): ExecutionFormat[] {
+  return [...new Set(concept.executions.map((e) => e.format))];
+}
+
+/**
+ * One idea, compact: its theme, the idea and the formats it suits. The full
+ * "starting point" (why it fits, example executions, pin / not for me) opens
+ * on demand, so Home stays about the week rather than the briefs.
+ */
 function ConceptCard({
   concept,
   busy,
@@ -53,86 +63,117 @@ function ConceptCard({
   busy: boolean;
   onAction: (action: Action, reason?: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
   const [choosingReason, setChoosingReason] = useState(false);
+  const detailsId = `idea-${concept.id}`;
 
   return (
-    <article className="rounded-xl border border-card-border bg-card p-6">
-      {concept.key_date && (
-        <p className="text-[11px] font-bold uppercase tracking-widest text-sky-300">
-          For {formatKeyDate(concept.key_date)}
-        </p>
-      )}
-      <h3 className="mt-1 text-xl font-black leading-snug text-foreground">
+    <article className="rounded-2xl border border-card-border bg-card p-4">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        {concept.theme ? (
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+            {concept.theme.name}
+          </p>
+        ) : null}
+        {concept.key_date ? (
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-800">
+            For {formatKeyDate(concept.key_date)}
+          </p>
+        ) : null}
+      </div>
+      <h3 className="mt-1 text-base font-semibold leading-snug text-foreground">
         {concept.title}
       </h3>
-      <p className="mt-2 text-sm leading-relaxed text-muted-strong">{concept.why}</p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {formatsOf(concept).map((f) => (
+          <span key={f} className="rounded-full bg-input px-2.5 py-0.5 text-xs font-medium text-muted-strong">
+            {FORMAT_LABEL[f] ?? f}
+          </span>
+        ))}
+      </div>
 
-      <Executions concept={concept} />
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={detailsId}
+          onClick={() => setOpen((o) => !o)}
+          className="min-h-11 rounded-xl bg-ink px-4 text-sm font-semibold text-ink-foreground hover:opacity-90"
+        >
+          {open ? "Hide starting point" : "Give me a starting point"}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onAction("posted")}
+          className="min-h-11 rounded-xl border border-card-border px-4 text-sm font-semibold text-foreground hover:border-muted disabled:opacity-50"
+        >
+          I posted this
+        </button>
+      </div>
 
-      <div className="mt-6 border-t border-card-border pt-4">
-        {choosingReason ? (
-          <div>
-            <p className="text-xs font-semibold text-muted">
-              What&rsquo;s putting you off? It helps the next ideas fit better.
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {BIN_REASONS.map((r) => (
+      {open ? (
+        <div id={detailsId} className="mt-4 border-t border-card-border pt-4">
+          <p className="text-sm leading-relaxed text-muted-strong">{concept.why}</p>
+          <Executions concept={concept} />
+          <div className="mt-4">
+            {choosingReason ? (
+              <div>
+                <p className="text-xs font-semibold text-muted">
+                  What&rsquo;s putting you off? It helps the next ideas fit better.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {BIN_REASONS.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => onAction("bin", r)}
+                      className="min-h-9 rounded-full border border-card-border px-3 text-xs font-semibold text-foreground hover:border-muted disabled:opacity-50"
+                    >
+                      {r}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onAction("bin")}
+                    className="min-h-9 rounded-full px-3 text-xs font-semibold text-muted hover:text-foreground disabled:opacity-50"
+                  >
+                    Just not this one
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChoosingReason(false)}
+                    className="min-h-9 px-2 text-xs text-muted hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
                 <button
-                  key={r}
                   type="button"
                   disabled={busy}
-                  onClick={() => onAction("bin", r)}
-                  className="rounded-full border border-card-border px-3 py-1.5 text-xs font-semibold text-foreground hover:border-muted disabled:opacity-50"
+                  onClick={() => onAction("pin")}
+                  className="min-h-10 rounded-lg border border-card-border px-3 text-sm font-semibold text-foreground hover:border-muted disabled:opacity-50"
                 >
-                  {r}
+                  Pin for later
                 </button>
-              ))}
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => onAction("bin")}
-                className="rounded-full px-3 py-1.5 text-xs font-semibold text-muted hover:text-foreground disabled:opacity-50"
-              >
-                Just not this one
-              </button>
-              <button
-                type="button"
-                onClick={() => setChoosingReason(false)}
-                className="px-2 py-1.5 text-xs text-muted hover:text-foreground"
-              >
-                Cancel
-              </button>
-            </div>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setChoosingReason(true)}
+                  className="min-h-10 px-3 text-sm font-semibold text-muted hover:text-foreground disabled:opacity-50"
+                >
+                  Not for me
+                </button>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => onAction("posted")}
-              className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-foreground disabled:opacity-50"
-            >
-              I posted this
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => onAction("pin")}
-              className="rounded-lg border border-card-border px-4 py-2 text-sm font-semibold text-foreground hover:border-muted disabled:opacity-50"
-            >
-              Pin for later
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => setChoosingReason(true)}
-              className="px-3 py-2 text-sm font-semibold text-muted hover:text-foreground disabled:opacity-50"
-            >
-              Not for me
-            </button>
-          </div>
-        )}
-      </div>
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -147,7 +188,7 @@ function ShelfItem({
   onAction: (action: Action) => void;
 }) {
   return (
-    <li className="rounded-lg border border-card-border bg-input p-4">
+    <li className="rounded-xl border border-card-border bg-background p-4">
       <details>
         <summary className="cursor-pointer list-none text-sm font-bold text-foreground">
           {concept.title}
@@ -207,7 +248,7 @@ function IdeaMatchPrompt({
   onAnswer: (conceptId: string | null) => void;
 }) {
   return (
-    <div className="mt-4 rounded-xl border border-card-border bg-card p-5">
+    <div className="rounded-2xl border border-card-border bg-card p-5">
       <div className="flex gap-4">
         {post.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -281,7 +322,8 @@ function WeekBubbles({ progress }: { progress: WeekProgress }) {
   const total = Math.max(target, posted);
   const base =
     "relative flex h-7 w-7 items-center justify-center rounded-full border-2 text-sm font-black transition-colors";
-  const filledCls = "border-brand bg-brand text-brand-foreground";
+  // Drawn on the dark week strip.
+  const filledCls = "border-accent bg-accent text-ink";
   return (
     <div className="flex items-center gap-2">
       <span className="sr-only">
@@ -295,7 +337,7 @@ function WeekBubbles({ progress }: { progress: WeekProgress }) {
           const inner = (
             <>
               <span aria-hidden="true">✓</span>
-              <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-card text-brand ring-1 ring-brand">
+              <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-card text-brand ring-1 ring-accent">
                 <InstagramMark />
               </span>
             </>
@@ -324,7 +366,7 @@ function WeekBubbles({ progress }: { progress: WeekProgress }) {
             key={i}
             title={filled ? "You marked this as posted" : undefined}
             className={`${base} ${
-              filled ? filledCls : "border-card-border bg-transparent text-transparent"
+              filled ? filledCls : "border-ink-foreground/25 bg-transparent text-transparent"
             }`}
             aria-hidden="true"
           >
@@ -343,8 +385,14 @@ export function ConceptBoard({
   artistId,
   unmatchedPosts = [],
   postedUnlinked = [],
+  weekLabel,
+  children,
 }: {
   initialBoard: BoardState;
+  /** e.g. "13–19 Oct", shown on the week strip. */
+  weekLabel?: string;
+  /** Left column of Home: learnings and recent posts. */
+  children?: ReactNode;
   initialProgress?: WeekProgress;
   artistId?: string;
   /** Posts Instagram spotted this week with no idea linked yet. */
@@ -416,57 +464,101 @@ export function ConceptBoard({
     }
   }
 
-  if (!board.focus) {
-    return (
-      <section className="mt-10 rounded-xl border border-card-border bg-card p-7">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">
-          Your board
-        </p>
-        <p className="mt-3 text-lg font-bold text-foreground">
-          Your first ideas are being put together.
-        </p>
-        <p className="mt-2 text-sm text-muted">
-          They&rsquo;re built from your own posts, so they take a little while. They&rsquo;ll show up here.
-        </p>
-      </section>
-    );
-  }
-
   const hasCards = board.cards.some(Boolean);
+  const target = progress ? Math.max(1, progress.target) : null;
+  const posted = progress ? postedCount(progress) : null;
+
+  const strip = (
+    <section className="rounded-2xl bg-ink px-6 py-6 text-ink-foreground sm:px-7">
+      <div className="flex flex-wrap items-center justify-between gap-5">
+        <div className="min-w-0 space-y-1.5">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">
+            This week{weekLabel ? ` · ${weekLabel}` : ""}
+          </p>
+          {progress && target !== null && posted !== null ? (
+            <p className="font-display text-2xl font-bold sm:text-3xl">
+              {target} {target === 1 ? "post" : "posts"} this week · {Math.min(posted, target)} done
+            </p>
+          ) : (
+            <p className="font-display text-2xl font-bold sm:text-3xl">Your week</p>
+          )}
+          {board.focus ? (
+            <p className="max-w-2xl text-sm leading-relaxed text-ink-foreground/85">{board.focus}</p>
+          ) : null}
+        </div>
+        {progress ? <WeekBubbles progress={progress} /> : null}
+      </div>
+      {progress && posted !== null && target !== null ? (
+        posted >= target ? (
+          <p className="mt-4 text-sm font-semibold text-accent">
+            That&rsquo;s your week done. Anything else is a bonus.
+          </p>
+        ) : posted === 0 ? (
+          <p className="mt-4 text-sm text-ink-muted">Your week&rsquo;s just started. One post is a good week.</p>
+        ) : null
+      ) : null}
+    </section>
+  );
+
+  const ideas = !board.focus ? (
+    <div className="rounded-2xl border border-card-border bg-card p-5">
+      <p className="font-semibold text-foreground">Your first ideas are being put together.</p>
+      <p className="mt-2 text-sm text-muted">
+        They&rsquo;re built from your own posts, so they take a little while. They&rsquo;ll show up here.
+      </p>
+    </div>
+  ) : (
+    <>
+      <div className="space-y-3">
+        {board.cards.map((card, i) =>
+          card ? (
+            <ConceptCard
+              key={card.id}
+              concept={card}
+              busy={busyId === card.id}
+              onAction={(action, reason) => act(card.id, action, reason)}
+            />
+          ) : hasCards ? null : i === 0 ? (
+            <div
+              key={`empty-${i}`}
+              className="rounded-2xl border border-dashed border-card-border p-5 text-sm text-muted"
+            >
+              You&rsquo;ve worked through this week&rsquo;s ideas.{" "}
+              {nextIdeasDay ? `Fresh ones arrive ${nextIdeasDay}` : "Fresh ones arrive with your next weekly update"}
+              {board.shelf.length > 0 ? ", and your pinned ideas are below" : ""}.
+            </div>
+          ) : null
+        )}
+        {hasCards && board.cards.some((c) => !c) ? (
+          <p className="px-1 text-sm text-muted">
+            {nextIdeasDay ? `More ideas arrive ${nextIdeasDay}.` : "More ideas arrive with your next weekly update."}
+          </p>
+        ) : null}
+      </div>
+
+      {board.shelf.length > 0 && (
+        <details className="group rounded-2xl border border-card-border bg-card p-4">
+          <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
+            Pinned for later ({board.shelf.length})
+          </summary>
+          <ul className="mt-3 space-y-3">
+            {board.shelf.map((c) => (
+              <ShelfItem
+                key={c.id}
+                concept={c}
+                busy={busyId === c.id}
+                onAction={(action) => act(c.id, action)}
+              />
+            ))}
+          </ul>
+        </details>
+      )}
+    </>
+  );
 
   return (
-    <section className="mt-10">
-      <div className="rounded-xl border border-card-border bg-card p-7">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">
-          This week&rsquo;s focus
-        </p>
-        <p className="mt-3 text-2xl font-black leading-snug text-foreground">
-          {board.focus}
-        </p>
-        {progress ? (
-          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-card-border pt-5">
-            <WeekBubbles progress={progress} />
-            {(() => {
-              const posted = postedCount(progress);
-              if (posted >= Math.max(1, progress.target)) {
-                return (
-                  <p className="text-sm font-semibold text-brand">
-                    That&rsquo;s your week done. Anything else is a bonus.
-                  </p>
-                );
-              }
-              if (posted === 0) {
-                return <p className="text-sm text-muted">Your week&rsquo;s just started.</p>;
-              }
-              return null;
-            })()}
-          </div>
-        ) : (
-          <p className="mt-2 text-sm text-muted">
-            Pick whichever idea fits your week. One post is a good week.
-          </p>
-        )}
-      </div>
+    <div className="mt-2 flex flex-col gap-6">
+      {strip}
 
       {unmatched[0] ? (
         <IdeaMatchPrompt
@@ -484,60 +576,26 @@ export function ConceptBoard({
       {(note || error) && (
         <p
           role="status"
-          className={`mt-4 rounded-lg px-4 py-3 text-sm font-semibold ${
-            error
-              ? "bg-red-500/10 text-red-300"
-              : "bg-brand/10 text-brand"
+          className={`rounded-lg px-4 py-3 text-sm font-semibold ${
+            error ? "bg-red-500/10 text-red-800" : "bg-brand-soft text-brand"
           }`}
         >
           {error ?? note}
         </p>
       )}
 
-      <div className="mt-4 space-y-4">
-        {board.cards.map((card, i) =>
-          card ? (
-            <ConceptCard
-              key={card.id}
-              concept={card}
-              busy={busyId === card.id}
-              onAction={(action, reason) => act(card.id, action, reason)}
-            />
-          ) : hasCards ? null : i === 0 ? (
-            <div
-              key={`empty-${i}`}
-              className="rounded-xl border border-dashed border-card-border p-6 text-sm text-muted"
-            >
-              You&rsquo;ve worked through this week&rsquo;s ideas.{" "}
-              {nextIdeasDay ? `Fresh ones arrive ${nextIdeasDay}` : "Fresh ones arrive with your next weekly update"}
-              {board.shelf.length > 0 ? ", and your pinned ideas are below" : ""}.
-            </div>
-          ) : null
-        )}
-        {hasCards && board.cards.some((c) => !c) ? (
-          <p className="px-1 text-sm text-muted">
-            {nextIdeasDay ? `More ideas arrive ${nextIdeasDay}.` : "More ideas arrive with your next weekly update."}
-          </p>
-        ) : null}
+      <div className="flex flex-wrap items-start gap-7">
+        <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-8">{children}</div>
+        <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-3" aria-label="This week's ideas">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-xl font-bold text-foreground">This week&rsquo;s ideas</h2>
+            <Link href="/concepts" className="text-sm font-semibold text-brand hover:underline">
+              All concepts
+            </Link>
+          </div>
+          {ideas}
+        </aside>
       </div>
-
-      {board.shelf.length > 0 && (
-        <div className="mt-10">
-          <h2 className="text-xs font-bold uppercase tracking-[0.22em] text-muted">
-            Pinned for later
-          </h2>
-          <ul className="mt-3 space-y-3">
-            {board.shelf.map((c) => (
-              <ShelfItem
-                key={c.id}
-                concept={c}
-                busy={busyId === c.id}
-                onAction={(action) => act(c.id, action)}
-              />
-            ))}
-          </ul>
-        </div>
-      )}
-    </section>
+    </div>
   );
 }

@@ -9,7 +9,7 @@ function sectionStyle(title: string): { container: string; label: string } {
   if (t.includes("biggest missed")) {
     return {
       container: "rounded-xl border border-amber-500/30 bg-amber-500/10 p-6",
-      label: "text-xs font-bold uppercase tracking-widest text-amber-400",
+      label: "text-xs font-bold uppercase tracking-widest text-amber-700",
     };
   }
 
@@ -23,7 +23,7 @@ function sectionStyle(title: string): { container: string; label: string } {
   if (t.includes("nothing changes")) {
     return {
       container: "rounded-xl border border-amber-500/30 bg-amber-500/10 p-6",
-      label: "text-xs font-bold uppercase tracking-widest text-amber-400",
+      label: "text-xs font-bold uppercase tracking-widest text-amber-700",
     };
   }
 
@@ -43,7 +43,7 @@ function sectionStyle(title: string): { container: string; label: string } {
   if (t.includes("core")) {
     return {
       container: "rounded-xl border border-amber-500/30 bg-amber-500/10 p-6",
-      label: "text-xs font-bold uppercase tracking-widest text-amber-400",
+      label: "text-xs font-bold uppercase tracking-widest text-amber-700",
     };
   }
 

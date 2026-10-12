@@ -5,6 +5,7 @@ import { appBaseUrl, buildEmailRecipient, sendEmail } from "@/lib/email";
 import { yourWeekEmail } from "@/lib/email-templates";
 import type { ConceptExecution } from "./types";
 import { MAX_WEEKLY_TARGET } from "@/lib/starting-point";
+import { refreshThemesForArtist } from "@/lib/themes/refresh";
 
 export const BOARD_TIMEZONE = "Europe/London";
 
@@ -104,6 +105,15 @@ export async function runWeeklyForArtist(
     target,
   });
 
+  // Sort the new ideas (and any unsorted posts) into the artist's themes.
+  // A failure here never holds up the week.
+  const warnings = [...result.warnings];
+  try {
+    await refreshThemesForArtist(admin, artistId, now);
+  } catch (e) {
+    warnings.push(`themes: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
   let published = false;
   let emailed = false;
   if (opts.autoPublish) {
@@ -121,7 +131,7 @@ export async function runWeeklyForArtist(
     target,
     published,
     emailed,
-    warnings: result.warnings,
+    warnings,
   };
 }
 

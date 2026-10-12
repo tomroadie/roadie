@@ -140,6 +140,8 @@ export type BoardConcept = Omit<Concept, "evidence_posts"> & {
   id: string;
   slot: number | null;
   pinned_at: string | null;
+  /** The content theme this idea is an angle of, once sorted. */
+  theme: { id: string; name: string } | null;
 };
 
 export type BoardState = {
@@ -150,7 +152,7 @@ export type BoardState = {
   shelf: BoardConcept[];
 };
 
-type ConceptRow = {
+export type ConceptRow = {
   id: string;
   title: string;
   why: string;
@@ -160,9 +162,11 @@ type ConceptRow = {
   about_news: boolean;
   slot: number | null;
   pinned_at: string | null;
+  theme_id: string | null;
+  theme: { name: string } | { name: string }[] | null;
 };
 
-function toBoardConcept(r: ConceptRow): BoardConcept {
+export function toBoardConcept(r: ConceptRow): BoardConcept {
   return {
     id: r.id,
     title: r.title,
@@ -173,11 +177,17 @@ function toBoardConcept(r: ConceptRow): BoardConcept {
     about_news: r.about_news,
     slot: r.slot,
     pinned_at: r.pinned_at,
+    theme: themeOf(r),
   };
 }
 
-const CONCEPT_COLUMNS =
-  "id, title, why, executions, key_date, basis, about_news, slot, pinned_at";
+function themeOf(r: ConceptRow): BoardConcept["theme"] {
+  const t = Array.isArray(r.theme) ? r.theme[0] : r.theme;
+  return r.theme_id && t?.name ? { id: r.theme_id, name: t.name } : null;
+}
+
+export const CONCEPT_COLUMNS =
+  "id, title, why, executions, key_date, basis, about_news, slot, pinned_at, theme_id, theme:content_themes(name)";
 
 export async function loadBoard(
   supabase: SupabaseClient,

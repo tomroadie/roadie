@@ -20,18 +20,18 @@ function formatEventDate(isoDate: string): { day: string; month: string } {
 function badgeClass(type: string): string {
   const t = type.toLowerCase();
   if (t.includes("show") || t.includes("gig")) {
-    return "bg-emerald-500/15 text-emerald-200 ring-emerald-500/25";
+    return "bg-emerald-500/15 text-emerald-800 ring-emerald-500/25";
   }
   if (t.includes("release")) {
-    return "bg-purple-500/15 text-purple-200 ring-purple-500/25";
+    return "bg-purple-500/15 text-purple-800 ring-purple-500/25";
   }
   if (t.includes("rehears")) {
-    return "bg-amber-500/15 text-amber-200 ring-amber-500/25";
+    return "bg-amber-500/15 text-amber-800 ring-amber-500/25";
   }
   if (t.includes("studio") || t.includes("session")) {
-    return "bg-sky-500/15 text-sky-200 ring-sky-500/25";
+    return "bg-sky-500/15 text-sky-800 ring-sky-500/25";
   }
-  return "bg-zinc-500/15 text-zinc-200 ring-zinc-500/25";
+  return "bg-zinc-500/15 text-foreground ring-zinc-500/25";
 }
 
 function isoToday(): string {
@@ -123,7 +123,7 @@ function EventList({
                       type="button"
                       onClick={() => onDelete(ev.id)}
                       disabled={deletingId === ev.id}
-                      className="rounded-lg border border-card-border bg-transparent px-3 py-1.5 text-sm font-semibold uppercase tracking-wide text-red-400 transition-colors hover:border-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-lg border border-card-border bg-transparent px-3 py-1.5 text-sm font-semibold uppercase tracking-wide text-red-700 transition-colors hover:border-red-400 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {deletingId === ev.id ? "Removing…" : "Delete"}
                     </button>
@@ -407,7 +407,7 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
               </div>
 
               {formError ? (
-                <p className="text-sm text-red-400" role="alert">
+                <p className="text-sm text-red-700" role="alert">
                   {formError}
                 </p>
               ) : null}

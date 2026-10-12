@@ -27,6 +27,11 @@ export type PostResult = {
   line: string | null;
   /** Board idea this post came from, if linked. */
   ideaTitle: string | null;
+  /** Content theme the post sits in, if sorted. */
+  themeId: string | null;
+  themeName: string | null;
+  /** "auto" = Tempo sorted it and the artist hasn't confirmed; "artist" = confirmed. */
+  themeSource: "auto" | "artist" | null;
   /** Marked as an ad or collab. */
   excluded: boolean;
   /** Far above the usual: worth asking whether it was an ad or collab. */
@@ -67,11 +72,11 @@ export async function loadPostResults(
   weekStartsAt: string,
   now: Date = new Date()
 ): Promise<PostResultsData | null> {
-  const [{ data: rows }, { data: ideas }, { data: snapshots }] = await Promise.all([
+  const [{ data: rows }, { data: ideas }, { data: snapshots }, { data: themeRows }] = await Promise.all([
     supabase
       .from("post_performance")
       .select(
-        "instagram_post_id, post_date, ig_media_type, caption, permalink, thumbnail_url, reach, likes, comments, excluded_from_usual"
+        "instagram_post_id, post_date, ig_media_type, caption, permalink, thumbnail_url, reach, likes, comments, excluded_from_usual, theme_id, theme_source"
       )
       .eq("artist_id", artistId)
       .not("post_date", "is", null)
@@ -88,9 +93,11 @@ export async function loadPostResults(
       .eq("artist_id", artistId)
       .gte("snapshot_date", new Date(now.getTime() - 35 * DAY_MS).toISOString().slice(0, 10))
       .order("snapshot_date", { ascending: true }),
+    supabase.from("content_themes").select("id, name").eq("artist_id", artistId),
   ]);
   if (!rows || rows.length === 0) return null;
 
+  const themeNames = new Map((themeRows ?? []).map((t) => [String(t.id), String(t.name)]));
   const ideaByPost = new Map((ideas ?? []).map((i) => [String(i.instagram_post_id), String(i.title)]));
   const perf: PerfPost[] = rows.map((r) => ({
     id: String(r.instagram_post_id),
@@ -124,6 +131,9 @@ export async function loadPostResults(
           ? describeComparison(comparison)
           : null,
       ideaTitle: ideaByPost.get(perf[i].id) ?? null,
+      themeId: r.theme_id ? String(r.theme_id) : null,
+      themeName: r.theme_id ? themeNames.get(String(r.theme_id)) ?? null : null,
+      themeSource: r.theme_source === "auto" || r.theme_source === "artist" ? r.theme_source : null,
     };
   });
 

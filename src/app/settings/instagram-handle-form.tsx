@@ -66,7 +66,7 @@ export function InstagramHandleForm({
       </div>
 
       {state?.error ? (
-        <p role="alert" className="text-sm text-red-400">
+        <p role="alert" className="text-sm text-red-700">
           {state.error}
         </p>
       ) : null}

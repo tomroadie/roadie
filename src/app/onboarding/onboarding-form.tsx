@@ -41,7 +41,7 @@ function StepDots({ step }: { step: Step }) {
           className={
             s === step
               ? "h-2.5 w-2.5 rounded-full bg-brand ring-2 ring-brand/30"
-              : "h-2.5 w-2.5 rounded-full bg-zinc-700"
+              : "h-2.5 w-2.5 rounded-full bg-foreground/20"
           }
         />
       ))}
@@ -297,7 +297,7 @@ export function OnboardingForm({ target }: { target?: OnboardingTarget | null })
           </div>
 
           {state?.error ? (
-            <p className="text-sm text-red-400" role="alert">
+            <p className="text-sm text-red-700" role="alert">
               {state.error}
             </p>
           ) : null}

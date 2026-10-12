@@ -83,11 +83,11 @@ function planLabel(plan: CallBrief["roadie_fit"]["suggested_plan"]): string {
 function planPillClass(plan: CallBrief["roadie_fit"]["suggested_plan"]): string {
   switch (plan) {
     case "starter":
-      return "bg-blue-500/15 text-blue-300 ring-blue-400/30";
+      return "bg-blue-500/15 text-blue-800 ring-blue-400/30";
     case "pro":
-      return "bg-emerald-500/15 text-emerald-300 ring-emerald-400/30";
+      return "bg-emerald-500/15 text-emerald-800 ring-emerald-400/30";
     case "label":
-      return "bg-purple-500/15 text-purple-300 ring-purple-400/30";
+      return "bg-purple-500/15 text-purple-800 ring-purple-400/30";
   }
 }
 
@@ -150,11 +150,11 @@ function BriefSkeleton() {
             key={i}
             className="rounded-xl border border-card-border bg-card p-6"
           >
-            <div className="h-3 w-32 animate-pulse rounded bg-zinc-800" />
+            <div className="h-3 w-32 animate-pulse rounded bg-foreground/10" />
             <div className="mt-4 space-y-2">
-              <div className="h-4 w-full animate-pulse rounded bg-zinc-800" />
-              <div className="h-4 w-full animate-pulse rounded bg-zinc-800" />
-              <div className="h-4 w-[70%] animate-pulse rounded bg-zinc-800" />
+              <div className="h-4 w-full animate-pulse rounded bg-foreground/10" />
+              <div className="h-4 w-full animate-pulse rounded bg-foreground/10" />
+              <div className="h-4 w-[70%] animate-pulse rounded bg-foreground/10" />
             </div>
           </div>
         ))}
@@ -488,13 +488,13 @@ export function PrepSection({ artists }: PrepSectionProps) {
       ) : null}
 
       {researchError ? (
-        <p className="text-sm text-red-400" role="alert">
+        <p className="text-sm text-red-700" role="alert">
           {researchError}
         </p>
       ) : null}
 
       {error ? (
-        <p className="text-sm text-red-400" role="alert">
+        <p className="text-sm text-red-700" role="alert">
           {error}
         </p>
       ) : null}
@@ -613,9 +613,9 @@ export function PrepSection({ artists }: PrepSectionProps) {
                 {brief.red_flags.map((flag, index) => (
                   <li
                     key={`${index}-${flag.slice(0, 24)}`}
-                    className="flex gap-2 text-sm leading-relaxed text-amber-100/90"
+                    className="flex gap-2 text-sm leading-relaxed text-amber-800/90"
                   >
-                    <span aria-hidden className="text-amber-400">
+                    <span aria-hidden className="text-amber-700">
                       ⚠
                     </span>
                     <span>{flag}</span>

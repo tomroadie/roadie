@@ -54,7 +54,7 @@ export function UsualToggle({ postId, excluded }: { postId: string; excluded: bo
           </button>
         </>
       )}
-      {error ? <span className="text-red-300">{error}</span> : null}
+      {error ? <span className="text-red-800">{error}</span> : null}
     </div>
   );
 }

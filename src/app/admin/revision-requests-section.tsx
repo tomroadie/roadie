@@ -233,7 +233,7 @@ export function RevisionRequestsSection({
       )}
 
       {error ? (
-        <p className="mt-4 text-sm text-red-400" role="alert">
+        <p className="mt-4 text-sm text-red-700" role="alert">
           {error}
         </p>
       ) : null}

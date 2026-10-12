@@ -89,7 +89,7 @@ export default function ResetPasswordPage() {
             />
           </div>
           {error ? (
-            <p className="text-sm text-red-400" role="alert">
+            <p className="text-sm text-red-700" role="alert">
               {error}
             </p>
           ) : null}

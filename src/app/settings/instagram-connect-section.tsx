@@ -59,7 +59,7 @@ export function InstagramConnectSection({
 
       {connected ? (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <span className="inline-flex w-fit items-center rounded-full bg-emerald-500/15 px-3 py-1.5 text-xs font-black uppercase tracking-wide text-emerald-400">
+          <span className="inline-flex w-fit items-center rounded-full bg-emerald-500/15 px-3 py-1.5 text-xs font-black uppercase tracking-wide text-emerald-700">
             Instagram connected ✓
           </span>
           <form action={formAction}>
@@ -86,13 +86,13 @@ export function InstagramConnectSection({
       )}
 
       {!connected && connectErrorMessage ? (
-        <p role="alert" className="text-sm text-red-400">
+        <p role="alert" className="text-sm text-red-700">
           {connectErrorMessage}
         </p>
       ) : null}
 
       {state?.error ? (
-        <p role="alert" className="text-sm text-red-400">
+        <p role="alert" className="text-sm text-red-700">
           {state.error}
         </p>
       ) : null}

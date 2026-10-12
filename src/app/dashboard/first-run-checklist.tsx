@@ -32,7 +32,7 @@ function StepIndicator({ complete }: { complete: boolean }) {
   }
   return (
     <span
-      className="mt-0.5 inline-flex h-2 w-2 shrink-0 rounded-full bg-zinc-600"
+      className="mt-0.5 inline-flex h-2 w-2 shrink-0 rounded-full bg-foreground/20"
       aria-hidden
     />
   );

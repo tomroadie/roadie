@@ -7,6 +7,17 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 export const IG_GRAPH_VERSION = "v21.0";
 export const IG_GRAPH_BASE = `https://graph.instagram.com/${IG_GRAPH_VERSION}`;
 
+// Accounts connected through Facebook Business (the Teams app) use the
+// Facebook Graph host with a Page token; the calls are otherwise the same.
+export const FB_GRAPH_BASE = `https://graph.facebook.com/${IG_GRAPH_VERSION}`;
+
+/** profiles.instagram_auth: "instagram" (Instagram Login) or "facebook" (Facebook Business). */
+export type InstagramAuth = "instagram" | "facebook";
+
+export function graphBaseFor(auth: string | null | undefined): string {
+  return auth === "facebook" ? FB_GRAPH_BASE : IG_GRAPH_BASE;
+}
+
 export const INSTAGRAM_REDIRECT_URI =
   "https://tempo.roadie.media/api/auth/instagram/callback";
 

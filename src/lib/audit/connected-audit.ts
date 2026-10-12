@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { IG_GRAPH_BASE } from "@/lib/instagram-graph";
+import { graphBaseFor } from "@/lib/instagram-graph";
 import { buildEmailRecipient, everSent, sendEmail, appBaseUrl } from "@/lib/email";
 import { auditReadyEmail } from "@/lib/email-templates";
 import { buildArtistFullAuditPrompt, buildArtistPatternPrompt } from "./prompts";
@@ -38,8 +38,8 @@ const TYPE_NAME: Record<string, string> = {
   CAROUSEL_ALBUM: "Sidecar",
 };
 
-async function graph<T>(path: string, params: Record<string, string>, token: string): Promise<T> {
-  const url = new URL(`${IG_GRAPH_BASE}/${path}`);
+async function graph<T>(path: string, params: Record<string, string>, token: string, base: string): Promise<T> {
+  const url = new URL(`${base}/${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   url.searchParams.set("access_token", token);
   const res = await fetch(url.toString());
@@ -48,12 +48,12 @@ async function graph<T>(path: string, params: Record<string, string>, token: str
   return json;
 }
 
-async function fetchAccount(igUserId: string, token: string): Promise<GraphAccount> {
+async function fetchAccount(igUserId: string, token: string, base: string): Promise<GraphAccount> {
   try {
-    return await graph<GraphAccount>(igUserId, { fields: "username,biography,followers_count,follows_count,media_count" }, token);
+    return await graph<GraphAccount>(igUserId, { fields: "username,biography,followers_count,follows_count,media_count" }, token, base);
   } catch {
     // Not every account type returns every field; fall back to the basics.
-    return graph<GraphAccount>(igUserId, { fields: "username,followers_count,media_count" }, token);
+    return graph<GraphAccount>(igUserId, { fields: "username,followers_count,media_count" }, token, base);
   }
 }
 
@@ -112,7 +112,7 @@ export async function runConnectedAudit(
     const { data: profile, error } = await admin
       .from("profiles")
       .select(
-        "id, owner_user_id, artist_name, genre, plan, instagram_handle, instagram_user_id, instagram_access_token, marketing_unsubscribed, all_emails_paused, board_enabled"
+        "id, owner_user_id, artist_name, genre, plan, instagram_handle, instagram_user_id, instagram_access_token, instagram_auth, marketing_unsubscribed, all_emails_paused, board_enabled"
       )
       .eq("id", artistId)
       .maybeSingle();
@@ -120,13 +120,15 @@ export async function runConnectedAudit(
     const token = String(profile.instagram_access_token ?? "").trim();
     const igUserId = String(profile.instagram_user_id ?? "").trim();
     if (!token || !igUserId) throw new Error("Instagram isn't connected");
+    const base = graphBaseFor(profile.instagram_auth);
 
     const [account, mediaRes, { data: synced }] = await Promise.all([
-      fetchAccount(igUserId, token),
+      fetchAccount(igUserId, token, base),
       graph<{ data?: GraphMedia[] }>(
         `${igUserId}/media`,
         { fields: "id,caption,media_type,timestamp,like_count,comments_count", limit: String(MEDIA_LIMIT) },
-        token
+        token,
+        base
       ),
       admin.from("post_performance").select("instagram_post_id, views").eq("artist_id", artistId),
     ]);

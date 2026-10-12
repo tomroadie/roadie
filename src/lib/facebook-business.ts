@@ -24,13 +24,19 @@ export function facebookAppCredentials(): { appId: string; appSecret: string } |
   return { appId, appSecret };
 }
 
+/**
+ * Business apps use Facebook Login for Business, where the permissions live
+ * in a saved "configuration" (FACEBOOK_LOGIN_CONFIG_ID) rather than a scope
+ * list. Without one, fall back to asking for the scopes directly.
+ */
 export function facebookDialogUrl(appId: string, state: string): string {
+  const configId = process.env.FACEBOOK_LOGIN_CONFIG_ID?.trim();
   const params = new URLSearchParams({
     client_id: appId,
     redirect_uri: FACEBOOK_REDIRECT_URI,
-    scope: FACEBOOK_SCOPES.join(","),
     response_type: "code",
     state,
+    ...(configId ? { config_id: configId } : { scope: FACEBOOK_SCOPES.join(",") }),
   });
   return `https://www.facebook.com/${IG_GRAPH_VERSION}/dialog/oauth?${params.toString()}`;
 }

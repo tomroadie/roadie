@@ -166,7 +166,7 @@ export function ContentReviewsTable({
                     key={r.id}
                     className={[
                       "align-top transition-colors",
-                      isExpanded ? "bg-white/2" : "hover:bg-white/2",
+                      isExpanded ? "bg-foreground/2" : "hover:bg-foreground/2",
                       isReviewed ? "cursor-default" : "cursor-pointer",
                     ].join(" ")}
                     onClick={() =>
@@ -196,8 +196,8 @@ export function ContentReviewsTable({
                         className={[
                           "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide ring-1 ring-inset",
                           isReviewed
-                            ? "bg-emerald-500/10 text-emerald-300 ring-emerald-400/20"
-                            : "bg-amber-500/10 text-amber-200 ring-amber-400/20",
+                            ? "bg-emerald-500/10 text-emerald-800 ring-emerald-400/20"
+                            : "bg-amber-500/10 text-amber-800 ring-amber-400/20",
                         ].join(" ")}
                       >
                         {isReviewed ? "Reviewed" : "Pending"}
@@ -353,7 +353,7 @@ export function ContentReviewsTable({
       </div>
 
       {error ? (
-        <p className="mt-4 text-sm text-red-400" role="alert">
+        <p className="mt-4 text-sm text-red-700" role="alert">
           {error}
         </p>
       ) : null}

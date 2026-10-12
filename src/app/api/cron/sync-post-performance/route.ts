@@ -6,12 +6,14 @@ import { getMondayDateString } from "@/lib/week";
 import { normalizeIdeasFromDb } from "@/lib/parse-ideas-json";
 import { linkPostsToConcepts } from "@/lib/concepts/link-posts";
 import { sendPostResultEmail } from "@/lib/post-result-email";
+import { refreshThemesForArtist } from "@/lib/themes/refresh";
 
 
 type ProfileRow = {
   id: string;
   instagram_user_id: string | null;
   instagram_access_token: string | null;
+  board_enabled?: boolean | null;
 };
 
 type MediaItem = {
@@ -280,7 +282,7 @@ export async function GET(request: Request) {
     const onlyArtist = new URL(request.url).searchParams.get("artist_id")?.trim() || null;
     let profilesQuery = supabase
       .from("profiles")
-      .select("id, instagram_user_id, instagram_access_token")
+      .select("id, instagram_user_id, instagram_access_token, board_enabled")
       .not("instagram_access_token", "is", null)
       .not("instagram_user_id", "is", null);
     if (onlyArtist) profilesQuery = profilesQuery.eq("id", onlyArtist);
@@ -513,6 +515,15 @@ export async function GET(request: Request) {
         const conceptLink = await linkPostsToConcepts(supabase, artistId);
         linked += conceptLink.linked;
         if (conceptLink.error) errors.push(`${artistId}: linking board ideas failed: ${conceptLink.error}`);
+
+        // Board artists: sort new posts into their content themes.
+        if ((profile as ProfileRow).board_enabled === true) {
+          try {
+            await refreshThemesForArtist(supabase, artistId);
+          } catch (e) {
+            errors.push(`${artistId}: sorting posts into themes failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+          }
+        }
 
         // "You posted, here's how it did" for the newest settled post, if due.
         try {

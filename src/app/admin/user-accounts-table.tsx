@@ -153,13 +153,13 @@ export function UserAccountsTable({ rows }: { rows: AdminUserAccountRow[] }) {
       </div>
 
       {error ? (
-        <p className="text-sm text-red-400" role="alert">
+        <p className="text-sm text-red-700" role="alert">
           {error}
         </p>
       ) : null}
 
       <div className="overflow-x-auto rounded-xl border border-card-border bg-card shadow-sm">
-        <table className="min-w-full divide-y divide-[#1a1a1a] text-left text-sm">
+        <table className="min-w-full divide-y divide-card-border text-left text-sm">
           <thead>
             <tr className="text-xs font-bold uppercase tracking-widest text-muted">
               <th className="whitespace-nowrap px-4 py-3">Email</th>
@@ -170,7 +170,7 @@ export function UserAccountsTable({ rows }: { rows: AdminUserAccountRow[] }) {
               <th className="whitespace-nowrap px-4 py-3 text-right" aria-label="Expand" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#1a1a1a]">
+          <tbody className="divide-y divide-card-border">
             {filtered.map((r) => {
               const isExpanded = expanded === r.user_id;
               return (
@@ -235,7 +235,7 @@ function UserAccountRow({
   return (
     <>
       <tr
-        className="cursor-pointer text-foreground transition-colors hover:bg-white/[0.02]"
+        className="cursor-pointer text-foreground transition-colors hover:bg-foreground/[0.02]"
         onClick={onToggleExpanded}
       >
         <td className="px-4 py-3 font-semibold">{row.email}</td>
@@ -261,7 +261,7 @@ function UserAccountRow({
               </span>
             ) : null}
             {row.all_emails_paused ? (
-              <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-400">
+              <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
                 Emails paused
               </span>
             ) : null}
@@ -275,7 +275,7 @@ function UserAccountRow({
         </td>
       </tr>
       {isExpanded ? (
-        <tr className="bg-white/[0.015]">
+        <tr className="bg-foreground/[0.015]">
           <td colSpan={6} className="px-4 py-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0 flex-1">
@@ -287,7 +287,7 @@ function UserAccountRow({
                     No artist profiles on this account.
                   </p>
                 ) : (
-                  <ul className="mt-2 divide-y divide-[#1a1a1a] rounded-lg border border-card-border">
+                  <ul className="mt-2 divide-y divide-card-border rounded-lg border border-card-border">
                     {row.artists.map((a) => (
                       <li
                         key={a.id}
@@ -305,7 +305,7 @@ function UserAccountRow({
                               {a.plan || "free"}
                             </span>
                             {a.account_type === "venue" ? (
-                              <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-400">
+                              <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700">
                                 Venue
                               </span>
                             ) : null}
@@ -315,7 +315,7 @@ function UserAccountRow({
                               </span>
                             ) : null}
                             {a.is_private ? (
-                              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-400">
+                              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
                                 Private
                               </span>
                             ) : null}
@@ -353,7 +353,7 @@ function UserAccountRow({
                   className={[
                     "inline-flex h-9 items-center justify-center rounded-lg px-3 text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-60",
                     row.all_emails_paused
-                      ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+                      ? "bg-amber-500/20 text-amber-700 hover:bg-amber-500/30"
                       : "border border-card-border bg-transparent text-foreground hover:border-brand",
                   ].join(" ")}
                 >
@@ -365,7 +365,7 @@ function UserAccountRow({
                 </button>
                 {confirming ? (
                   <div className="flex flex-col gap-1.5 rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-                    <p className="text-xs font-semibold text-red-400">
+                    <p className="text-xs font-semibold text-red-700">
                       Delete {row.email}?
                     </p>
                     <p className="text-xs text-muted">
@@ -395,7 +395,7 @@ function UserAccountRow({
                   <button
                     type="button"
                     onClick={onStartConfirm}
-                    className="inline-flex h-9 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 px-3 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/20"
+                    className="inline-flex h-9 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 px-3 text-xs font-semibold text-red-700 transition-colors hover:bg-red-500/20"
                   >
                     Delete account
                   </button>

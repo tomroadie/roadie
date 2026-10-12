@@ -20,7 +20,7 @@ export function InviteForm() {
         {pending ? "Sending…" : "Send invite"}
       </button>
       {state ? (
-        <span className={`text-sm ${state.ok ? "text-brand" : "text-red-300"}`}>{state.ok ? "Invite sent." : state.error}</span>
+        <span className={`text-sm ${state.ok ? "text-brand" : "text-red-800"}`}>{state.ok ? "Invite sent." : state.error}</span>
       ) : null}
     </form>
   );

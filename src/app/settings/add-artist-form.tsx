@@ -114,10 +114,10 @@ export function AddArtistForm() {
       </div>
 
       {state?.error ? (
-        <div role="alert" className="space-y-2 text-sm text-red-400">
+        <div role="alert" className="space-y-2 text-sm text-red-700">
           <p>{state.error}</p>
           {state.upgrade ? (
-            <p className="text-red-400">
+            <p className="text-red-700">
               Upgrade to add more artists.{" "}
               <Link
                 href="/pricing"

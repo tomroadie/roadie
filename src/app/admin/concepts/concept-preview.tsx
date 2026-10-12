@@ -67,7 +67,7 @@ function PostRef({ post }: { post: ContextPost }) {
       <div className="flex flex-wrap items-center gap-2 text-muted">
         <span className="font-bold text-foreground">Post {post.n}</span>
         {post.news && (
-          <span className="rounded-full bg-sky-400/15 px-2 py-0.5 font-bold text-sky-300">
+          <span className="rounded-full bg-sky-400/15 px-2 py-0.5 font-bold text-sky-800">
             news
           </span>
         )}
@@ -145,11 +145,11 @@ function ConceptCard({
           {onBoard ? "On the board" : "Spare"}
         </span>
         {concept.basis === "starting_point" && (
-          <span className="text-amber-300">Starting point</span>
+          <span className="text-amber-800">Starting point</span>
         )}
-        {concept.about_news && <span className="text-sky-300">About news</span>}
+        {concept.about_news && <span className="text-sky-800">About news</span>}
         {concept.key_date && (
-          <span className="text-sky-300">For {concept.key_date}</span>
+          <span className="text-sky-800">For {concept.key_date}</span>
         )}
       </div>
 
@@ -539,7 +539,7 @@ export function ConceptPreview({
     <div className="mt-8">
       {drafts.length > 0 && (
         <section className="mb-8 rounded-xl border border-amber-400/30 bg-amber-400/5 p-5">
-          <p className="text-xs font-bold uppercase tracking-widest text-amber-300">
+          <p className="text-xs font-bold uppercase tracking-widest text-amber-800">
             Waiting for review
           </p>
           <ul className="mt-3 space-y-2">
@@ -606,7 +606,7 @@ export function ConceptPreview({
         </p>
       )}
 
-      {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+      {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
 
       {result && ctx && (
         <div className="mt-8 space-y-6">
@@ -693,12 +693,12 @@ export function ConceptPreview({
               )}
             </div>
             {auditStale && (
-                <p className="mt-3 text-sm font-semibold text-amber-300">
+                <p className="mt-3 text-sm font-semibold text-amber-800">
                   This audit is over a month old, so recent posts are missing. Refresh the audit before publishing.
                 </p>
               )}
             {result.warnings.length > 0 && (
-              <ul className="mt-3 list-disc pl-5 text-xs text-amber-300">
+              <ul className="mt-3 list-disc pl-5 text-xs text-amber-800">
                 {result.warnings.map((w, i) => (
                   <li key={i}>{w}</li>
                 ))}

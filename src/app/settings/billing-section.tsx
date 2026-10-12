@@ -105,14 +105,14 @@ export function BillingSection({
             type="button"
             onClick={() => setShowConfirm(true)}
             disabled={cancelling}
-            className="shrink-0 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+            className="shrink-0 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-500/20 disabled:opacity-50"
           >
             Cancel subscription
           </button>
         ) : null}
 
         {cancelled ? (
-          <span className="shrink-0 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 opacity-50">
+          <span className="shrink-0 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-700 opacity-50">
             Cancellation confirmed
           </span>
         ) : null}
@@ -128,7 +128,7 @@ export function BillingSection({
               type="button"
               onClick={() => void handleConfirmCancel()}
               disabled={cancelling}
-              className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+              className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-500/20 disabled:opacity-50"
             >
               {cancelling ? "Cancelling..." : "Confirm cancellation"}
             </button>
@@ -145,7 +145,7 @@ export function BillingSection({
       ) : null}
 
       {error ? (
-        <p className="mt-3 text-xs text-red-400" role="alert">
+        <p className="mt-3 text-xs text-red-700" role="alert">
           {error}
         </p>
       ) : null}

@@ -67,12 +67,12 @@ function parseRecentPosts(raw: string): ParsedPost[] {
 
 function badgeClasses(type: string | null): string {
   const t = (type ?? "").trim().toLowerCase();
-  if (t.includes("video")) return "bg-purple-500/15 text-purple-200 ring-purple-500/25";
+  if (t.includes("video")) return "bg-purple-500/15 text-purple-800 ring-purple-500/25";
   if (t.includes("sidecar") || t.includes("carousel"))
-    return "bg-sky-500/15 text-sky-200 ring-sky-500/25";
-  if (t.includes("image")) return "bg-teal-500/15 text-teal-200 ring-teal-500/25";
-  if (t.includes("reel")) return "bg-amber-500/15 text-amber-200 ring-amber-500/25";
-  return "bg-zinc-500/15 text-zinc-200 ring-zinc-500/25";
+    return "bg-sky-500/15 text-sky-800 ring-sky-500/25";
+  if (t.includes("image")) return "bg-teal-500/15 text-teal-800 ring-teal-500/25";
+  if (t.includes("reel")) return "bg-amber-500/15 text-amber-800 ring-amber-500/25";
+  return "bg-zinc-500/15 text-foreground ring-zinc-500/25";
 }
 
 function formatDate(d: Date | null): string | null {

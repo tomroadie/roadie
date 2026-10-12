@@ -75,7 +75,7 @@ export function UsageAnalytics({
         {top10.length === 0 ? (
           <p className="mt-4 text-sm text-muted">No events in the last 7 days.</p>
         ) : (
-          <ul className="mt-4 divide-y divide-[#1a1a1a]">
+          <ul className="mt-4 divide-y divide-card-border">
             {top10.map((ev, i) => (
               <li
                 key={`${ev.created_at}-${ev.artist_id}-${i}`}

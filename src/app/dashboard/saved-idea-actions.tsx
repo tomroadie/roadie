@@ -51,7 +51,7 @@ export function SavedIdeaActions({ ideaId, artistId, copyText }: SavedIdeaAction
             setRemoving(false);
           }
         }}
-        className="inline-flex h-9 items-center justify-center rounded-lg border border-card-border bg-transparent px-3 text-xs font-semibold uppercase tracking-wide text-muted transition-colors hover:border-red-500 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex h-9 items-center justify-center rounded-lg border border-card-border bg-transparent px-3 text-xs font-semibold uppercase tracking-wide text-muted transition-colors hover:border-red-500 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {removing ? "Removing…" : "Remove"}
       </button>

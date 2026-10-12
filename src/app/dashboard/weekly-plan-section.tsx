@@ -363,7 +363,7 @@ function IdeaCard({
             }}
             className={[
               "inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-lg transition-colors hover:border-brand sm:flex-initial sm:min-w-[5rem]",
-              rating === "up" ? "text-emerald-400" : "text-foreground",
+              rating === "up" ? "text-emerald-700" : "text-foreground",
             ].join(" ")}
           >
             👍
@@ -378,7 +378,7 @@ function IdeaCard({
             }}
             className={[
               "inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-lg transition-colors hover:border-brand sm:flex-initial sm:min-w-[5rem]",
-              rating === "down" ? "text-red-400" : "text-foreground",
+              rating === "down" ? "text-red-700" : "text-foreground",
             ].join(" ")}
           >
             👎
@@ -524,21 +524,21 @@ const PLAN_LOADING_MESSAGES = [
 function IdeaCardSkeleton() {
   return (
     <article className="rounded-xl border border-card-border bg-card p-6">
-      <div className="h-6 w-28 animate-pulse rounded-full bg-zinc-800" />
-      <div className="mt-4 h-7 max-w-[85%] animate-pulse rounded bg-zinc-800" />
+      <div className="h-6 w-28 animate-pulse rounded-full bg-foreground/10" />
+      <div className="mt-4 h-7 max-w-[85%] animate-pulse rounded bg-foreground/10" />
       <div className="mt-3 space-y-2">
-        <div className="h-4 w-full animate-pulse rounded bg-zinc-800" />
-        <div className="h-4 w-full animate-pulse rounded bg-zinc-800" />
-        <div className="h-4 w-[72%] animate-pulse rounded bg-zinc-800" />
+        <div className="h-4 w-full animate-pulse rounded bg-foreground/10" />
+        <div className="h-4 w-full animate-pulse rounded bg-foreground/10" />
+        <div className="h-4 w-[72%] animate-pulse rounded bg-foreground/10" />
       </div>
       <div className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
         <div>
-          <div className="h-3 w-10 animate-pulse rounded bg-zinc-800" />
-          <div className="mt-2 h-4 w-full animate-pulse rounded bg-zinc-800" />
+          <div className="h-3 w-10 animate-pulse rounded bg-foreground/10" />
+          <div className="mt-2 h-4 w-full animate-pulse rounded bg-foreground/10" />
         </div>
         <div>
-          <div className="h-3 w-14 animate-pulse rounded bg-zinc-800" />
-          <div className="mt-2 h-4 w-full animate-pulse rounded bg-zinc-800" />
+          <div className="h-3 w-14 animate-pulse rounded bg-foreground/10" />
+          <div className="mt-2 h-4 w-full animate-pulse rounded bg-foreground/10" />
         </div>
       </div>
     </article>
@@ -827,13 +827,13 @@ export function WeeklyPlanSection({
     ) {
       return (
         <div className="mt-8 flex flex-col gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm leading-relaxed text-emerald-100">
+          <p className="text-sm leading-relaxed text-emerald-800">
             Your revision is being prepared — we&apos;ll have it ready soon.
           </p>
           <button
             type="button"
             onClick={() => void handleAcknowledgeRevision()}
-            className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-emerald-500/40 bg-transparent px-3 text-xs font-semibold uppercase tracking-wide text-emerald-100 transition-colors hover:border-emerald-400"
+            className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-emerald-500/40 bg-transparent px-3 text-xs font-semibold uppercase tracking-wide text-emerald-800 transition-colors hover:border-emerald-400"
           >
             Dismiss
           </button>
@@ -849,11 +849,11 @@ export function WeeklyPlanSection({
         <div className="mt-8 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-sm leading-relaxed text-amber-100">
+              <p className="text-sm leading-relaxed text-amber-800">
                 Revision not applied this week.
               </p>
               {revision.admin_note?.trim() ? (
-                <p className="mt-2 text-xs leading-relaxed text-amber-100/80">
+                <p className="mt-2 text-xs leading-relaxed text-amber-800/80">
                   {revision.admin_note.trim()}
                 </p>
               ) : null}
@@ -861,7 +861,7 @@ export function WeeklyPlanSection({
             <button
               type="button"
               onClick={() => void handleAcknowledgeRevision()}
-              className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-amber-500/30 bg-transparent px-3 text-xs font-semibold uppercase tracking-wide text-amber-100 transition-colors hover:border-amber-400"
+              className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-amber-500/30 bg-transparent px-3 text-xs font-semibold uppercase tracking-wide text-amber-800 transition-colors hover:border-amber-400"
             >
               Dismiss
             </button>
@@ -1139,11 +1139,11 @@ export function WeeklyPlanSection({
     <section className="mt-12">
       {hasJustRegistered && !hasInstagram && !auditPending ? (
         <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-          <p className="text-sm leading-relaxed text-amber-100">
+          <p className="text-sm leading-relaxed text-amber-800">
             Welcome to Tempo. Add your Instagram handle in{" "}
             <Link
               href="/settings"
-              className="font-semibold underline underline-offset-4 hover:text-amber-50"
+              className="font-semibold underline underline-offset-4 hover:text-amber-800"
             >
               Settings
             </Link>{" "}
@@ -1154,7 +1154,7 @@ export function WeeklyPlanSection({
 
       {hasJustUpgraded && !hasPlanIdeas ? (
         <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3">
-          <p className="text-sm leading-relaxed text-emerald-100">
+          <p className="text-sm leading-relaxed text-emerald-800">
             Welcome to Tempo Pro. Generate your first plan below.
           </p>
         </div>
@@ -1475,7 +1475,7 @@ export function WeeklyPlanSection({
       ) : null}
 
       {error ? (
-        <p className="mt-4 text-sm text-red-400" role="alert">
+        <p className="mt-4 text-sm text-red-700" role="alert">
           {error}
         </p>
       ) : null}

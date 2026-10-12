@@ -92,15 +92,15 @@ function variantLabel(variant: string): string {
 function variantBadgeClass(variant: string): string {
   const v = variant.trim().toLowerCase();
   if (v === "safe") {
-    return "bg-blue-500/10 text-blue-300 ring-blue-500/30";
+    return "bg-blue-500/10 text-blue-800 ring-blue-500/30";
   }
   if (v === "creative") {
-    return "bg-purple-500/10 text-purple-300 ring-purple-500/30";
+    return "bg-purple-500/10 text-purple-800 ring-purple-500/30";
   }
   if (v === "bold") {
-    return "bg-amber-500/10 text-amber-300 ring-amber-500/30";
+    return "bg-amber-500/10 text-amber-800 ring-amber-500/30";
   }
-  return "bg-white/5 text-muted ring-white/10";
+  return "bg-foreground/5 text-muted ring-foreground/10";
 }
 
 function editKey(slotNumber: number, conceptIndex: number): string {
@@ -308,7 +308,7 @@ export function PlanReviewSection({ plans }: { plans: PlanReviewPlan[] }) {
       {toast ? (
         <div
           role="status"
-          className="fixed bottom-6 right-6 z-50 rounded-lg border border-emerald-500/30 bg-emerald-500/15 px-4 py-3 text-sm font-semibold text-emerald-200 shadow-lg"
+          className="fixed bottom-6 right-6 z-50 rounded-lg border border-emerald-500/30 bg-emerald-500/15 px-4 py-3 text-sm font-semibold text-emerald-800 shadow-lg"
         >
           {toast}
         </div>
@@ -341,7 +341,7 @@ export function PlanReviewSection({ plans }: { plans: PlanReviewPlan[] }) {
                         "w-full rounded-lg border px-3 py-3 text-left transition-colors",
                         isSelected
                           ? "border-brand bg-brand/10"
-                          : "border-card-border hover:border-brand/40 hover:bg-white/3",
+                          : "border-card-border hover:border-brand/40 hover:bg-foreground/3",
                       ].join(" ")}
                     >
                       <div className="font-semibold text-foreground">
@@ -441,7 +441,7 @@ export function PlanReviewSection({ plans }: { plans: PlanReviewPlan[] }) {
                                     >
                                       {variantLabel(concept.variant)}
                                     </span>
-                                    <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs font-medium text-muted">
+                                    <span className="rounded-full bg-foreground/5 px-2 py-0.5 text-xs font-medium text-muted">
                                       {concept.format}
                                     </span>
                                   </div>
@@ -545,7 +545,7 @@ export function PlanReviewSection({ plans }: { plans: PlanReviewPlan[] }) {
                     type="button"
                     onClick={handleSaveDraft}
                     disabled={publishing || savingDraft}
-                    className="rounded-lg border border-card-border bg-transparent px-4 py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-lg border border-card-border bg-transparent px-4 py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {savingDraft ? "Saving…" : "Save draft"}
                   </button>

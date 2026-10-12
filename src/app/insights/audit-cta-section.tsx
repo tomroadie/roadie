@@ -116,7 +116,7 @@ export function AuditCTASection({
         )}
       </div>
       {error ? (
-        <p role="alert" className="mt-4 text-sm text-red-400">
+        <p role="alert" className="mt-4 text-sm text-red-700">
           {error}
         </p>
       ) : null}

@@ -83,7 +83,7 @@ export function FeedbackButton() {
             <p className="mt-2 text-xs text-brand">Thanks — received.</p>
           ) : null}
           {error ? (
-            <p className="mt-2 text-xs text-red-400" role="alert">
+            <p className="mt-2 text-xs text-red-700" role="alert">
               {error}
             </p>
           ) : null}

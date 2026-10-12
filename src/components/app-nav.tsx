@@ -9,16 +9,17 @@ export type AppNavArtist = {
   label: string;
 };
 
-function buildLinks(showAdminLink: boolean) {
-  const base = [
+function buildLinks(showAdminLink: boolean, showConceptsLink: boolean) {
+  const base: { href: string; label: string }[] = [
     { href: "/home", label: "Home" },
+    ...(showConceptsLink ? [{ href: "/concepts", label: "Concepts" }] : []),
     { href: "/settings", label: "Settings" },
-  ] as const;
+  ];
   if (!showAdminLink) return base;
   return [
     ...base,
-    { href: "/prep", label: "Prep" } as const,
-    { href: "/admin", label: "Admin" } as const,
+    { href: "/prep", label: "Prep" },
+    { href: "/admin", label: "Admin" },
   ];
 }
 
@@ -26,18 +27,24 @@ type AppNavProps = {
   artists: AppNavArtist[];
   activeArtistId: string | null;
   showAdminLink?: boolean;
+  /** Board artists get the Concepts page. */
+  showConceptsLink?: boolean;
 };
 
 export function AppNav({
   artists,
   activeArtistId,
   showAdminLink = false,
+  showConceptsLink = false,
 }: AppNavProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [switchError, setSwitchError] = useState<string | null>(null);
-  const links = useMemo(() => buildLinks(showAdminLink), [showAdminLink]);
+  const links = useMemo(
+    () => buildLinks(showAdminLink, showConceptsLink),
+    [showAdminLink, showConceptsLink]
+  );
 
   const selectValue = activeArtistId ?? "";
 
@@ -73,7 +80,7 @@ export function AppNav({
   }
 
   return (
-    <header className="sticky top-0 z-40 mb-6 border-b border-[#1a1a1a] bg-background/90 pb-3 pt-3 backdrop-blur">
+    <header className="sticky top-0 z-40 mb-6 border-b border-card-border bg-background/90 pb-3 pt-3 backdrop-blur">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex min-w-0 flex-1 items-center justify-between gap-3 md:justify-start md:gap-6">
           <div className="flex min-w-0 items-center gap-3">
@@ -83,7 +90,10 @@ export function AppNav({
               aria-label="Tempo"
               onClick={() => setMenuOpen(false)}
             >
-              <img src="/logo.png" height={36} alt="Tempo" className="h-9 w-auto" />
+              <img src="/logo.png" height={36} alt="" className="h-9 w-auto" />
+              <span className="ml-1 font-display text-xl font-bold tracking-tight text-foreground">
+                tempo
+              </span>
             </Link>
 
             <nav
@@ -159,7 +169,7 @@ export function AppNav({
           ) : null}
 
           {switchError ? (
-            <p className="text-sm text-red-400" role="alert">
+            <p className="text-sm text-red-700" role="alert">
               {switchError}
             </p>
           ) : null}

@@ -39,7 +39,7 @@ export function TikTokWaitlistSection({
         <h2 className="text-lg font-black uppercase tracking-tight text-foreground">
           TikTok
         </h2>
-        <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-400">
+        <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-700">
           Coming soon
         </span>
       </div>
@@ -65,7 +65,7 @@ export function TikTokWaitlistSection({
       )}
 
       {error ? (
-        <p className="mt-2 text-sm text-red-400" role="alert">
+        <p className="mt-2 text-sm text-red-700" role="alert">
           {error}
         </p>
       ) : null}

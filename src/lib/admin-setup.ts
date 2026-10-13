@@ -27,7 +27,14 @@ export type SetupState = {
     /** A few of the waiting suggestions, soonest first. */
     waitingList: { title: string; date: string }[];
   };
-  brief: { done: boolean; links: string; notes: string; context: string | null };
+  brief: {
+    done: boolean;
+    links: string;
+    notes: string;
+    context: string | null;
+    /** Links were tried and none could be read (often sites that build pages in the browser). */
+    linksFailed: boolean;
+  };
   draft: {
     generationId: string;
     createdAt: string;
@@ -42,7 +49,7 @@ export async function loadSetupState(admin: SupabaseClient, artistId: string): P
   const [profileRes, postsRes, lastRes, describedRes, themesRes, eventsRes, waitingRes, draftRes] = await Promise.all([
     admin
       .from("profiles")
-      .select("artist_name, instagram_handle, account_type, instagram_user_id, instagram_access_token, tour_page_url, board_enabled, setup_dates_done, brief_links, brief_notes, brief_context, setup_brief_done, tour_page_note, bandsintown_key")
+      .select("artist_name, instagram_handle, account_type, instagram_user_id, instagram_access_token, tour_page_url, board_enabled, setup_dates_done, brief_links, brief_notes, brief_context, setup_brief_done, tour_page_note, bandsintown_key, brief_checked_at")
       .eq("id", artistId)
       .maybeSingle(),
     admin.from("post_performance").select("id", { count: "exact", head: true }).eq("artist_id", artistId),
@@ -80,8 +87,21 @@ export async function loadSetupState(admin: SupabaseClient, artistId: string): P
   if (profileRes.error || !profileRes.data) throw new Error(profileRes.error?.message ?? "Account not found");
   const p = profileRes.data;
 
+  // Only a draft written after their current board counts; older drafts
+  // were overtaken when something else was published.
+  const { data: lastLive } = await admin
+    .from("concept_generations")
+    .select("created_at")
+    .eq("artist_id", artistId)
+    .neq("status", "draft")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const draftIsCurrent =
+    draftRes.data && (!lastLive?.created_at || String(draftRes.data.created_at) > String(lastLive.created_at));
+
   let draft: SetupState["draft"] = null;
-  if (draftRes.data) {
+  if (draftRes.data && draftIsCurrent) {
     const { data: ideas } = await admin
       .from("concepts")
       .select("id, title, why, executions")
@@ -127,6 +147,7 @@ export async function loadSetupState(admin: SupabaseClient, artistId: string): P
       links: p.brief_links ? String(p.brief_links) : "",
       notes: p.brief_notes ? String(p.brief_notes) : "",
       context: p.brief_context ? String(p.brief_context) : null,
+      linksFailed: Boolean(p.brief_links) && Boolean(p.brief_checked_at) && !p.brief_context,
     },
     draft,
     live: p.board_enabled === true,

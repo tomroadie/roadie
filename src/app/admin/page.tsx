@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { AdminCreateClientArtistForm } from "./create-client-artist-form";
+import { ThisWeek } from "./this-week";
+import { loadThisWeek } from "@/lib/admin-week";
 import {
   UsageAnalytics,
   type UsageAnalyticsRecentEvent,
@@ -39,9 +41,10 @@ function AdminPageError({ message }: { message: string }) {
   );
 }
 
-type Tab = "artists" | "users" | "reviews" | "activity";
+type Tab = "artists" | "week" | "users" | "reviews" | "activity";
 const TABS: { id: Tab; label: string }[] = [
   { id: "artists", label: "Artists" },
+  { id: "week", label: "This week" },
   { id: "users", label: "Users" },
   { id: "reviews", label: "Reviews" },
   { id: "activity", label: "Activity" },
@@ -469,6 +472,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     }
   }
 
+  const weekRows = await loadThisWeek(adminSupabase).catch(() => []);
+  const weekWaiting = weekRows.filter((r) => r.draft && !r.draft.held).length;
+
   return (
     <div className="mx-auto flex min-h-full w-full max-w-6xl flex-1 flex-col px-4 py-6 sm:px-8">
       <AppNavWrapper />
@@ -496,7 +502,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
       <nav aria-label="Admin sections" className="mt-6 flex gap-1 overflow-x-auto border-b border-card-border">
         {TABS.map((t) => {
-          const count = t.id === "reviews" ? revisionRequests.length : 0;
+          const count = t.id === "reviews" ? revisionRequests.length : t.id === "week" ? weekWaiting : 0;
           return (
             <Link
               key={t.id}
@@ -538,6 +544,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             </details>
           </section>
           <AdminArtistsTable rows={rows} tiktokWaitlistCount={tiktokWaitlistCount} />
+        </div>
+      ) : null}
+
+      {tab === "week" ? (
+        <div className="mt-6">
+          <ThisWeek rows={weekRows} />
         </div>
       ) : null}
 

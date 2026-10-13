@@ -1,3 +1,4 @@
+import { clip } from "@/lib/text";
 import type { Concept, ConceptContext, ContextPost } from "./types";
 
 export const POOL_SIZE = 5;
@@ -30,7 +31,7 @@ function postLine(p: ContextPost): string {
   if (p.saves !== null) metrics.push(count(p.saves, "save"));
   if (p.shares !== null) metrics.push(count(p.shares, "share"));
   const date = p.date ? p.date.slice(0, 10) : "date unknown";
-  const caption = p.caption.replace(/\s+/g, " ").slice(0, 400) || "(no caption)";
+  const caption = clip(p.caption.replace(/\s+/g, " "), 400) || "(no caption)";
   const tags = [p.news ? "NEWS" : null, p.standout ? "STANDOUT" : null]
     .filter(Boolean)
     .map((t) => ` [${t}]`)
@@ -52,7 +53,7 @@ function postingSituation(ctx: ConceptContext): string {
 function reviewNoteSection(note: string | undefined): string {
   const n = note?.trim();
   return n
-    ? `## Note from the Tempo team on the last draft (follow it)\n"${n.slice(0, 1000)}"\nThe rules above still apply: stay grounded in the posts.`
+    ? `## Note from the Tempo team on the last draft (follow it)\n"${clip(n, 1000)}"\nThe rules above still apply: stay grounded in the posts.`
     : "";
 }
 
@@ -220,7 +221,7 @@ ${input.keep.map(conceptLine).join("\n")}
 
 This one is being replaced, so don't write it again or anything close to it:
 ${conceptLine(input.replacing)}
-${note ? `\nWhat the Tempo team wants instead (follow it): "${note.slice(0, 1000)}"\n` : ""}
+${note ? `\nWhat the Tempo team wants instead (follow it): "${clip(note, 1000)}"\n` : ""}
 Write ONE new concept that's a genuinely different direction from all of the above. Prefer evidence posts the staying concepts don't already cite. Same fields and rules as always: title (at most 55 characters), why, evidence_posts, two or three executions with at least one low effort, key_date, basis, about_news.
 
 Respond with only this JSON, no commentary or code fences:

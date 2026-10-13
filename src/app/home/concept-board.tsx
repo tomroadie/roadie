@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { BoardConcept, BoardState } from "@/lib/concepts/store";
 import type { Effort, ExecutionFormat } from "@/lib/concepts/types";
@@ -49,10 +49,158 @@ function formatsOf(concept: BoardConcept): ExecutionFormat[] {
   return [...new Set(concept.executions.map((e) => e.format))];
 }
 
+/** The ways to do an idea, as separate options to pick from. */
+function Options({ concept }: { concept: BoardConcept }) {
+  return (
+    <ol className="flex flex-col gap-2.5">
+      {concept.executions.map((e, i) => (
+        <li key={i} className="rounded-xl border border-card-border bg-background p-3.5">
+          <p className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+            <span className="rounded-full bg-card px-2.5 py-0.5 text-foreground ring-1 ring-inset ring-card-border">
+              {FORMAT_LABEL[e.format] ?? e.format}
+            </span>
+            <span className={e.effort === "low" ? "text-brand" : "text-muted"}>{EFFORT_LABEL[e.effort] ?? e.effort}</span>
+          </p>
+          <p className="mt-1.5 text-[15px] leading-relaxed text-foreground">{e.idea}</p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 /**
- * One idea, compact: its theme, the idea and the formats it suits. The full
- * "Inspire me" detail (why it fits, example executions, pin / not for me) opens
- * on demand, so Home stays about the week rather than the briefs.
+ * "Inspire me": the idea opened up in its own sheet, wide enough to read.
+ * Why it fits them, the ways to do it as options, then what to do with it.
+ */
+function IdeaSheet({
+  concept,
+  busy,
+  onAction,
+  onClose,
+}: {
+  concept: BoardConcept;
+  busy: boolean;
+  onAction: (action: Action, reason?: string) => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [choosingReason, setChoosingReason] = useState(false);
+
+  useEffect(() => {
+    const d = ref.current;
+    if (d && !d.open) d.showModal();
+    return () => d?.close();
+  }, []);
+
+  return (
+    <dialog
+      ref={ref}
+      onClose={onClose}
+      onClick={(e) => {
+        if (e.target === ref.current) onClose();
+      }}
+      aria-labelledby={`sheet-${concept.id}`}
+      className="m-auto max-h-[88vh] w-[min(40rem,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl bg-card p-0 text-foreground shadow-xl backdrop:bg-ink/50"
+    >
+      <div className="flex flex-col gap-5 p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="flex flex-wrap gap-x-2 text-[11px] font-semibold uppercase tracking-[0.08em]">
+              {concept.theme ? <span className="text-muted">{concept.theme.name}</span> : null}
+              {concept.key_date ? <span className="text-sky-800">For {formatKeyDate(concept.key_date)}</span> : null}
+            </p>
+            <h2 id={`sheet-${concept.id}`} className="mt-1 text-xl font-bold leading-snug sm:text-2xl">
+              {concept.title}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl text-muted hover:bg-background hover:text-foreground"
+          >
+            ×
+          </button>
+        </div>
+
+        <section>
+          <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Why this, for you</h3>
+          <p className="mt-1.5 text-[15px] leading-relaxed text-muted-strong">{concept.why}</p>
+        </section>
+
+        <section>
+          <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Pick one way to do it</h3>
+          <div className="mt-2">
+            <Options concept={concept} />
+          </div>
+        </section>
+
+        <div className="flex flex-col gap-3 border-t border-card-border pt-4">
+          {choosingReason ? (
+            <div>
+              <p className="text-sm font-semibold text-foreground">What&rsquo;s putting you off? It helps the next ideas fit better.</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {BIN_REASONS.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onAction("bin", r)}
+                    className="min-h-10 rounded-full border border-card-border px-3.5 text-sm font-semibold hover:border-muted disabled:opacity-50"
+                  >
+                    {r}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onAction("bin")}
+                  className="min-h-10 rounded-full px-3 text-sm font-semibold text-muted hover:text-foreground disabled:opacity-50"
+                >
+                  Just not this one
+                </button>
+                <button type="button" onClick={() => setChoosingReason(false)} className="min-h-10 px-2 text-sm text-muted hover:text-foreground">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onAction("posted")}
+                className="min-h-11 rounded-xl bg-ink px-4 text-sm font-semibold text-ink-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                I posted this
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onAction("pin")}
+                className="min-h-11 rounded-xl border border-card-border px-4 text-sm font-semibold hover:border-muted disabled:opacity-50"
+              >
+                Pin for later
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setChoosingReason(true)}
+                className="min-h-11 px-3 text-sm font-semibold text-muted hover:text-foreground disabled:opacity-50"
+              >
+                Not for me
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </dialog>
+  );
+}
+
+/**
+ * One idea, compact: its theme, the idea and the formats it suits. "Inspire
+ * me" opens the full idea in a sheet, so Home stays about the week.
  */
 function ConceptCard({
   concept,
@@ -64,8 +212,6 @@ function ConceptCard({
   onAction: (action: Action, reason?: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [choosingReason, setChoosingReason] = useState(false);
-  const detailsId = `idea-${concept.id}`;
 
   return (
     <article className="rounded-2xl border border-card-border bg-card p-4">
@@ -95,12 +241,11 @@ function ConceptCard({
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
-          aria-expanded={open}
-          aria-controls={detailsId}
-          onClick={() => setOpen((o) => !o)}
+          aria-haspopup="dialog"
+          onClick={() => setOpen(true)}
           className="min-h-11 rounded-xl bg-ink px-4 text-sm font-semibold text-ink-foreground hover:opacity-90"
         >
-          {open ? "Hide" : "Inspire me"}
+          Inspire me
         </button>
         <button
           type="button"
@@ -113,66 +258,15 @@ function ConceptCard({
       </div>
 
       {open ? (
-        <div id={detailsId} className="mt-4 border-t border-card-border pt-4">
-          <p className="text-sm leading-relaxed text-muted-strong">{concept.why}</p>
-          <Executions concept={concept} />
-          <div className="mt-4">
-            {choosingReason ? (
-              <div>
-                <p className="text-xs font-semibold text-muted">
-                  What&rsquo;s putting you off? It helps the next ideas fit better.
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {BIN_REASONS.map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      disabled={busy}
-                      onClick={() => onAction("bin", r)}
-                      className="min-h-9 rounded-full border border-card-border px-3 text-xs font-semibold text-foreground hover:border-muted disabled:opacity-50"
-                    >
-                      {r}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => onAction("bin")}
-                    className="min-h-9 rounded-full px-3 text-xs font-semibold text-muted hover:text-foreground disabled:opacity-50"
-                  >
-                    Just not this one
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setChoosingReason(false)}
-                    className="min-h-9 px-2 text-xs text-muted hover:text-foreground"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => onAction("pin")}
-                  className="min-h-10 rounded-lg border border-card-border px-3 text-sm font-semibold text-foreground hover:border-muted disabled:opacity-50"
-                >
-                  Pin for later
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => setChoosingReason(true)}
-                  className="min-h-10 px-3 text-sm font-semibold text-muted hover:text-foreground disabled:opacity-50"
-                >
-                  Not for me
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        <IdeaSheet
+          concept={concept}
+          busy={busy}
+          onAction={(a, r) => {
+            setOpen(false);
+            onAction(a, r);
+          }}
+          onClose={() => setOpen(false)}
+        />
       ) : null}
     </article>
   );

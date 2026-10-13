@@ -599,11 +599,11 @@ export async function GET(request: Request) {
           } catch (e) {
             errors.push(`${artistId}: sorting posts into themes failed: ${e instanceof Error ? e.message : "Unknown error"}`);
           }
-          // Their tour page, once a week: new dates become suggestions.
+          // Their website, once a week: new dates become suggestions.
           try {
             await syncTourPage(supabase, artistId);
           } catch (e) {
-            errors.push(`${artistId}: reading tour page failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+            errors.push(`${artistId}: reading website failed: ${e instanceof Error ? e.message : "Unknown error"}`);
           }
           // What their posts look like, from the cover images (a batch a run).
           try {

@@ -47,6 +47,7 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
   const [notes, setNotes] = useState<Partial<Record<StepId, string>>>({});
   const [failed, setFailed] = useState<Partial<Record<StepId, string>>>({});
   const [tourUrl, setTourUrl] = useState("");
+  const [bitKey, setBitKey] = useState("");
   const [briefLinks, setBriefLinks] = useState("");
   const [briefNotes, setBriefNotes] = useState("");
   const [autoRun, setAutoRun] = useState(false);
@@ -205,16 +206,16 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
     },
     {
       id: "dates",
-      title: "Dates",
+      title: "Website and dates",
       st: status("dates", s.dates.done, s.posts.count > 0),
       body: (
         <div className="flex flex-col gap-2">
           <span className="text-muted">
             {s.dates.done
               ? `${s.dates.upcoming} upcoming${s.dates.waiting ? `, ${s.dates.waiting} waiting to add` : ""}${
-                  s.dates.tourPageUrl ? " · tour page set" : ""
+                  s.dates.tourPageUrl ? " · website set" : ""
                 }`
-              : "Reads their recent captions for dates, plus their tour or events page if they have one."}
+              : "Reads their website for shows and releases, plus recent captions for anything announced there."}
             {notes.dates ? ` · ${notes.dates}` : ""}
             {s.dates.done && running !== "dates" ? (
               <button type="button" onClick={() => void run("dates", "dates")} className="ml-2 font-semibold text-brand hover:underline">
@@ -222,6 +223,7 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
               </button>
             ) : null}
           </span>
+          {s.dates.siteNote ? <span className="font-semibold text-amber-900">{s.dates.siteNote}</span> : null}
           {s.dates.waiting > 0 ? (
             <div className="flex flex-col gap-1.5 rounded-lg border border-card-border bg-card p-3">
               <ul className="flex flex-col gap-0.5">
@@ -250,25 +252,37 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
               </div>
             </div>
           ) : null}
-          {!s.dates.done || s.dates.tourPageUrl ? (
+          
             <form
               className="flex flex-wrap gap-2"
               onSubmit={async (e) => {
                 e.preventDefault();
-                const next = await run("dates", "dates", { tour_page_url: tourUrl });
+                const next = await run("dates", "dates", {
+                  tour_page_url: tourUrl,
+                  ...(bitKey.trim() ? { bandsintown_key: bitKey } : {}),
+                });
                 if (next && autoRun === false && next.getsIdeas && !next.draft && !next.live) void runSetup(next);
               }}
             >
               <input
                 value={tourUrl}
                 onChange={(e) => setTourUrl(e.target.value)}
-                aria-label="Tour page link"
-                placeholder="e.g. maxcooper.net/event"
+                aria-label="Website"
+                placeholder="Their website, e.g. thegoldendregs.com"
                 className="min-h-9 min-w-0 flex-[1_1_200px] rounded-lg border border-card-border bg-card px-2 text-sm"
               />
               <button type="submit" disabled={running !== null} className="min-h-9 rounded-lg bg-ink px-3 text-sm font-semibold text-ink-foreground disabled:opacity-50">
                 {s.dates.tourPageUrl ? "Read again" : "Read it"}
               </button>
+              {s.dates.siteNote?.includes("Bandsintown") || s.dates.hasBandsintownKey ? (
+                <input
+                  value={bitKey}
+                  onChange={(e) => setBitKey(e.target.value)}
+                  aria-label="Bandsintown API key"
+                  placeholder={s.dates.hasBandsintownKey ? "Bandsintown key saved (paste a new one to change)" : "Bandsintown API key (Bandsintown for Artists › Settings › General)"}
+                  className="min-h-9 w-full rounded-lg border border-card-border bg-card px-2 text-sm"
+                />
+              ) : null}
               {!s.dates.done ? (
                 <button
                   type="button"
@@ -283,7 +297,6 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
                 </button>
               ) : null}
             </form>
-          ) : null}
         </div>
       ),
     },

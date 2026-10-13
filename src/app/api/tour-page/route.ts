@@ -20,16 +20,18 @@ function normalise(raw: string): string | null {
 }
 
 /**
- * { artistId, url }: save (or clear, with an empty url) the artist's tour
- * page, then read it straight away. The database function checks access.
+ * { artistId, url, bandsintown_key? }: save (or clear, with an empty url) the
+ * artist's website, then read it straight away. The database function checks access.
  */
 export async function POST(request: Request) {
   let artistId = "";
   let rawUrl = "";
+  let key = "";
   try {
     const body = (await request.json()) as Record<string, unknown>;
     artistId = typeof body.artistId === "string" ? body.artistId.trim() : "";
     rawUrl = typeof body.url === "string" ? body.url : "";
+    key = typeof body.bandsintown_key === "string" ? body.bandsintown_key.trim().slice(0, 200) : "";
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -45,15 +47,15 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { error } = await supabase.rpc("set_tour_page", { p_artist_id: artistId, p_url: url });
+  const { error } = await supabase.rpc("set_tour_page", { p_artist_id: artistId, p_url: url, p_bandsintown_key: key || null });
   if (error) {
     return NextResponse.json({ error: error.message }, { status: error.code === "42501" ? 403 : 500 });
   }
-  if (!url) return NextResponse.json({ status: null, found: 0, added: 0 });
+  if (!url) return NextResponse.json({ status: null, found: 0, added: 0, note: null });
 
   try {
     const result = await syncTourPage(createServiceRoleClient(), artistId, { force: true });
-    return NextResponse.json(result ?? { status: "failed", found: 0, added: 0 });
+    return NextResponse.json(result ?? { status: "failed", found: 0, added: 0, note: null });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Couldn't read that page" }, { status: 500 });
   }

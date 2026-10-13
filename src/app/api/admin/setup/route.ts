@@ -39,6 +39,7 @@ export async function POST(request: Request) {
   let artistId = "";
   let action: Action = "status";
   let tourPageUrl: string | null | undefined;
+  let bandsintownKey: string | undefined;
   let briefLinks: string | undefined;
   let briefNotes: string | undefined;
   try {
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
     artistId = typeof body.artist_id === "string" ? body.artist_id.trim() : "";
     action = ACTIONS.includes(body.action as Action) ? (body.action as Action) : "status";
     if (typeof body.tour_page_url === "string") tourPageUrl = body.tour_page_url.trim();
+    if (typeof body.bandsintown_key === "string") bandsintownKey = body.bandsintown_key.trim().slice(0, 200);
     if (typeof body.brief_links === "string") briefLinks = body.brief_links.trim().slice(0, 2000);
     if (typeof body.brief_notes === "string") briefNotes = body.brief_notes.trim().slice(0, 3000);
   } catch {
@@ -97,14 +99,21 @@ export async function POST(request: Request) {
         if (tourPageUrl && !url) throw new Error("That doesn't look like a web address");
         await admin
           .from("profiles")
-          .update({ tour_page_url: url, tour_page_checked_at: null, tour_page_status: null, tour_page_found: null })
+          .update({
+            tour_page_url: url,
+            tour_page_checked_at: null,
+            tour_page_status: null,
+            tour_page_found: null,
+            tour_page_note: null,
+            ...(bandsintownKey !== undefined ? { bandsintown_key: bandsintownKey || null } : {}),
+          })
           .eq("id", artistId);
         if (url) {
           const r = await syncTourPage(admin, artistId, { force: true });
           note =
             r?.status === "failed"
-              ? "Couldn't read that page"
-              : `${r?.found ?? 0} upcoming dates found, ${r?.added ?? 0} waiting to add`;
+              ? "Couldn't open that site"
+              : `${r?.found ?? 0} upcoming dates found on their site, ${r?.added ?? 0} new`;
         }
       }
       if (fromCaptions > 0) note = `${note ? `${note} · ` : ""}${fromCaptions} spotted in captions`;
@@ -166,7 +175,7 @@ async function addWaitingDates(admin: ReturnType<typeof createServiceRoleClient>
         title: r.title,
         event_date: r.event_date,
         event_type: r.event_type,
-        notes: r.notes ?? (r.source === "tour_page" ? "From your tour page" : "Spotted in your Instagram post"),
+        notes: r.notes ?? (r.source === "tour_page" ? "From your website" : "Spotted in your Instagram post"),
       })
       .select("id")
       .single();

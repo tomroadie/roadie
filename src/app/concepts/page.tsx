@@ -359,7 +359,8 @@ export default async function ConceptsPage({
                             artistId={activeArtistId}
                             postId={p.id}
                             kind={p.visualKind}
-                            note={p.visualNote}
+                            label={p.visualLabel}
+                correction={p.visualCorrection}
                             source={p.visualSource}
                           />
                         </li>

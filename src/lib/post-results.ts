@@ -35,9 +35,13 @@ export type PostResult = {
   themeName: string | null;
   /** "auto" = Tempo sorted it and the artist hasn't confirmed; "artist" = confirmed. */
   themeSource: "auto" | "artist" | null;
-  /** What the cover looks like (from the image scan, or the artist's correction). */
+  /** What the cover looks like: kind and a short label shown to the artist. */
   visualKind: VisualKind | null;
+  visualLabel: string | null;
+  /** Tempo's longer description, used behind the scenes. */
   visualNote: string | null;
+  /** The artist's "what Tempo got wrong"; overrides visualNote. */
+  visualCorrection: string | null;
   visualSource: "ai" | "artist" | null;
   /** Marked as an ad or collab. */
   excluded: boolean;
@@ -85,7 +89,7 @@ export async function loadPostResults(
     supabase
       .from("post_performance")
       .select(
-        "instagram_post_id, post_date, ig_media_type, caption, permalink, thumbnail_url, reach, likes, comments, excluded_from_usual, theme_id, theme_source, reach_24h, visual_kind, visual_note, visual_source"
+        "instagram_post_id, post_date, ig_media_type, caption, permalink, thumbnail_url, reach, likes, comments, excluded_from_usual, theme_id, theme_source, reach_24h, visual_kind, visual_label, visual_note, visual_correction, visual_source"
       )
       .eq("artist_id", artistId)
       .not("post_date", "is", null)
@@ -155,7 +159,9 @@ export async function loadPostResults(
       themeName: r.theme_id ? themeNames.get(String(r.theme_id)) ?? null : null,
       themeSource: r.theme_source === "auto" || r.theme_source === "artist" ? r.theme_source : null,
       visualKind: asVisualKind(r.visual_kind),
+      visualLabel: r.visual_label ? String(r.visual_label) : null,
       visualNote: r.visual_note ? String(r.visual_note) : null,
+      visualCorrection: r.visual_correction ? String(r.visual_correction) : null,
       visualSource: r.visual_source === "ai" || r.visual_source === "artist" ? r.visual_source : null,
     };
   });

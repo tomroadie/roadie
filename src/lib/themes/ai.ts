@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { clip } from "@/lib/text";
 
 /**
  * The two model jobs behind themes: suggesting an artist's starting themes,
@@ -85,7 +86,7 @@ export async function suggestThemes(
 ): Promise<{ active: ThemeSuggestion[]; suggested: ThemeSuggestion | null }> {
   const captions = input.captions
     .slice(0, 30)
-    .map((c, i) => `${i + 1}. ${c.replace(/\s+/g, " ").slice(0, 220)}`)
+    .map((c, i) => `${i + 1}. ${clip(c.replace(/\s+/g, " "), 220)}`)
     .join("\n");
 
   const kind = input.accountType && input.accountType !== "artist" ? input.accountType : "artist";
@@ -93,7 +94,7 @@ export async function suggestThemes(
 Type of account: ${kind}
 Example theme names for this kind of account: ${THEME_EXAMPLES[kind] ?? THEME_EXAMPLES.other}
 
-${input.auditPattern ? `What we noticed about their account:\n${input.auditPattern.slice(0, 1200)}\n\n` : ""}Recent post captions, newest first:
+${input.auditPattern ? `What we noticed about their account:\n${clip(input.auditPattern, 1200)}\n\n` : ""}Recent post captions, newest first:
 ${captions || "(no posts yet)"}
 
 Give 4 themes that cover what this account already posts (or, with no posts, what most accounts like it would post), and at most 1 extra theme they don't post yet but plausibly should.
@@ -141,7 +142,7 @@ export async function classifyIntoThemes(
     .map((t, i) => `${i + 1}. ${t.name}${t.description ? ` — ${t.description}` : ""}`)
     .join("\n");
   const itemList = items
-    .map((it) => `[${it.key}] ${it.text.replace(/\s+/g, " ").slice(0, 300) || "(no caption)"}`)
+    .map((it) => `[${it.key}] ${clip(it.text.replace(/\s+/g, " "), 300) || "(no caption)"}`)
     .join("\n");
 
   const prompt = `Themes:

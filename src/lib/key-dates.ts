@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { EVENT_TYPES, type EventType } from "@/types/event";
+import { clip } from "@/lib/text";
 
 export type ParsedKeyDate = {
   date: string;
@@ -33,7 +34,7 @@ export async function parseKeyDates(
   text: string,
   today: string = new Date().toISOString().slice(0, 10)
 ): Promise<ParsedKeyDate[]> {
-  const input = text.trim().slice(0, 1000);
+  const input = clip(text.trim(), 1000);
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!input || !apiKey) return [];
 

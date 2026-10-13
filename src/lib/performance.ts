@@ -1,7 +1,10 @@
 /**
  * "How did this post do?" — always against the artist's own usual, never
- * against other artists. Reach is the headline (how many people saw it);
- * when there isn't enough reach history yet, likes + comments stand in.
+ * against other artists. Reach is what the artist sees as the headline
+ * number, but a post's worth is judged on a blend of signals against their
+ * usual, weighted by what moves an artist forward: new followers most, then
+ * shares, saves and profile visits, then comments and reach. When there
+ * isn't enough reach history yet, likes + comments stand in.
  */
 
 export type PerfPost = {
@@ -13,9 +16,36 @@ export type PerfPost = {
   reach: number | null;
   likes: number | null;
   comments: number | null;
+  saves?: number | null;
+  shares?: number | null;
+  follows?: number | null;
+  profileVisits?: number | null;
   /** Marked by the artist as an ad or collab: never part of anyone's usual. */
   excluded?: boolean;
 };
+
+export type SignalName = "follows" | "shares" | "saves" | "profileVisits" | "comments" | "reach";
+
+/** What each signal is worth towards a post's value. */
+export const SIGNAL_WEIGHTS: Record<SignalName, number> = {
+  follows: 3,
+  shares: 2,
+  saves: 1.5,
+  profileVisits: 1.5,
+  comments: 1,
+  reach: 1,
+};
+
+export const SIGNAL_LABEL: Record<SignalName, string> = {
+  follows: "new followers",
+  shares: "shares",
+  saves: "saves",
+  profileVisits: "profile visits",
+  comments: "comments",
+  reach: "reach",
+};
+
+export type Signal = { name: SignalName; value: number; usual: number; ratio: number };
 
 /** Reach this many times the usual gets the "was this an ad or collab?" question. */
 export const UNUSUAL_RATIO = 3;
@@ -33,6 +63,14 @@ export type Comparison = {
   settled: boolean;
   /** How many earlier posts the usual is based on. */
   basedOn: number;
+  /**
+   * Reach posts only: each signal against its usual, and `ratio` above is
+   * the weighted blend of them. reachRatio keeps reach alone.
+   */
+  signals?: Signal[];
+  reachRatio?: number;
+  /** The signal that stood out most, worth telling the artist about. */
+  standout?: Signal | null;
 };
 
 /** Fewest earlier posts we'll call a "usual". */
@@ -86,8 +124,21 @@ export function compareToUsual(
     const reaches = earlier.map((h) => h.reach).filter((r): r is number => r !== null && r > 0);
     if (reaches.length >= MIN_HISTORY) {
       const usual = median(reaches);
-      const ratio = post.reach / usual;
-      return { metric: "reach", value: post.reach, usual, ratio, band: bandFor(ratio), settled, basedOn: reaches.length };
+      const reachRatio = post.reach / usual;
+      const signals = signalsFor(post, earlier);
+      const ratio = blend(signals) ?? reachRatio;
+      return {
+        metric: "reach",
+        value: post.reach,
+        usual,
+        ratio,
+        band: bandFor(ratio),
+        settled,
+        basedOn: reaches.length,
+        signals,
+        reachRatio,
+        standout: standoutOf(signals),
+      };
     }
   }
 
@@ -99,6 +150,60 @@ export function compareToUsual(
   if (usual <= 0) return null;
   const ratio = value / usual;
   return { metric: "interactions", value, usual, ratio, band: bandFor(ratio), settled, basedOn: past.length };
+}
+
+function signalValue(p: PerfPost, name: SignalName): number | null {
+  const v = name === "reach" ? p.reach : name === "comments" ? p.comments : p[name];
+  return typeof v === "number" && v >= 0 ? v : null;
+}
+
+/**
+ * Each signal against its usual over the same earlier posts. Small counts
+ * are smoothed (+1 on both sides) so 1 share against a usual of 0 isn't
+ * "infinitely better". Signals without enough history are left out.
+ */
+function signalsFor(post: PerfPost, earlier: PerfPost[]): Signal[] {
+  const out: Signal[] = [];
+  for (const name of Object.keys(SIGNAL_WEIGHTS) as SignalName[]) {
+    const value = signalValue(post, name);
+    if (value === null) continue;
+    const past = earlier.map((h) => signalValue(h, name)).filter((v): v is number => v !== null);
+    if (past.length < MIN_HISTORY) continue;
+    const usual = median(past);
+    const ratio = Math.min(10, Math.max(0.1, (value + 1) / (usual + 1)));
+    out.push({ name, value, usual, ratio });
+  }
+  return out;
+}
+
+/** Weighted geometric mean of the signals' ratios, or null with only reach to go on. */
+function blend(signals: Signal[]): number | null {
+  if (signals.filter((s) => s.name !== "reach").length === 0) return null;
+  let num = 0;
+  let den = 0;
+  for (const s of signals) {
+    const w = SIGNAL_WEIGHTS[s.name];
+    num += w * Math.log(s.ratio);
+    den += w;
+  }
+  return den > 0 ? Math.exp(num / den) : null;
+}
+
+/** The most notable thing a post did: a clearly above-usual signal with real numbers behind it. */
+function standoutOf(signals: Signal[]): Signal | null {
+  const strong = signals
+    .filter((s) => s.ratio >= 1.5 && s.value >= (s.name === "reach" ? 1 : 3) && s.value > s.usual)
+    .sort((a, b) => SIGNAL_WEIGHTS[b.name] * Math.log(b.ratio) - SIGNAL_WEIGHTS[a.name] * Math.log(a.ratio));
+  return strong[0] ?? null;
+}
+
+/** "3× your usual shares", "brought in 12 new followers", "40% more saves than usual". */
+export function describeSignal(s: Signal): string {
+  // Spoken figures use the plain ratio; the smoothed one is only for scoring.
+  const r = s.usual > 0 ? s.value / s.usual : s.ratio;
+  if (s.name === "follows") return `brought in ${Math.round(s.value)} new followers${s.usual > 0 ? `, ${r >= 1.9 ? `about ${Math.round(r)}×` : "more than"} your usual` : ""}`;
+  if (r >= 1.9) return `${Math.round(r * 10) / 10}× your usual ${SIGNAL_LABEL[s.name]}`;
+  return `${Math.round((r - 1) * 100)}% more ${SIGNAL_LABEL[s.name]} than usual`;
 }
 
 function fmt(n: number): string {
@@ -113,17 +218,25 @@ export function describeComparison(c: Comparison): string {
   const what = c.metric === "reach" ? `Reached ${fmt(c.value)}` : `${fmt(c.value)} likes and comments`;
   if (!c.settled) return `${what} so far. Still settling.`;
 
+  const seenNotActed =
+    (c.reachRatio ?? 0) >= 1.2 && (c.band === "usual" || c.band === "quieter")
+      ? " More people saw it than usual, but fewer acted on it."
+      : "";
+  const extra = c.standout && c.standout.name !== "reach" ? ` It ${describeSignal(c.standout)}.` : seenNotActed;
+  // With several signals blended, the band is about the post overall, not reach alone.
+  const blended = (c.signals?.filter((s) => s.name !== "reach").length ?? 0) > 0;
+  const lead = blended ? `${what}. Overall,` : `${what},`;
   switch (c.band) {
     case "well_above": {
       const times = c.ratio >= 2.75 ? `${Math.round(c.ratio)} times` : c.ratio >= 1.9 ? "double" : "nearly double";
-      return `${what}, about ${times} your usual.`;
+      return `${lead} about ${times} your usual.${extra}`;
     }
     case "above":
-      return `${what}, more than your usual.`;
+      return `${lead} more than your usual.${extra}`;
     case "usual":
-      return `${what}, about your usual.`;
+      return `${lead} about your usual.${extra}`;
     case "quieter":
-      return `${what}, quieter than usual. One post doesn't make a pattern.`;
+      return `${lead} quieter than usual.${extra} One post doesn't make a pattern.`;
   }
 }
 

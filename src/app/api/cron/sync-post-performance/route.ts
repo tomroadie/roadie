@@ -124,8 +124,14 @@ type PostInsights = {
   views: number | null;
   saves: number | null;
   shares: number | null;
+  /** New followers from this post, and profile visits (not every media type has them). */
+  follows: number | null;
+  profileVisits: number | null;
   raw: Record<string, unknown>;
 };
+
+/** Asked for separately, so a type without them doesn't lose the main metrics. */
+const FOLLOW_METRIC_CHAIN = ["follows,profile_visits", "profile_visits"];
 
 type GraphInsightsResponse = {
   data?: Array<{ name?: string; values?: Array<{ value?: number }> }>;
@@ -142,7 +148,7 @@ async function fetchPostInsights(
   mediaType: string | undefined,
   loggedMediaTypes: Set<string>
 ): Promise<PostInsights> {
-  const empty: PostInsights = { reach: null, views: null, saves: null, shares: null, raw: {} };
+  const empty: PostInsights = { reach: null, views: null, saves: null, shares: null, follows: null, profileVisits: null, raw: {} };
 
   async function request(
     metrics: string
@@ -182,11 +188,24 @@ async function fetchPostInsights(
     if (entry.name && typeof value === "number") values[entry.name] = value;
   }
 
+  // Follows and profile visits: the signals that show a post won someone over.
+  for (const metrics of FOLLOW_METRIC_CHAIN) {
+    const extra = await request(metrics);
+    if (!extra.ok) continue;
+    for (const entry of extra.json.data ?? []) {
+      const value = entry.values?.[0]?.value;
+      if (entry.name && typeof value === "number") values[entry.name] = value;
+    }
+    break;
+  }
+
   return {
     reach: values.reach ?? null,
     views: values.views ?? null,
     saves: values.saved ?? null,
     shares: values.shares ?? null,
+    follows: values.follows ?? null,
+    profileVisits: values.profile_visits ?? null,
     raw: json,
   };
 }
@@ -489,6 +508,8 @@ export async function GET(request: Request) {
             views: null,
             saves: null,
             shares: null,
+            follows: null,
+            profileVisits: null,
             raw: {},
           };
           if (withinInsightsWindow) {
@@ -526,6 +547,8 @@ export async function GET(request: Request) {
                       saves: insights.saves,
                       shares: insights.shares,
                       raw: insights.raw,
+                      ...(insights.follows !== null ? { follows: insights.follows } : {}),
+                      ...(insights.profileVisits !== null ? { profile_visits: insights.profileVisits } : {}),
                     }
                   : {}),
                 ...(takeSnapshot
@@ -571,6 +594,8 @@ export async function GET(request: Request) {
                 views: insights.views,
                 saves: insights.saves,
                 shares: insights.shares,
+                follows: insights.follows,
+                profile_visits: insights.profileVisits,
                 raw: insights.raw,
                 ...(takeSnapshot
                   ? { reach_24h: insights.reach, interactions_24h: likes + comments, snapshot_24h_at: scrapedAt }

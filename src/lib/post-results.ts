@@ -89,7 +89,7 @@ export async function loadPostResults(
     supabase
       .from("post_performance")
       .select(
-        "instagram_post_id, post_date, ig_media_type, caption, permalink, thumbnail_url, reach, likes, comments, excluded_from_usual, theme_id, theme_source, reach_24h, visual_kind, visual_label, visual_note, visual_correction, visual_source"
+        "instagram_post_id, post_date, ig_media_type, caption, permalink, thumbnail_url, reach, likes, comments, saves, shares, follows, profile_visits, excluded_from_usual, theme_id, theme_source, reach_24h, visual_kind, visual_label, visual_note, visual_correction, visual_source"
       )
       .eq("artist_id", artistId)
       .not("post_date", "is", null)
@@ -119,6 +119,10 @@ export async function loadPostResults(
     reach: typeof r.reach === "number" ? r.reach : null,
     likes: typeof r.likes === "number" ? r.likes : null,
     comments: typeof r.comments === "number" ? r.comments : null,
+    saves: typeof r.saves === "number" ? r.saves : null,
+    shares: typeof r.shares === "number" ? r.shares : null,
+    follows: typeof r.follows === "number" ? r.follows : null,
+    profileVisits: typeof r.profile_visits === "number" ? r.profile_visits : null,
     excluded: r.excluded_from_usual === true,
   }));
 
@@ -141,7 +145,7 @@ export async function loadPostResults(
         comparison !== null &&
         comparison.settled &&
         comparison.metric === "reach" &&
-        comparison.ratio >= UNUSUAL_RATIO,
+        (comparison.reachRatio ?? comparison.ratio) >= UNUSUAL_RATIO,
       caption: firstLine(r.caption),
       permalink: r.permalink ?? null,
       thumbnailUrl: r.thumbnail_url ?? null,

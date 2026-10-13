@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PostResult } from "@/lib/post-results";
+import { SIGNAL_LABEL, SIGNAL_WEIGHTS, type SignalName } from "@/lib/performance";
 
 export type Theme = {
   id: string;
@@ -104,8 +105,27 @@ function weekdayOf(iso: string | null): number | null {
   return i === -1 ? null : i;
 }
 
-function metricWord(posts: PostResult[]): string {
-  return posts.every((p) => p.comparison?.metric === "reach") ? "reach" : "likes and comments";
+/**
+ * How a group of posts beats their usual, in words: "do better than your
+ * usual, especially for shares" when the value score is in play, otherwise
+ * the single measure the comparison used.
+ */
+function doesBetter(posts: PostResult[]): string {
+  if (!posts.every((p) => p.comparison?.metric === "reach")) return "get more likes and comments than your usual";
+  const blended = posts.some((p) => p.comparison?.signals?.some((sg) => sg.name !== "reach"));
+  if (!blended) return "get more reach than your usual";
+  const byName = new Map<SignalName, number[]>();
+  for (const p of posts) {
+    for (const sg of p.comparison?.signals ?? []) byName.set(sg.name, [...(byName.get(sg.name) ?? []), sg.ratio]);
+  }
+  let best: { name: SignalName; score: number } | null = null;
+  for (const [name, ratios] of byName) {
+    if (name === "reach" || ratios.length < 2) continue;
+    const r = median(ratios);
+    const score = SIGNAL_WEIGHTS[name] * Math.log(r);
+    if (r >= 1.3 && (!best || score > best.score)) best = { name, score };
+  }
+  return best ? `do better than your usual, especially for ${SIGNAL_LABEL[best.name]}` : "do better than your usual overall";
 }
 
 type Group = { key: string; label: string; posts: PostResult[] };
@@ -134,7 +154,8 @@ function monthYear(iso: string): string {
 function steadyReach(settled: PostResult[]): { within: number; of: number } | null {
   const recent = settled.filter((p) => p.comparison!.metric === "reach").slice(0, 12);
   if (recent.length < 6) return null;
-  const within = recent.filter((p) => p.comparison!.ratio >= 0.8 && p.comparison!.ratio <= 1.25).length;
+  const reachOf = (p: PostResult) => p.comparison!.reachRatio ?? p.comparison!.ratio;
+  const within = recent.filter((p) => reachOf(p) >= 0.8 && reachOf(p) <= 1.25).length;
   return within / recent.length >= 0.7 ? { within, of: recent.length } : null;
 }
 
@@ -291,11 +312,10 @@ export function computeLearnings(posts: PostResult[], themes: Theme[], now: Date
     themes.map((t) => ({ key: t.id, label: t.name, posts: settled.filter((p) => p.themeId === t.id) }))
   );
   if (byTheme) {
-    const m = metricWord(byTheme.group.posts);
     out.push({
       stat: formatRatio(byTheme.ratio),
       title: `${byTheme.group.label} is landing`,
-      body: `Your ${byTheme.group.label.toLowerCase()} posts get more ${m} than your usual, across ${byTheme.group.posts.length} posts.`,
+      body: `Your ${byTheme.group.label.toLowerCase()} posts ${doesBetter(byTheme.group.posts)}, across ${byTheme.group.posts.length} posts.`,
       tag: byTheme.group.label,
     });
   }
@@ -320,11 +340,10 @@ export function computeLearnings(posts: PostResult[], themes: Theme[], now: Date
   }
   const byFormat = bestGroup([...formats].map(([f, ps]) => ({ key: f, label: f, posts: ps })));
   if (byFormat) {
-    const m = metricWord(byFormat.group.posts);
     out.push({
       stat: formatRatio(byFormat.ratio),
       title: `${byFormat.group.label}s work for you`,
-      body: `Your ${byFormat.group.label.toLowerCase()}s get more ${m} than your usual. Worth leaning on.`,
+      body: `Your ${byFormat.group.label.toLowerCase()}s ${doesBetter(byFormat.group.posts)}. Worth leaning on.`,
       tag: "Format",
     });
   }

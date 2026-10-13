@@ -1,4 +1,4 @@
-import { compareToUsual, describeComparison, type PerfPost } from "@/lib/performance";
+import { compareToUsual, describeComparison, describeSignal, type PerfPost } from "@/lib/performance";
 import { MAX_WEEKLY_TARGET } from "@/lib/starting-point";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadPostResults } from "@/lib/post-results";
@@ -201,7 +201,7 @@ export async function loadConceptContext(
       supabase
         .from("post_performance")
         .select(
-          "instagram_post_id, post_date, post_type, ig_media_type, caption, likes, comments, views, reach, saves, shares, excluded_from_usual"
+          "instagram_post_id, post_date, post_type, ig_media_type, caption, likes, comments, views, reach, saves, shares, follows, profile_visits, excluded_from_usual"
         )
         .eq("artist_id", artistId)
         .order("post_date", { ascending: false })
@@ -264,7 +264,11 @@ export async function loadConceptContext(
           const res = resultById.get(String(r.instagram_post_id));
           const c = res?.comparison;
           return {
-            vsUsual: c?.settled ? `${formatRatio(c.ratio)} vs their usual ${c.metric === "reach" ? "reach" : "likes and comments"}` : null,
+            vsUsual: c?.settled
+              ? c.signals?.some((sg) => sg.name !== "reach")
+                ? `${formatRatio(c.ratio)} overall vs their usual${c.standout && c.standout.name !== "reach" ? `; ${describeSignal(c.standout)}` : ""}`
+                : `${formatRatio(c.ratio)} vs their usual ${c.metric === "reach" ? "reach" : "likes and comments"}`
+              : null,
             looks: res
               ? res.visualCorrection
                 ? `${res.visualLabel ?? ""} (they say: ${res.visualCorrection})`.trim()
@@ -311,6 +315,10 @@ export async function loadConceptContext(
     reach: typeof r.reach === "number" ? r.reach : null,
     likes: typeof r.likes === "number" ? r.likes : null,
     comments: typeof r.comments === "number" ? r.comments : null,
+    saves: typeof r.saves === "number" ? r.saves : null,
+    shares: typeof r.shares === "number" ? r.shares : null,
+    follows: typeof r.follows === "number" ? r.follows : null,
+    profileVisits: typeof r.profile_visits === "number" ? r.profile_visits : null,
     excluded: r.excluded_from_usual === true,
   }));
   const postedIdeas = history

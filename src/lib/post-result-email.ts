@@ -52,7 +52,7 @@ export async function sendPostResultEmail(
     admin
       .from("post_performance")
       .select(
-        "instagram_post_id, post_date, ig_media_type, caption, permalink, thumbnail_url, reach, likes, comments, excluded_from_usual"
+        "instagram_post_id, post_date, ig_media_type, caption, permalink, thumbnail_url, reach, likes, comments, saves, shares, follows, profile_visits, excluded_from_usual"
       )
       .eq("artist_id", artistId)
       .not("post_date", "is", null)
@@ -80,6 +80,10 @@ export async function sendPostResultEmail(
     reach: typeof r.reach === "number" ? r.reach : null,
     likes: typeof r.likes === "number" ? r.likes : null,
     comments: typeof r.comments === "number" ? r.comments : null,
+    saves: typeof r.saves === "number" ? r.saves : null,
+    shares: typeof r.shares === "number" ? r.shares : null,
+    follows: typeof r.follows === "number" ? r.follows : null,
+    profileVisits: typeof r.profile_visits === "number" ? r.profile_visits : null,
     excluded: r.excluded_from_usual === true,
   }));
 

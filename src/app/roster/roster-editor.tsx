@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export type PickableArtist = { id: string; name: string; managed: boolean; type: string };
+export type PickableArtist = { id: string; name: string; managed: boolean; type: string; handle: string | null; connected: boolean };
 
 /** Admin: create a roster or change who's on it. Nothing is ticked to start with; ticked artists sit at the top. */
 export function RosterEditor({
@@ -96,6 +96,9 @@ export function RosterEditor({
               />
               <span className="text-foreground">{a.name}</span>
               <span className="text-xs text-muted">
+                {a.handle ? `@${a.handle} · ` : ""}
+                {a.connected ? "Instagram connected" : "not connected"}
+                {" · "}
                 {a.managed ? "managed" : "self-serve"}
                 {a.type !== "artist" ? ` · ${a.type}` : ""}
               </span>

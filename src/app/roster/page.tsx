@@ -56,10 +56,13 @@ export default async function RosterPage({ searchParams }: { searchParams: Promi
   let pickable: PickableArtist[] = [];
   let selected: string[] = [];
   if (isAdmin) {
-    const { data: all } = await admin.from("profiles").select("id, artist_name, is_managed, account_type").order("artist_name");
+    const { data: all } = await admin.from("profiles").select("id, artist_name, is_managed, account_type, instagram_handle, instagram_user_id").order("artist_name");
     pickable = (all ?? [])
       .filter((p) => String(p.artist_name ?? "").trim())
-      .map((p) => ({ id: String(p.id), name: String(p.artist_name), managed: p.is_managed === true, type: String(p.account_type ?? "artist") }));
+      .map((p) => ({ id: String(p.id), name: String(p.artist_name), managed: p.is_managed === true, type: String(p.account_type ?? "artist"),
+        handle: p.instagram_handle ? String(p.instagram_handle).replace(/^@/, "") : null,
+        connected: Boolean(String(p.instagram_user_id ?? "").trim()),
+      }));
     if (current) {
       const { data: links } = await admin.from("roster_artists").select("artist_id").eq("roster_id", current.id);
       selected = (links ?? []).map((l) => String(l.artist_id));

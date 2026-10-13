@@ -78,6 +78,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Artist not found" }, { status: 404 });
   }
 
+  // Managed artists share an owner (the admin). Owner-wide history only goes
+  // when this is the owner's last profile; otherwise just this artist's.
+  const [{ count: ownerProfiles }, { data: me }, { count: otherAdmins }] = await Promise.all([
+    admin.from("profiles").select("id", { count: "exact", head: true }).eq("owner_user_id", ownerUserId),
+    admin.from("profiles").select("is_admin").eq("id", artistId).maybeSingle(),
+    admin
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_user_id", ownerUserId)
+      .eq("is_admin", true)
+      .neq("id", artistId),
+  ]);
+  if (me?.is_admin && (otherAdmins ?? 0) === 0) {
+    return NextResponse.json(
+      { error: "This is the only profile carrying admin access. Give another profile admin first." },
+      { status: 409 }
+    );
+  }
+  const lastForOwner = (ownerProfiles ?? 0) <= 1;
+
   const steps: Array<{
     label: string;
     run: () => PromiseLike<{ error: { message: string } | null }>;
@@ -85,15 +105,16 @@ export async function POST(request: Request) {
     {
       label: "email_log",
       run: async () =>
-        admin
-          .from("email_log")
-          .delete()
-          .or(`artist_id.eq.${artistId},user_id.eq.${ownerUserId}`),
+        lastForOwner
+          ? admin.from("email_log").delete().or(`artist_id.eq.${artistId},user_id.eq.${ownerUserId}`)
+          : admin.from("email_log").delete().eq("artist_id", artistId),
     },
     {
       label: "usage_events",
       run: async () =>
-        admin.from("usage_events").delete().eq("user_id", ownerUserId),
+        lastForOwner
+          ? admin.from("usage_events").delete().eq("user_id", ownerUserId)
+          : { error: null },
     },
     {
       label: "plan_revision_requests",

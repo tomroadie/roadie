@@ -19,6 +19,7 @@ function buildLinks(showAdminLink: boolean, showConceptsLink: boolean) {
   if (!showAdminLink) return base;
   return [
     ...base,
+    { href: "/roster", label: "Roster" },
     { href: "/prep", label: "Prep" },
     { href: "/admin", label: "Admin" },
   ];

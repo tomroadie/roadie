@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
+import { VisualNote } from "@/components/visual-note";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
 import { boardWeek } from "@/lib/board-week";
 import { loadPostResults, type PostResult } from "@/lib/post-results";
@@ -354,6 +355,13 @@ export default async function ConceptsPage({
                           {text ? (
                             <span className={`text-sm font-semibold ${c?.settled ? ratioClass(c.ratio) : "text-muted"}`}>{text}</span>
                           ) : null}
+                          <VisualNote
+                            artistId={activeArtistId}
+                            postId={p.id}
+                            kind={p.visualKind}
+                            note={p.visualNote}
+                            source={p.visualSource}
+                          />
                         </li>
                       );
                     })}

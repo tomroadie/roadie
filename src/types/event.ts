@@ -4,6 +4,10 @@ export type EventRow = {
   event_date: string;
   event_type: string;
   notes: string | null;
+  /** Optional page about the date; Tempo reads it and keeps a short summary. */
+  link_url?: string | null;
+  link_context?: string | null;
+  link_status?: "ok" | "failed" | null;
 };
 
 export const EVENT_TYPES = [

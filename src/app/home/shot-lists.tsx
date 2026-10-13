@@ -7,7 +7,7 @@ function when(iso: string): string {
   return iso === today ? "Today" : "Tomorrow";
 }
 
-/** "Gig tomorrow: what to capture", from the concept that fits it. */
+/** "Gig tomorrow: what to capture", each shot tied to something of theirs. */
 export function ShotListsSection({ lists }: { lists: ShotList[] }) {
   if (lists.length === 0) return null;
   return (
@@ -25,17 +25,34 @@ export function ShotListsSection({ lists }: { lists: ShotList[] }) {
             </p>
             <h2 className="text-xl font-bold text-foreground">{l.title}: what to capture</h2>
           </div>
-          <ul className="flex flex-col gap-2">
+          <ol className="flex flex-col gap-3">
             {l.shots.map((s, i) => (
               <li key={i} className="flex gap-3 text-sm leading-relaxed text-foreground">
                 <span className="mt-0.5 shrink-0 self-start rounded-full bg-input px-2.5 py-0.5 text-xs font-medium text-muted-strong">
                   {FORMAT_LABEL[s.format] ?? s.format}
                 </span>
-                <span>{s.shot}</span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="font-medium">{s.shot}</span>
+                  {s.why ? <span className="text-muted">{s.why}</span> : null}
+                  {s.anchorLabel ? (
+                    s.anchorHref ? (
+                      <a
+                        href={s.anchorHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-semibold text-brand hover:underline"
+                      >
+                        {s.anchorLabel} ↗
+                      </a>
+                    ) : (
+                      <span className="text-xs font-semibold text-brand">{s.anchorLabel}</span>
+                    )
+                  ) : null}
+                </span>
               </li>
             ))}
-          </ul>
-          <p className="text-xs text-muted">Grab what you can. A few of these will cover your week.</p>
+          </ol>
+          <p className="text-xs text-muted">Grab what you can on the day. Each one gives you a post for the week after.</p>
         </section>
       ))}
     </>

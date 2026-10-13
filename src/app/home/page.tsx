@@ -339,6 +339,14 @@ export default async function HomePage({
       loadPostResults(supabase, activeArtistId, mWeek.startsAt),
       loadThemes(supabase, activeArtistId).catch(() => ({ active: [], suggested: [] })),
     ]);
+    const { data: mEventRows } = await supabase
+      .from("events")
+      .select("id, title, event_date")
+      .eq("artist_id", activeArtistId)
+      .gte("event_date", isoToday())
+      .order("event_date")
+      .limit(6);
+    const mEvents = mEventRows ?? [];
     const mLearnings = mResults ? computeLearnings(mResults.posts, mThemes.active) : [];
     const mHint = mResults && mLearnings.length === 0 ? learningHint(mResults.posts, mThemes.active) : null;
     return (
@@ -358,7 +366,7 @@ export default async function HomePage({
             <LearningsSection learnings={mLearnings} hint={mHint} />
             {mResults ? (
               <>
-                <RecentPostsGrid posts={mResults.posts} />
+                <RecentPostsGrid posts={mResults.posts} artistId={activeArtistId} />
                 <details className="group rounded-2xl border border-card-border bg-card p-5">
                   <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
                     <span className="group-open:hidden">All post results</span>
@@ -385,6 +393,30 @@ export default async function HomePage({
               </p>
               <Link href="/concepts" className="mt-3 inline-block text-sm font-semibold text-brand hover:underline">
                 Open concepts
+              </Link>
+            </div>
+            <div className="rounded-2xl border border-card-border bg-card p-5">
+              <h2 className="text-xl font-bold text-foreground">Coming up</h2>
+              {mEvents.length > 0 ? (
+                <ul className="mt-3 space-y-2">
+                  {mEvents.map((ev) => (
+                    <li key={String(ev.id)} className="flex gap-3 text-sm">
+                      <span className="w-24 shrink-0 text-muted">
+                        {new Date(String(ev.event_date) + "T12:00:00").toLocaleDateString("en-GB", {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </span>
+                      <span className="font-semibold text-foreground">{String(ev.title)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-muted">No dates saved.</p>
+              )}
+              <Link href="/events" className="mt-3 inline-block text-sm font-semibold text-brand hover:underline">
+                All dates
               </Link>
             </div>
             <div className="rounded-2xl border border-dashed border-card-border p-5 text-sm text-muted">
@@ -1325,7 +1357,7 @@ export default async function HomePage({
             <ShotListsSection lists={shotLists} />
             {showCheckin ? <WeekCheckin artistId={activeArtistId} /> : null}
             <LearningsSection learnings={learnings} hint={hint} />
-            {postResults ? <RecentPostsGrid posts={postResults.posts} /> : boardInstagramSection}
+            {postResults ? <RecentPostsGrid posts={postResults.posts} artistId={activeArtistId} /> : boardInstagramSection}
             {postResults ? (
               <details className="group rounded-2xl border border-card-border bg-card p-5">
                 <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">

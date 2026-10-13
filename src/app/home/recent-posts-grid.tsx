@@ -1,5 +1,6 @@
 import type { PostResult } from "@/lib/post-results";
 import { formatName, formatRatio } from "@/lib/themes/load";
+import { VisualNote } from "@/components/visual-note";
 
 const SHOWN = 6;
 
@@ -20,7 +21,7 @@ function chip(post: PostResult): { text: string; cls: string } {
 }
 
 /** The latest posts at a glance, each against the artist's own usual. */
-export function RecentPostsGrid({ posts }: { posts: PostResult[] }) {
+export function RecentPostsGrid({ posts, artistId }: { posts: PostResult[]; artistId: string }) {
   const shown = posts.slice(0, SHOWN);
   if (shown.length === 0) return null;
   const metric = shown.some((p) => p.comparison?.metric === "interactions") ? "likes and comments" : "reach";
@@ -67,6 +68,13 @@ export function RecentPostsGrid({ posts }: { posts: PostResult[] }) {
                 <span className="truncate text-muted">{p.themeName ?? "Not sorted yet"}</span>
                 {c.text ? <span className={`shrink-0 font-semibold ${c.cls}`}>{c.text}</span> : null}
               </div>
+              <VisualNote
+                artistId={artistId}
+                postId={p.id}
+                kind={p.visualKind}
+                note={p.visualNote}
+                source={p.visualSource}
+              />
             </li>
           );
         })}

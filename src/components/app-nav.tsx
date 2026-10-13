@@ -13,6 +13,7 @@ function buildLinks(showAdminLink: boolean, showConceptsLink: boolean) {
   const base: { href: string; label: string }[] = [
     { href: "/home", label: "Home" },
     ...(showConceptsLink ? [{ href: "/concepts", label: "Concepts" }] : []),
+    { href: "/events", label: "Dates" },
     { href: "/settings", label: "Settings" },
   ];
   if (!showAdminLink) return base;

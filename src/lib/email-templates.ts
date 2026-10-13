@@ -745,11 +745,14 @@ export type YourWeekData = {
   target: number;
   comingUp: { date: string; title: string }[];
   easyIdea: { title: string; idea: string } | null;
+  /** Last week was a quiet week. */
+  welcomeBack?: boolean;
 };
 
 /** One line about last week. Never a guilt trip. */
-export function lastWeekLine(d: Pick<YourWeekData, "postedLastWeek" | "previousTarget">): string {
+export function lastWeekLine(d: Pick<YourWeekData, "postedLastWeek" | "previousTarget" | "welcomeBack">): string {
   const n = d.postedLastWeek;
+  if (d.welcomeBack) return "Welcome back. Your quiet week's done, and your target's where you left it.";
   if (d.previousTarget === null) {
     return n > 0
       ? `You posted ${plural(n, "time")} last week. Good start.`

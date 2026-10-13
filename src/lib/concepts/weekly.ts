@@ -228,6 +228,7 @@ export async function sendYourWeek(admin: SupabaseClient, generationId: string):
     target: Number(summary.target ?? profile.weekly_target ?? 1),
     comingUp: (events ?? []).map((e) => ({ date: String(e.event_date), title: String(e.title ?? "") })),
     easyIdea: source && easy ? { title: String(source.title), idea: easy.idea } : null,
+    welcomeBack: await lastWeekWasQuiet(admin, artistId),
   });
 
   return sendEmail({
@@ -284,4 +285,19 @@ export async function autoPublishDueDrafts(
     }
   }
   return { published, failed };
+}
+
+/** Whether the artist's most recent finished week was a quiet week. */
+async function lastWeekWasQuiet(admin: SupabaseClient, artistId: string): Promise<boolean> {
+  const { data: profile } = await admin.from("profiles").select("week_start_day").eq("id", artistId).maybeSingle();
+  const start = boardWeek(profile?.week_start_day).start;
+  const { data } = await admin
+    .from("weekly_targets")
+    .select("outcome")
+    .eq("artist_id", artistId)
+    .lt("week_start", start)
+    .order("week_start", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.outcome === "quiet";
 }

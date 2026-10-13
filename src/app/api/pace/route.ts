@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { trackUsage } from "@/lib/track-usage";
+import { boardWeek } from "@/lib/board-week";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -9,6 +10,7 @@ const UUID_RE =
  * Posting pace answers. The database functions check access.
  *   { action: "prime", artist_id, prime }  confirm or change the prime
  *   { action: "step", artist_id, accept }  answer "Up for n+1 next week?"
+ *   { action: "quiet", artist_id, on }     quiet week on, or end it early
  */
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
@@ -33,6 +35,14 @@ export async function POST(request: Request) {
     if (!Number.isInteger(prime)) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     ({ error } = await supabase.rpc("set_posting_prime", { p_artist_id: artistId, p_prime: prime }));
     event = "pace_prime_set";
+  } else if (body.action === "quiet" && typeof body.on === "boolean") {
+    const { data: profile } = await supabase.from("profiles").select("week_start_day").eq("id", artistId).maybeSingle();
+    ({ error } = await supabase.rpc("set_quiet_week", {
+      p_artist_id: artistId,
+      p_week_start: boardWeek(profile?.week_start_day).start,
+      p_on: body.on,
+    }));
+    event = body.on ? "pace_quiet_on" : "pace_quiet_off";
   } else if (body.action === "step" && typeof body.accept === "boolean") {
     ({ error } = await supabase.rpc("answer_step_offer", { p_artist_id: artistId, p_accept: body.accept }));
     event = body.accept ? "pace_step_accepted" : "pace_step_declined";

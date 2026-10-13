@@ -25,6 +25,8 @@ export type Learning = {
   body: string;
   /** Small label underneath: the theme or area it's about. */
   tag: string;
+  /** "win" = what's working; "improve" = the one thing most worth changing, with what to do. */
+  kind?: "win" | "improve";
 };
 
 /** Fewest settled posts in a group before we'll say anything about it. */
@@ -165,14 +167,98 @@ function commentsLeader(
   return best;
 }
 
+/** A group has to sit this far under the usual before it's worth changing. */
+const IMPROVE_RATIO = 0.8;
+/** …and be at least this share of what they post, or it isn't strategic. */
+const IMPROVE_MIN_SHARE = 0.25;
+/** The alternative has to beat the weak group by at least this much. */
+const IMPROVE_MIN_LIFT = 0.25;
+
+type Gap = {
+  kind: "format" | "theme";
+  weak: { label: string; ratio: number; n: number; share: number };
+  strong: { label: string; ratio: number; n: number };
+  impact: number;
+};
+
 /**
- * What's working, in plain words, from the artist's own posts. Positive and
- * practical, never a telling-off. Posting rhythm comes first because it's
- * readable from day one, even with very little data. Returns up to three.
+ * The single change most worth making: a format or concept that's a big
+ * share of what they post, clearly under their usual, where something else
+ * they already do clearly works better. Scored by how much of their output
+ * it touches times the gap, so a one-off flop never qualifies. Null when
+ * nothing clears every bar: then there's nothing strategic to say.
+ */
+function biggestGap(settled: PostResult[], themes: Theme[]): Gap | null {
+  if (settled.length < 6) return null;
+  const dims: { kind: Gap["kind"]; groups: { label: string; posts: PostResult[] }[] }[] = [];
+
+  const formats = new Map<string, PostResult[]>();
+  for (const p of settled) {
+    const f = formatName(p.mediaType);
+    formats.set(f, [...(formats.get(f) ?? []), p]);
+  }
+  dims.push({ kind: "format", groups: [...formats].map(([label, ps]) => ({ label, posts: ps })) });
+  dims.push({
+    kind: "theme",
+    groups: themes.map((t) => ({ label: t.name, posts: settled.filter((p) => p.themeId === t.id) })),
+  });
+
+  let best: Gap | null = null;
+  for (const d of dims) {
+    const scored = d.groups
+      .filter((g) => g.posts.length >= MIN_COMPARED)
+      .map((g) => ({
+        label: g.label,
+        n: g.posts.length,
+        share: g.posts.length / settled.length,
+        ratio: median(g.posts.map((p) => p.comparison!.ratio)),
+      }));
+    for (const weak of scored) {
+      if (weak.ratio > IMPROVE_RATIO || weak.share < IMPROVE_MIN_SHARE) continue;
+      const strong = scored
+        .filter((o) => o.label !== weak.label && o.ratio >= Math.max(1, weak.ratio + IMPROVE_MIN_LIFT))
+        .sort((a, b) => b.ratio - a.ratio)[0];
+      if (!strong) continue; // no better option they already use: nothing concrete to suggest
+      const impact = weak.share * (strong.ratio - weak.ratio);
+      if (!best || impact > best.impact) best = { kind: d.kind, weak, strong, impact };
+    }
+  }
+  return best;
+}
+
+function improvementFrom(gap: Gap): Learning {
+  const pct = Math.round(gap.weak.share * 100);
+  if (gap.kind === "format") {
+    const weak = gap.weak.label.toLowerCase();
+    const strong = gap.strong.label.toLowerCase();
+    return {
+      kind: "improve",
+      stat: formatRatio(gap.weak.ratio),
+      title: `Swap some ${weak}s for ${strong}s`,
+      body: `${gap.weak.label}s are ${pct}% of your posts but land below your usual. Your ${strong}s do ${formatRatio(gap.strong.ratio)}. Next time you'd post a ${weak}, try it as a ${strong} instead.`,
+      tag: "Room to grow",
+    };
+  }
+  return {
+    kind: "improve",
+    stat: formatRatio(gap.weak.ratio),
+    title: `Lean from ${gap.weak.label} towards ${gap.strong.label}`,
+    body: `${gap.weak.label} is ${pct}% of what you post but lands below your usual, while ${gap.strong.label} does ${formatRatio(gap.strong.ratio)}. Try the next couple of posts as ${gap.strong.label.toLowerCase()} and see if it holds.`,
+    tag: "Room to grow",
+  };
+}
+
+/**
+ * What's working, plus the one change most worth making, from the artist's
+ * own posts. Encouraging in tone, honest in content: up to two wins and one
+ * improvement, which always comes with what to do. The improvement is the
+ * posting rhythm when they post rarely (the biggest lever, readable from day
+ * one), otherwise the biggest strategic gap if there is one.
  */
 export function computeLearnings(posts: PostResult[], themes: Theme[], now: Date = new Date()): Learning[] {
   const settled = comparable(posts);
   const out: Learning[] = [];
+  let improvement: Learning | null = null;
   const steady = steadyReach(settled);
 
   // Rhythm: how often they've posted lately. Works with almost no data.
@@ -184,7 +270,8 @@ export function computeLearnings(posts: PostResult[], themes: Theme[], now: Date
       const audience = steady
         ? "Your audience still turns up when you do post, so"
         : "Every post is a chance to learn what works, so";
-      out.push({
+      improvement = {
+        kind: "improve",
         stat: String(recent),
         title: recent === 1 ? "Post in the last 3 months" : "Posts in the last 3 months",
         body:
@@ -192,8 +279,12 @@ export function computeLearnings(posts: PostResult[], themes: Theme[], now: Date
             ? `Your last post was in ${monthYear(dated[0].postDate!)}. ${audience} getting a steady rhythm going is the biggest win. One post this week is a good start.`
             : `${audience} posting more often is the biggest lever right now. Tempo's weekly pace is built for exactly that.`,
         tag: "Rhythm",
-      });
+      };
     }
+  }
+  if (!improvement) {
+    const gap = biggestGap(settled, themes);
+    if (gap) improvement = improvementFrom(gap);
   }
 
   const byTheme = bestGroup(
@@ -262,7 +353,8 @@ export function computeLearnings(posts: PostResult[], themes: Theme[], now: Date
     });
   }
 
-  return out.slice(0, 3);
+  const wins = out.map((l) => ({ ...l, kind: "win" as const }));
+  return improvement ? [...wins.slice(0, 2), improvement] : wins.slice(0, 3);
 }
 
 /**

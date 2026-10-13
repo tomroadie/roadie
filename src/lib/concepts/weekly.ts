@@ -216,3 +216,49 @@ export async function sendYourWeek(admin: SupabaseClient, generationId: string):
     metadata: { generation_id: generationId },
   });
 }
+
+/** Drafts go live on their own this long after they're made, unless already published. */
+export const REVIEW_WINDOW_HOURS = Number(process.env.CONCEPT_REVIEW_WINDOW_HOURS ?? 24);
+
+/**
+ * Publishes weekly and first-board drafts that have waited past the review
+ * window, so artists are never stuck on last week's ideas. Edits made in
+ * review are kept (the draft is published as it stands). Weekly ones also
+ * send "Your week". Skipped when the artist already has a newer live board.
+ */
+export async function autoPublishDueDrafts(
+  admin: SupabaseClient,
+  now: Date = new Date()
+): Promise<{ published: string[]; failed: string[] }> {
+  const cutoff = new Date(now.getTime() - REVIEW_WINDOW_HOURS * 3600000).toISOString();
+  const { data: drafts, error } = await admin
+    .from("concept_generations")
+    .select("id, artist_id, created_at, kind:context_summary->>kind")
+    .eq("status", "draft")
+    .lte("created_at", cutoff)
+    .gte("created_at", new Date(now.getTime() - 14 * 86400000).toISOString())
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(`drafts: ${error.message}`);
+
+  const published: string[] = [];
+  const failed: string[] = [];
+  for (const d of drafts ?? []) {
+    if (d.kind !== "weekly" && d.kind !== "first") continue;
+    const { data: newer } = await admin
+      .from("concept_generations")
+      .select("id")
+      .eq("artist_id", d.artist_id)
+      .eq("status", "live")
+      .gt("published_at", String(d.created_at))
+      .limit(1);
+    if (newer && newer.length > 0) continue;
+    try {
+      await publishGeneration(admin, String(d.id));
+      if (d.kind === "weekly") await sendYourWeek(admin, String(d.id));
+      published.push(String(d.artist_id));
+    } catch (e) {
+      failed.push(`${d.artist_id}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  return { published, failed };
+}

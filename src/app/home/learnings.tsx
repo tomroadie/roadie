@@ -1,6 +1,6 @@
 import type { Learning } from "@/lib/themes/load";
 
-/** "What we're learning": up to three patterns from the artist's own posts. */
+/** "What we're learning": what's working, and the one change most worth making. */
 export function LearningsSection({ learnings, hint = null }: { learnings: Learning[]; hint?: string | null }) {
   return (
     <section aria-labelledby="learnings-heading" className="flex flex-col gap-3">
@@ -14,10 +14,18 @@ export function LearningsSection({ learnings, hint = null }: { learnings: Learni
               key={`${l.tag}-${l.title}`}
               className="flex flex-col gap-2 rounded-2xl border border-card-border bg-card p-5"
             >
-              <p className="font-display text-3xl font-bold tracking-tight text-brand">{l.stat}</p>
+              <p
+                className={`font-display text-3xl font-bold tracking-tight ${l.kind === "improve" ? "text-quiet" : "text-brand"}`}
+              >
+                {l.stat}
+              </p>
               <p className="font-semibold text-foreground">{l.title}</p>
               <p className="text-sm leading-relaxed text-muted">{l.body}</p>
-              <p className="mt-auto text-xs font-semibold uppercase tracking-[0.06em] text-muted">{l.tag}</p>
+              <p
+                className={`mt-auto text-xs font-semibold uppercase tracking-[0.06em] ${l.kind === "improve" ? "text-quiet" : "text-muted"}`}
+              >
+                {l.kind === "improve" && l.tag !== "Room to grow" ? `Room to grow · ${l.tag}` : l.tag}
+              </p>
             </article>
           ))}
         </div>

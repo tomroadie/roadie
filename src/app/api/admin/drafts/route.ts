@@ -56,6 +56,7 @@ export async function GET(request: Request) {
  *   { generation_id, action: "move", concept_id, direction: "up" | "down" }
  *   { generation_id, action: "replace", concept_id, note? }
  *   { generation_id, action: "regenerate", note? }
+ *   { generation_id, action: "hold", held }   stop or allow publishing itself
  * Returns the updated draft.
  */
 export async function POST(request: Request) {
@@ -104,6 +105,15 @@ export async function POST(request: Request) {
       case "regenerate":
         await regenerateDraft(admin, generationId, note);
         break;
+      case "hold": {
+        const { error } = await admin
+          .from("concept_generations")
+          .update({ held: body.held === true })
+          .eq("id", generationId)
+          .eq("status", "draft");
+        if (error) throw new Error(error.message);
+        break;
+      }
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }

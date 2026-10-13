@@ -319,6 +319,7 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
           <span className="text-muted">
             What their Instagram doesn&rsquo;t say. Optional, but it&rsquo;s what makes the ideas specific to them.
             {s.brief.context ? " Links read." : ""}
+            {s.brief.linksFailed ? " Those links couldn't be read (some sites only build their pages in the browser); your notes are still used." : ""}
             {notes.brief ? ` · ${notes.brief}` : ""}
           </span>
           <textarea
@@ -367,24 +368,25 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
       st: status("ideas", Boolean(s.draft) || s.live, s.concepts.names.length > 0 && s.dates.done && s.brief.done),
       body: (
         <span className="text-muted">
-          {s.live
-            ? "Their board is running."
-            : s.draft
-              ? `Draft written ${ago(s.draft.createdAt)}.`
+          {s.draft
+            ? `${s.live ? "New week drafted" : "Draft written"} ${ago(s.draft.createdAt)}.`
+            : s.live
+              ? "Their board is running."
               : "Writes their first week from their posts, concepts, dates and brief."}
-          {s.draft && !s.live && running !== "ideas" ? (
+          {(s.draft || s.live) && running !== "ideas" ? (
             <button type="button" onClick={() => void run("ideas", "ideas")} className="ml-2 font-semibold text-brand hover:underline">
-              Write again
+              {s.draft ? "Write again" : "Write a fresh week"}
             </button>
           ) : null}
+          {running === "ideas" ? " Writing… (up to a minute)" : null}
         </span>
       ),
     });
     steps.push({
       id: "live",
       title: "Go live",
-      st: s.live ? "done" : s.draft ? "todo" : "blocked",
-      body: s.live ? (
+      st: s.draft ? "todo" : s.live ? "done" : "blocked",
+      body: s.live && !s.draft ? (
         <span className="text-muted">{published ?? "Live. New weeks arrive every Monday."}</span>
       ) : s.draft ? (
         <div className="flex flex-col gap-3">
@@ -395,6 +397,9 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
               if (r.state) setState(r.state);
             }}
           />
+          {s.live ? (
+            <p className="text-xs text-muted">Publishing replaces their current board; anything they&rsquo;ve pinned stays.</p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             {[
               { notify: false, label: "Publish" },

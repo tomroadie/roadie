@@ -18,6 +18,7 @@ export function WeekCheckin({ artistId }: { artistId: string }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<null | "saved" | "skipped">(null);
   const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
 
   async function send(skip: boolean) {
     setBusy(true);
@@ -49,6 +50,26 @@ export function WeekCheckin({ artistId }: { artistId: string }) {
   }
 
   const empty = !values.coming_up.trim() && !values.unposted.trim() && !values.want_to_post.trim();
+
+  // Closed by default: one line that opens into the three prompts.
+  if (!open) {
+    return (
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-card-border bg-card px-5 py-3">
+        <p className="text-sm text-foreground">
+          <span className="font-semibold">Anything going on this week?</span>{" "}
+          <span className="text-muted">Tell Tempo and this week&rsquo;s ideas are redrawn around it.</span>
+        </p>
+        <button
+          type="button"
+          aria-expanded={false}
+          onClick={() => setOpen(true)}
+          className="min-h-10 rounded-lg border border-card-border px-3 text-sm font-semibold text-foreground hover:bg-background"
+        >
+          Add something
+        </button>
+      </section>
+    );
+  }
 
   return (
     <section aria-labelledby="checkin-heading" className="flex flex-col gap-4 rounded-2xl border border-card-border bg-card p-5">

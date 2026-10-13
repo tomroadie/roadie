@@ -259,6 +259,7 @@ export async function autoPublishDueDrafts(
     .from("concept_generations")
     .select("id, artist_id, created_at, kind:context_summary->>kind")
     .eq("status", "draft")
+    .eq("held", false)
     .lte("created_at", cutoff)
     .gte("created_at", new Date(now.getTime() - 14 * 86400000).toISOString())
     .order("created_at", { ascending: true });

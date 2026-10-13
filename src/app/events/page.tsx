@@ -43,7 +43,7 @@ export default async function EventsPage() {
 
   const { data: eventsRows, error: eventsError } = await supabase
     .from("events")
-    .select("id, title, event_date, event_type, notes")
+    .select("id, title, event_date, event_type, notes, link_url, link_context, link_status")
     .eq("artist_id", activeArtistId)
     .order("event_date", { ascending: true });
 

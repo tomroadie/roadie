@@ -8,6 +8,8 @@ import { linkPostsToConcepts } from "@/lib/concepts/link-posts";
 import { sendPostResultEmail } from "@/lib/post-result-email";
 import { refreshThemesForArtist } from "@/lib/themes/refresh";
 import { suggestDatesFromPosts } from "@/lib/key-dates-from-posts";
+import { describeNewPosts } from "@/lib/visual-notes";
+import { readDueDateLinks } from "@/lib/date-links";
 import { bestSustainedRate, fetchPostDatesForYear } from "@/lib/pace";
 import { makeDueShotLists } from "@/lib/shot-lists";
 
@@ -596,8 +598,20 @@ export async function GET(request: Request) {
           } catch (e) {
             errors.push(`${artistId}: sorting posts into themes failed: ${e instanceof Error ? e.message : "Unknown error"}`);
           }
-          // Shot lists for gigs, releases and sessions tomorrow (board artists).
-          if (row.board_enabled === true) {
+          // What their posts look like, from the cover images (a batch a run).
+          try {
+            await describeNewPosts(supabase, artistId, graphBase, accessToken);
+          } catch (e) {
+            errors.push(`${artistId}: describing post images failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+          }
+          // Shot lists for gigs, releases and sessions tomorrow (board artists
+          // only: venues post too many dates for these to be useful).
+          if (row.board_enabled === true && (!row.account_type || row.account_type === "artist")) {
+            try {
+              await readDueDateLinks(supabase, artistId);
+            } catch (e) {
+              errors.push(`${artistId}: reading date links failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+            }
             try {
               await makeDueShotLists(supabase, artistId);
             } catch (e) {
@@ -605,10 +619,13 @@ export async function GET(request: Request) {
             }
           }
           // Dates they've announced in captions become suggestions on Home.
-          try {
-            await suggestDatesFromPosts(supabase, artistId);
-          } catch (e) {
-            errors.push(`${artistId}: reading dates from captions failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+          // Artists only: a venue's whole programme would swamp it.
+          if (!row.account_type || row.account_type === "artist") {
+            try {
+              await suggestDatesFromPosts(supabase, artistId);
+            } catch (e) {
+              errors.push(`${artistId}: reading dates from captions failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+            }
           }
         }
 

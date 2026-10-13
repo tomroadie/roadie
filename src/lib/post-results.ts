@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { asVisualKind, type VisualKind } from "@/lib/visual-kinds";
 import {
   compareEarly,
   describeEarly,
@@ -34,6 +35,10 @@ export type PostResult = {
   themeName: string | null;
   /** "auto" = Tempo sorted it and the artist hasn't confirmed; "artist" = confirmed. */
   themeSource: "auto" | "artist" | null;
+  /** What the cover looks like (from the image scan, or the artist's correction). */
+  visualKind: VisualKind | null;
+  visualNote: string | null;
+  visualSource: "ai" | "artist" | null;
   /** Marked as an ad or collab. */
   excluded: boolean;
   /** Far above the usual: worth asking whether it was an ad or collab. */
@@ -80,7 +85,7 @@ export async function loadPostResults(
     supabase
       .from("post_performance")
       .select(
-        "instagram_post_id, post_date, ig_media_type, caption, permalink, thumbnail_url, reach, likes, comments, excluded_from_usual, theme_id, theme_source, reach_24h"
+        "instagram_post_id, post_date, ig_media_type, caption, permalink, thumbnail_url, reach, likes, comments, excluded_from_usual, theme_id, theme_source, reach_24h, visual_kind, visual_note, visual_source"
       )
       .eq("artist_id", artistId)
       .not("post_date", "is", null)
@@ -149,6 +154,9 @@ export async function loadPostResults(
       themeId: r.theme_id ? String(r.theme_id) : null,
       themeName: r.theme_id ? themeNames.get(String(r.theme_id)) ?? null : null,
       themeSource: r.theme_source === "auto" || r.theme_source === "artist" ? r.theme_source : null,
+      visualKind: asVisualKind(r.visual_kind),
+      visualNote: r.visual_note ? String(r.visual_note) : null,
+      visualSource: r.visual_source === "ai" || r.visual_source === "artist" ? r.visual_source : null,
     };
   });
 

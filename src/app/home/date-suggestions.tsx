@@ -19,13 +19,53 @@ function dayLabel(iso: string): string {
   });
 }
 
-/** Dates Tempo spotted in their captions: add to their dates, or not. */
-export function DateSuggestions({ suggestions }: { suggestions: DateSuggestion[] }) {
+/**
+ * Dates Tempo spotted in their captions or tour page: add to their dates, or
+ * not. With more than one waiting, "Add all" adds every one that has a date.
+ * total and datedTotal are how many are waiting in all, when only some are shown.
+ */
+export function DateSuggestions({
+  suggestions,
+  artistId,
+  total,
+  datedTotal,
+  heading = "Spotted in your posts",
+}: {
+  suggestions: DateSuggestion[];
+  artistId?: string;
+  total?: number;
+  /** How many waiting have a date (what "Add all" adds). */
+  datedTotal?: number;
+  heading?: string;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gone, setGone] = useState<Set<string>>(new Set());
   const [picked, setPicked] = useState<Record<string, string>>({});
+
+  async function addAll() {
+    if (!artistId) return;
+    setBusy("all");
+    setError(null);
+    try {
+      const res = await fetch("/api/date-suggestions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "accept_all", artistId }),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(json.error ?? "Something went wrong");
+      }
+      setGone(new Set(suggestions.filter((s) => s.eventDate).map((s) => s.id)));
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function resolve(id: string, action: "accept" | "dismiss", date?: string) {
     setBusy(id);
@@ -51,10 +91,28 @@ export function DateSuggestions({ suggestions }: { suggestions: DateSuggestion[]
 
   const shown = suggestions.filter((s) => !gone.has(s.id));
   if (shown.length === 0) return null;
+  const goneDated = suggestions.filter((s) => gone.has(s.id) && s.eventDate).length;
+  const waiting = Math.max(total ?? 0, suggestions.length) - gone.size;
+  const allCount = Math.max(datedTotal ?? 0, suggestions.filter((s) => s.eventDate).length) - goneDated;
 
   return (
     <div className="mt-4 flex flex-col gap-2 border-t border-card-border pt-4">
-      <p className="text-sm font-semibold text-foreground">Spotted in your posts</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-foreground">
+          {heading}
+          {waiting > shown.length ? <span className="font-normal text-muted"> · {waiting} waiting</span> : null}
+        </p>
+        {artistId && allCount > 1 ? (
+          <button
+            type="button"
+            disabled={busy !== null}
+            onClick={addAll}
+            className="min-h-10 rounded-lg border border-card-border px-3 text-sm font-semibold text-foreground hover:bg-background disabled:opacity-50"
+          >
+            {busy === "all" ? "Adding…" : `Add all ${allCount}`}
+          </button>
+        ) : null}
+      </div>
       <ul className="flex flex-col gap-2">
         {shown.map((s) => {
           const date = s.eventDate ?? picked[s.id] ?? "";

@@ -128,3 +128,17 @@ export async function fetchPostDatesForYear(
   }
   return out;
 }
+
+/**
+ * Frequent quiet weeks (3+ in the last 8) suggest the prime is set too high.
+ * Suggests their usual week in the weeks they did count (at least 1, and
+ * below the current prime); null when there's nothing to suggest.
+ */
+export function suggestLowerPrime(lastEight: WeekRow[], prime: number): number | null {
+  if (lastEight.filter((w) => w.outcome === "quiet").length < 3) return null;
+  const counted = lastEight.filter((w) => w.outcome === "hit" || w.outcome === "miss");
+  if (counted.length === 0) return prime > 1 ? prime - 1 : null;
+  const avg = counted.reduce((sum, w) => sum + (w.posted ?? 0), 0) / counted.length;
+  const suggestion = Math.max(1, Math.min(prime - 1, Math.round(avg)));
+  return suggestion < prime ? suggestion : null;
+}

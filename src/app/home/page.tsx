@@ -6,7 +6,7 @@ import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { WeeklyPlanSection } from "@/app/dashboard/weekly-plan-section";
 import { ConceptBoard, type PaceInfo, type UnmatchedPost, type WeekProgress } from "./concept-board";
-import { effectivePrime, shouldOfferStep, type WeekRow } from "@/lib/pace";
+import { effectivePrime, shouldOfferStep, suggestLowerPrime, type WeekRow } from "@/lib/pace";
 import { PostResultsSection } from "./post-results";
 import { loadPostResults, type PostResultsData } from "@/lib/post-results";
 import { loadBoard } from "@/lib/concepts/store";
@@ -291,7 +291,7 @@ export default async function HomePage({
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, genre, instagram_handle, plan, plan_override, voice_description, posting_frequency, is_managed, instagram_user_id, instagram_access_token, trial_started_at, board_enabled, week_start_day, weekly_target, account_type, prime_target, prime_suggested"
+      "artist_name, genre, instagram_handle, plan, plan_override, voice_description, posting_frequency, is_managed, instagram_user_id, instagram_access_token, trial_started_at, board_enabled, week_start_day, weekly_target, account_type, prime_target, prime_suggested, quiet_week_start"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -705,7 +705,7 @@ export default async function HomePage({
       .eq("artist_id", activeArtistId)
       .lte("week_start", week.start)
       .order("week_start", { ascending: false })
-      .limit(3);
+      .limit(9);
     const rowsDesc = (weekRows ?? []) as WeekRow[];
     const thisWeek = rowsDesc[0]?.week_start === week.start ? rowsDesc[0] : null;
     const finished = thisWeek ? rowsDesc.slice(1) : rowsDesc;
@@ -718,6 +718,8 @@ export default async function HomePage({
         ? weekProgress.target + 1
         : null,
       stepAnswer: thisWeek?.step_offer ?? null,
+      quiet: profile?.quiet_week_start === week.start,
+      suggestPrime: suggestLowerPrime(finished.slice(0, 8), prime),
     };
 
     // Posts Instagram spotted this week that aren't linked to an idea yet:

@@ -294,6 +294,10 @@ export type PaceInfo = {
   /** "Up for n+1 next week?" when the week's target is hit, else null. */
   offerNext: number | null;
   stepAnswer: "accepted" | "declined" | null;
+  /** This week is a quiet week. */
+  quiet: boolean;
+  /** Quiet weeks have been frequent: suggest this lower prime. */
+  suggestPrime: number | null;
 };
 
 async function postPace(body: Record<string, unknown>): Promise<void> {
@@ -309,7 +313,19 @@ async function postPace(body: Record<string, unknown>): Promise<void> {
 }
 
 /** The step-up question and the prime, at the foot of the week strip. */
-function PaceControls({ pace, artistId, target }: { pace: PaceInfo; artistId: string; target: number }) {
+function PaceControls({
+  pace,
+  artistId,
+  target,
+  onQuiet,
+  quietBusy,
+}: {
+  pace: PaceInfo;
+  artistId: string;
+  target: number;
+  onQuiet: () => void;
+  quietBusy: boolean;
+}) {
   const [answer, setAnswer] = useState(pace.stepAnswer);
   const [confirmed, setConfirmed] = useState(pace.primeConfirmed);
   const [prime, setPrime] = useState(pace.prime);
@@ -416,11 +432,29 @@ function PaceControls({ pace, artistId, target }: { pace: PaceInfo; artistId: st
             Change
           </button>
         </div>
+      ) : pace.suggestPrime !== null && pace.suggestPrime < prime ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-ink-foreground/85">
+            You&rsquo;ve taken a few quiet weeks lately. {pace.suggestPrime} a week might suit you better right now.
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => run({ action: "prime", prime: pace.suggestPrime }, () => setPrime(pace.suggestPrime!))}
+            className={`${btn} border border-ink-foreground/30 text-ink-foreground`}
+          >
+            Set it to {pace.suggestPrime}
+          </button>
+        </div>
       ) : (
         <p className="text-xs text-ink-muted">
           Building towards {prime} a week.{" "}
           <button type="button" onClick={() => setEditing(true)} className="underline underline-offset-4">
             Change
+          </button>
+          {" · "}
+          <button type="button" disabled={quietBusy} onClick={onQuiet} className="underline underline-offset-4">
+            Take a quiet week
           </button>
         </p>
       )}
@@ -553,6 +587,23 @@ export function ConceptBoard({
   nextIdeasDay?: string;
 }) {
   const [progress, setProgress] = useState<WeekProgress | null>(initialProgress ?? null);
+  const [quiet, setQuiet] = useState(pace?.quiet ?? false);
+  const [quietBusy, setQuietBusy] = useState(false);
+
+  async function toggleQuiet(on: boolean) {
+    if (!artistId) return;
+    setQuietBusy(true);
+    setError(null);
+    try {
+      await postPace({ action: "quiet", artist_id: artistId, on });
+      setQuiet(on);
+      setNote(on ? "Quiet week on. Emails are paused until your next week starts." : "Quiet week off. You're back on.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setQuietBusy(false);
+    }
+  }
   const [board, setBoard] = useState(initialBoard);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -625,7 +676,9 @@ export function ConceptBoard({
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">
             This week{weekLabel ? ` · ${weekLabel}` : ""}
           </p>
-          {progress && target !== null && posted !== null ? (
+          {quiet ? (
+            <p className="font-display text-2xl font-bold sm:text-3xl">Quiet week</p>
+          ) : progress && target !== null && posted !== null ? (
             <p className="font-display text-2xl font-bold sm:text-3xl">
               {target} {target === 1 ? "post" : "posts"} this week · {Math.min(posted, target)} done
             </p>
@@ -636,9 +689,24 @@ export function ConceptBoard({
             <p className="max-w-2xl text-sm leading-relaxed text-ink-foreground/85">{board.focus}</p>
           ) : null}
         </div>
-        {progress ? <WeekBubbles progress={progress} /> : null}
+        {progress && !quiet ? <WeekBubbles progress={progress} /> : null}
       </div>
-      {progress && posted !== null && target !== null ? (
+      {quiet ? (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <p className="text-sm text-ink-foreground/85">
+            Your target and streak are on hold and emails are paused until next week. The ideas are still here if you
+            fancy it.
+          </p>
+          <button
+            type="button"
+            disabled={quietBusy}
+            onClick={() => toggleQuiet(false)}
+            className="min-h-10 rounded-lg border border-ink-foreground/30 px-3 text-sm font-semibold text-ink-foreground disabled:opacity-50"
+          >
+            End quiet week
+          </button>
+        </div>
+      ) : progress && posted !== null && target !== null ? (
         posted >= target ? (
           <p className="mt-4 text-sm font-semibold text-accent">
             That&rsquo;s your week done. Anything else is a bonus.
@@ -647,7 +715,15 @@ export function ConceptBoard({
           <p className="mt-4 text-sm text-ink-muted">Your week&rsquo;s just started. One post is a good week.</p>
         ) : null
       ) : null}
-      {pace && artistId && progress ? <PaceControls pace={pace} artistId={artistId} target={progress.target} /> : null}
+      {pace && artistId && progress && !quiet ? (
+        <PaceControls
+          pace={pace}
+          artistId={artistId}
+          target={progress.target}
+          onQuiet={() => toggleQuiet(true)}
+          quietBusy={quietBusy}
+        />
+      ) : null}
     </section>
   );
 

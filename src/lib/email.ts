@@ -1,3 +1,4 @@
+import { boardWeek } from "@/lib/board-week";
 import { createEmailToken } from "@/lib/email-token";
 import { Resend } from "resend";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
@@ -69,16 +70,21 @@ export function shouldSendEmail(
 export const SWITCHABLE_EMAIL_TYPES = ["your_week", "post_detected"] as const;
 export type SwitchableEmailType = (typeof SWITCHABLE_EMAIL_TYPES)[number];
 
+/**
+ * True when this email shouldn't go: they switched this type off, or
+ * they're in a quiet week (every Tempo email pauses until the next week).
+ */
 async function optedOutOf(artistId: string, type: EmailType): Promise<boolean> {
-  if (!(SWITCHABLE_EMAIL_TYPES as readonly string[]).includes(type)) return false;
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("email_opt_outs")
+    .select("email_opt_outs, quiet_week_start, week_start_day")
     .eq("id", artistId)
     .maybeSingle();
   // If we can't check, don't send: a missed email beats an unwanted one.
   if (error) return true;
+  if (data?.quiet_week_start && data.quiet_week_start === boardWeek(data.week_start_day).start) return true;
+  if (!(SWITCHABLE_EMAIL_TYPES as readonly string[]).includes(type)) return false;
   const outs = Array.isArray(data?.email_opt_outs) ? data.email_opt_outs : [];
   return outs.includes(type);
 }

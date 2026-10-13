@@ -132,6 +132,11 @@ Take these seriously: "No time" means lower the effort; "No gear for this" means
     ? `## What they told us is coming up (their words)\n"${ctx.comingUpNote}"\nUse this where it fits, even if no exact date was given.`
     : "";
 
+  const weekNotesSection = ctx.weekNotes
+    ? `## This week, in their words (from their check-in)
+${ctx.weekNotes.comingUp ? `- Coming up: "${clip(ctx.weekNotes.comingUp, 600)}"\n` : ""}${ctx.weekNotes.unposted ? `- Made but not posted yet: "${clip(ctx.weekNotes.unposted, 600)}"\n` : ""}${ctx.weekNotes.wantToPost ? `- Want to post about: "${clip(ctx.weekNotes.wantToPost, 600)}"\n` : ""}This is the most current thing you know about them. Build at least two concepts directly on it. If they've made something they haven't posted, make one concept about getting that out, using what they already have.`
+    : "";
+
   const declinedSection =
     ctx.declined.length > 0
       ? `## Ideas they turned down\n${ctx.declined
@@ -166,6 +171,8 @@ ${postsSection}
 ${auditSection}
 
 ${datesSection}
+
+${weekNotesSection}
 
 ${comingUpSection}
 

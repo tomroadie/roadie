@@ -286,6 +286,16 @@ function IdeaMatchPrompt({
   );
 }
 
+/** "Your Tuesday post did 2.1×. Follow it up with…" */
+export type FollowUpInfo = {
+  conceptId: string;
+  title: string;
+  /** e.g. "2.1×" or "+40%" */
+  ratio: string;
+  day: string;
+  pinned: boolean;
+};
+
 export type PaceInfo = {
   /** The most they should post in a week at their best (confirmed, else suggested). */
   prime: number;
@@ -568,8 +578,10 @@ export function ConceptBoard({
   postedUnlinked = [],
   weekLabel,
   pace,
+  followUp = null,
   children,
 }: {
+  followUp?: FollowUpInfo | null;
   /** Prime and the "n+1?" question; absent until the pace data loads. */
   pace?: PaceInfo;
   initialBoard: BoardState;
@@ -820,6 +832,16 @@ export function ConceptBoard({
               All concepts
             </Link>
           </div>
+          {followUp ? (
+            <div className="rounded-2xl bg-brand-soft p-4 text-sm leading-relaxed text-foreground">
+              <p>
+                Your {followUp.day} post did <strong>{followUp.ratio}</strong> on your usual. Follow it up while
+                it&rsquo;s working:{" "}
+                <strong>{followUp.title}</strong>
+                {followUp.pinned ? " (pinned below)" : ""}.
+              </p>
+            </div>
+          ) : null}
           {ideas}
         </aside>
       </div>

@@ -9,6 +9,7 @@ import { sendPostResultEmail } from "@/lib/post-result-email";
 import { refreshThemesForArtist } from "@/lib/themes/refresh";
 import { suggestDatesFromPosts } from "@/lib/key-dates-from-posts";
 import { bestSustainedRate, fetchPostDatesForYear } from "@/lib/pace";
+import { makeDueShotLists } from "@/lib/shot-lists";
 
 
 type ProfileRow = {
@@ -594,6 +595,14 @@ export async function GET(request: Request) {
             await refreshThemesForArtist(supabase, artistId);
           } catch (e) {
             errors.push(`${artistId}: sorting posts into themes failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+          }
+          // Shot lists for gigs, releases and sessions tomorrow (board artists).
+          if (row.board_enabled === true) {
+            try {
+              await makeDueShotLists(supabase, artistId);
+            } catch (e) {
+              errors.push(`${artistId}: shot lists failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+            }
           }
           // Dates they've announced in captions become suggestions on Home.
           try {

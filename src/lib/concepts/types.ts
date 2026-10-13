@@ -76,6 +76,8 @@ export type ConceptContext = {
   confidence: string | null;
   contentDays: number[];
   comingUpNote: string | null;
+  /** This week's check-in answers (their words), if they gave any. */
+  weekNotes: { comingUp: string | null; unposted: string | null; wantToPost: string | null } | null;
   handle: string | null;
   followers: number | null;
   /** Where the posts came from. "synced" = connected Instagram. */

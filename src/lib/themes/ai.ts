@@ -45,7 +45,7 @@ function str(v: unknown, max: number): string {
   return typeof v === "string" ? v.trim().slice(0, max) : "";
 }
 
-async function ask(system: string, prompt: string, maxTokens: number): Promise<unknown> {
+export async function ask(system: string, prompt: string, maxTokens: number): Promise<unknown> {
   const { anthropic, model } = client();
   const res = await anthropic.messages.create({
     model,

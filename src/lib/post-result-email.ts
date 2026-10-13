@@ -4,6 +4,7 @@ import { postResultEmail } from "@/lib/email-templates";
 import { compareToUsual, describeComparison, SETTLE_HOURS, type PerfPost } from "@/lib/performance";
 import { boardWeek } from "@/lib/board-week";
 import type { ConceptExecution } from "@/lib/concepts/types";
+import { pickFollowUp } from "@/lib/follow-up";
 
 const DAY_MS = 86400000;
 /** Posts older than this when they settle aren't worth an email any more. */
@@ -119,6 +120,9 @@ export async function sendPostResultEmail(
   const card = board?.[0];
   const executions = (Array.isArray(card?.executions) ? card.executions : []) as ConceptExecution[];
   const easy = executions.find((e) => e.effort === "low") ?? executions[0];
+  // After a win, point at the best follow-up rather than just the next card.
+  const win = comparison.band === "well_above" || comparison.band === "above";
+  const followUp = win ? await pickFollowUp(admin, artistId, post.id) : null;
 
   const recipient = await buildEmailRecipient(admin as Parameters<typeof buildEmailRecipient>[0], profile);
   if (!recipient) return { sent: false, reason: "no recipient" };
@@ -138,7 +142,12 @@ export async function sendPostResultEmail(
     thumbnailUrl: row.thumbnail_url ?? null,
     ideaTitle: idea?.title ? String(idea.title) : null,
     week: target ? { posted: Math.max(marked ?? 0, syncedThisWeek), target } : null,
-    nextIdea: card && easy ? { title: String(card.title), idea: easy.idea } : null,
+    nextIdea: followUp
+      ? { title: followUp.title, idea: followUp.idea }
+      : card && easy
+        ? { title: String(card.title), idea: easy.idea }
+        : null,
+    followUp: followUp ? { source: followUp.source, sameTheme: followUp.sameTheme } : null,
   });
 
   const sent = await sendEmail({

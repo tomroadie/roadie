@@ -130,6 +130,7 @@ export async function loadDraftView(admin: SupabaseClient, generationId: string)
     confidence: null,
     contentDays: [],
     comingUpNote: null,
+    weekNotes: null,
     handle: null,
     followers: null,
     postSource: (s.post_source as ConceptContext["postSource"]) ?? "none",

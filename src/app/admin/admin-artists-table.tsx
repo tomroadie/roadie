@@ -18,8 +18,12 @@ export type AdminArtistDirectoryRow = {
   is_managed: boolean;
   is_private: boolean;
   account_type: AccountType;
+  /** Has an Instagram connection Tempo can sync from. */
+  instagram_connected: boolean;
   last_plan_at: string | null;
 };
+
+type SyncState = "queued" | "syncing" | "done" | "failed";
 
 const PLAN_OPTIONS = [
   { value: "free", label: "Free" },
@@ -100,6 +104,9 @@ export function AdminArtistsTable({
   const [savedHint, setSavedHint] = useState<string | null>(null);
   const [auditError, setAuditError] = useState<string | null>(null);
   const [controlsError, setControlsError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [syncState, setSyncState] = useState<Record<string, { state: SyncState; note?: string }>>({});
+  const [syncing, setSyncing] = useState(false);
   const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -141,6 +148,56 @@ export function AdminArtistsTable({
       return hay.includes(needle);
     });
   }, [q, localRows]);
+
+  function toggleSelected(id: string, on: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  /** Syncs posts then sorts concepts, one account at a time (each can take a while). */
+  async function syncAccounts(ids: string[]) {
+    if (ids.length === 0 || syncing) return;
+    setSyncing(true);
+    setSyncState((s) => ({ ...s, ...Object.fromEntries(ids.map((id) => [id, { state: "queued" as SyncState }])) }));
+    for (const id of ids) {
+      setSyncState((s) => ({ ...s, [id]: { state: "syncing" } }));
+      try {
+        const res = await fetch("/api/admin/sync", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ artist_id: id }),
+        });
+        const json = (await res.json().catch(() => ({}))) as {
+          ok?: boolean;
+          error?: string;
+          sync?: { synced?: number; errors?: string[] };
+          themes?: { seeded?: number; postsTagged?: number; error?: string };
+        };
+        if (!res.ok || json.ok === false) {
+          setSyncState((s) => ({
+            ...s,
+            [id]: { state: "failed", note: json.error ?? json.sync?.errors?.[0] ?? `HTTP ${res.status}` },
+          }));
+        } else {
+          const parts = [
+            typeof json.sync?.synced === "number" ? `${json.sync.synced} posts` : null,
+            json.themes?.seeded ? `${json.themes.seeded} concepts` : null,
+            json.themes?.postsTagged ? `${json.themes.postsTagged} sorted` : null,
+            json.themes?.error ? `concepts failed: ${json.themes.error}` : null,
+          ].filter(Boolean);
+          setSyncState((s) => ({ ...s, [id]: { state: json.themes?.error ? "failed" : "done", note: parts.join(" · ") } }));
+        }
+      } catch (e) {
+        setSyncState((s) => ({ ...s, [id]: { state: "failed", note: e instanceof Error ? e.message : String(e) } }));
+      }
+    }
+    setSyncing(false);
+    setSelected(new Set());
+  }
 
   async function handleRunAudit(artistId: string) {
     setAuditError(null);
@@ -329,10 +386,37 @@ export function AdminArtistsTable({
         </p>
       ) : null}
 
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-card-border bg-card px-4 py-3">
+        <span className="text-sm text-muted">
+          {selected.size === 0 ? "Tick accounts to sync their posts now" : `${selected.size} selected`}
+        </span>
+        <button
+          type="button"
+          disabled={syncing || selected.size === 0}
+          onClick={() => void syncAccounts([...selected])}
+          className="inline-flex h-9 items-center rounded-lg bg-ink px-4 text-xs font-bold uppercase tracking-wide text-ink-foreground disabled:opacity-50"
+        >
+          {syncing ? "Syncing…" : "Sync selected"}
+        </button>
+        {selected.size > 0 && !syncing ? (
+          <button
+            type="button"
+            onClick={() => setSelected(new Set())}
+            className="text-xs font-semibold text-muted hover:text-foreground"
+          >
+            Clear
+          </button>
+        ) : null}
+        <span className="text-xs text-muted">Pulls posts from Instagram, then sorts them into concepts. About a minute each.</span>
+      </div>
+
       <div className="overflow-x-auto rounded-xl border border-card-border bg-card shadow-sm">
         <table className="min-w-full divide-y divide-card-border text-left text-sm">
           <thead>
             <tr className="text-xs font-bold uppercase tracking-widest text-muted">
+              <th className="px-4 py-3">
+                <span className="sr-only">Select</span>
+              </th>
               <th className="whitespace-nowrap px-4 py-3">Artist</th>
               <th className="whitespace-nowrap px-4 py-3">Plan</th>
               <th className="whitespace-nowrap px-4 py-3">Plan override</th>
@@ -348,6 +432,17 @@ export function AdminArtistsTable({
           <tbody className="divide-y divide-card-border">
             {filtered.map((r) => (
               <tr key={r.id} className="text-foreground">
+                <td className="px-4 py-3 align-top">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${r.artist_name} to sync`}
+                    disabled={!r.instagram_connected || syncing}
+                    title={r.instagram_connected ? undefined : "Instagram not connected"}
+                    checked={selected.has(r.id)}
+                    onChange={(e) => toggleSelected(r.id, e.target.checked)}
+                    className="h-4 w-4 accent-[var(--brand)]"
+                  />
+                </td>
                 <td className="px-4 py-3 font-semibold">
                   <span className="inline-flex items-center">
                     {r.is_private ? (
@@ -511,6 +606,27 @@ export function AdminArtistsTable({
                     >
                       {auditBusy === r.id ? "Running…" : "Run audit"}
                     </button>
+                    <button
+                      type="button"
+                      disabled={syncing || !r.instagram_connected}
+                      onClick={() => void syncAccounts([r.id])}
+                      title={r.instagram_connected ? undefined : "Instagram not connected"}
+                      className="inline-flex h-9 w-full min-w-[8rem] items-center justify-center rounded-lg border border-card-border bg-transparent px-3 text-xs font-bold uppercase tracking-wide text-foreground transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {syncState[r.id]?.state === "syncing"
+                        ? "Syncing…"
+                        : syncState[r.id]?.state === "queued"
+                          ? "Queued"
+                          : "Sync now"}
+                    </button>
+                    {syncState[r.id] && (syncState[r.id].state === "done" || syncState[r.id].state === "failed") ? (
+                      <p
+                        className={`max-w-[12rem] text-xs ${syncState[r.id].state === "failed" ? "text-red-700" : "text-brand"}`}
+                      >
+                        {syncState[r.id].state === "done" ? "Synced" : "Failed"}
+                        {syncState[r.id].note ? `: ${syncState[r.id].note}` : ""}
+                      </p>
+                    ) : null}
                     {confirming === r.id ? (
                       <div className="flex flex-col gap-1.5">
                         <p className="text-xs font-semibold text-red-700">

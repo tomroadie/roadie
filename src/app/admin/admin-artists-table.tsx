@@ -1,8 +1,9 @@
 "use client";
 
-import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABEL, asAccountType, type AccountType } from "@/lib/account-types";
+import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABEL, type AccountType } from "@/lib/account-types";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { adminRunAuditForArtist, adminSwitchArtist } from "./actions";
+import { SetupPanel } from "./setup-panel";
 
 export type AdminArtistDirectoryRow = {
   id: string;
@@ -21,7 +22,48 @@ export type AdminArtistDirectoryRow = {
   /** Has an Instagram connection Tempo can sync from. */
   instagram_connected: boolean;
   last_plan_at: string | null;
+  board_enabled: boolean;
+  /** A first or new week written and waiting to be published. */
+  has_draft: boolean;
+  post_count: number;
+  last_synced: string | null;
+  weekly_target: number | null;
+  posted_this_week: number;
 };
+
+export type ArtistStatus = "needs_instagram" | "not_set_up" | "ready" | "live" | "watching";
+
+const STATUS_LABEL: Record<ArtistStatus, string> = {
+  needs_instagram: "Needs Instagram",
+  not_set_up: "Not set up",
+  ready: "Ready to publish",
+  live: "Live",
+  watching: "Watching",
+};
+
+const STATUS_CLASS: Record<ArtistStatus, string> = {
+  needs_instagram: "bg-amber-500/15 text-amber-900",
+  not_set_up: "bg-input text-muted-strong",
+  ready: "bg-sky-500/15 text-sky-900",
+  live: "bg-brand-soft text-brand",
+  watching: "bg-purple-500/15 text-purple-900",
+};
+
+export function statusOf(r: AdminArtistDirectoryRow): ArtistStatus {
+  if (!r.instagram_connected) return "needs_instagram";
+  if (r.account_type !== "artist") return r.post_count > 0 ? "watching" : "not_set_up";
+  if (r.board_enabled) return "live";
+  if (r.has_draft) return "ready";
+  return "not_set_up";
+}
+
+function synced(iso: string | null): string {
+  if (!iso) return "never synced";
+  const mins = Math.round((Date.now() - Date.parse(iso)) / 60000);
+  if (mins < 60) return `synced ${Math.max(1, mins)} min ago`;
+  if (mins < 60 * 24) return `synced ${Math.round(mins / 60)} h ago`;
+  return `synced ${new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+}
 
 type SyncState = "queued" | "syncing" | "done" | "failed";
 
@@ -107,6 +149,8 @@ export function AdminArtistsTable({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [syncState, setSyncState] = useState<Record<string, { state: SyncState; note?: string }>>({});
   const [syncing, setSyncing] = useState(false);
+  const [openPanel, setOpenPanel] = useState<{ id: string; kind: "setup" | "more" } | null>(null);
+  const [statusFilter, setStatusFilter] = useState<ArtistStatus | "all">("all");
   const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -129,8 +173,9 @@ export function AdminArtistsTable({
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    if (!needle) return localRows;
-    return localRows.filter((r) => {
+    const byStatus = statusFilter === "all" ? localRows : localRows.filter((r) => statusOf(r) === statusFilter);
+    if (!needle) return byStatus;
+    return byStatus.filter((r) => {
       const hay = [
         r.artist_name,
         r.owner_email,
@@ -147,7 +192,13 @@ export function AdminArtistsTable({
         .toLowerCase();
       return hay.includes(needle);
     });
-  }, [q, localRows]);
+  }, [q, localRows, statusFilter]);
+
+  const statusCounts = useMemo(() => {
+    const c: Partial<Record<ArtistStatus, number>> = {};
+    for (const r of localRows) c[statusOf(r)] = (c[statusOf(r)] ?? 0) + 1;
+    return c;
+  }, [localRows]);
 
   function toggleSelected(id: string, on: boolean) {
     setSelected((prev) => {
@@ -339,337 +390,272 @@ export function AdminArtistsTable({
     }
   }
 
+  const select = "min-h-9 rounded-lg border border-card-border bg-card px-2 text-sm";
+  const toggle = (on: boolean) =>
+    `min-h-9 rounded-full px-3 text-sm font-semibold ${on ? "bg-ink text-ink-foreground" : "border border-card-border text-foreground"}`;
+
   return (
-    <div className="mt-10 space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
-            Artists
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            {localRows.length} artist{localRows.length === 1 ? "" : "s"} in the directory.
-          </p>
-          {tiktokWaitlistCount > 0 ? (
-            <p className="mt-1 text-xs text-amber-700">
-              {tiktokWaitlistCount} artist
-              {tiktokWaitlistCount !== 1 ? "s" : ""} on TikTok waitlist
-            </p>
-          ) : null}
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-2">
+          {(["all", "needs_instagram", "not_set_up", "ready", "live", "watching"] as const).map((f) => {
+            const n = f === "all" ? localRows.length : statusCounts[f] ?? 0;
+            if (f !== "all" && n === 0) return null;
+            return (
+              <button key={f} type="button" aria-pressed={statusFilter === f} onClick={() => setStatusFilter(f)} className={toggle(statusFilter === f)}>
+                {f === "all" ? "All" : STATUS_LABEL[f]} {n}
+              </button>
+            );
+          })}
         </div>
-        <div className="w-full sm:max-w-xs">
-          <label
-            htmlFor="admin-search"
-            className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
-          >
-            Search
-          </label>
-          <input
-            id="admin-search"
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Name, email, genre, IG…"
-            className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
-          />
-        </div>
+        <label htmlFor="admin-search" className="sr-only">
+          Search
+        </label>
+        <input
+          id="admin-search"
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search name, email, handle…"
+          className="ml-auto min-h-9 w-full rounded-lg border border-card-border bg-card px-3 text-sm outline-none placeholder:text-muted focus:border-brand sm:w-64"
+        />
       </div>
 
-      {auditError ? (
-        <p className="text-sm text-red-700" role="alert">
-          {auditError}
-        </p>
-      ) : null}
-
-      {controlsError ? (
-        <p className="text-sm text-red-700" role="alert">
-          {controlsError}
-        </p>
-      ) : null}
-
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-card-border bg-card px-4 py-3">
-        <span className="text-sm text-muted">
-          {selected.size === 0 ? "Tick accounts to sync their posts now" : `${selected.size} selected`}
-        </span>
-        <button
-          type="button"
-          disabled={syncing || selected.size === 0}
-          onClick={() => void syncAccounts([...selected])}
-          className="inline-flex h-9 items-center rounded-lg bg-ink px-4 text-xs font-bold uppercase tracking-wide text-ink-foreground disabled:opacity-50"
-        >
-          {syncing ? "Syncing…" : "Sync selected"}
-        </button>
-        {selected.size > 0 && !syncing ? (
+      {selected.size > 0 || syncing ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-card-border bg-card px-4 py-2 text-sm">
+          <span className="text-muted">{selected.size} selected</span>
           <button
             type="button"
-            onClick={() => setSelected(new Set())}
-            className="text-xs font-semibold text-muted hover:text-foreground"
+            disabled={syncing || selected.size === 0}
+            onClick={() => void syncAccounts([...selected])}
+            className="min-h-9 rounded-lg bg-ink px-3 font-semibold text-ink-foreground disabled:opacity-50"
           >
-            Clear
+            {syncing ? "Syncing…" : "Sync selected"}
           </button>
-        ) : null}
-        <span className="text-xs text-muted">Pulls posts from Instagram, then sorts them into concepts. About a minute each.</span>
-      </div>
+          {!syncing ? (
+            <button type="button" onClick={() => setSelected(new Set())} className="font-semibold text-muted hover:text-foreground">
+              Clear
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
-      <div className="overflow-x-auto rounded-xl border border-card-border bg-card shadow-sm">
-        <table className="min-w-full divide-y divide-card-border text-left text-sm">
-          <thead>
-            <tr className="text-xs font-bold uppercase tracking-widest text-muted">
-              <th className="px-4 py-3">
-                <span className="sr-only">Select</span>
-              </th>
-              <th className="whitespace-nowrap px-4 py-3">Artist</th>
-              <th className="whitespace-nowrap px-4 py-3">Plan</th>
-              <th className="whitespace-nowrap px-4 py-3">Plan override</th>
-              <th className="whitespace-nowrap px-4 py-3">Managed</th>
-              <th className="whitespace-nowrap px-4 py-3">Account type</th>
-              <th className="whitespace-nowrap px-4 py-3">Weekly crons</th>
-              <th className="whitespace-nowrap px-4 py-3">Private</th>
-              <th className="whitespace-nowrap px-4 py-3">Instagram</th>
-              <th className="whitespace-nowrap px-4 py-3">Last plan</th>
-              <th className="whitespace-nowrap px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-card-border">
-            {filtered.map((r) => (
-              <tr key={r.id} className="text-foreground">
-                <td className="px-4 py-3 align-top">
-                  <input
-                    type="checkbox"
-                    aria-label={`Select ${r.artist_name} to sync`}
-                    disabled={!r.instagram_connected || syncing}
-                    title={r.instagram_connected ? undefined : "Instagram not connected"}
-                    checked={selected.has(r.id)}
-                    onChange={(e) => toggleSelected(r.id, e.target.checked)}
-                    className="h-4 w-4 accent-[var(--brand)]"
-                  />
-                </td>
-                <td className="px-4 py-3 font-semibold">
-                  <span className="inline-flex items-center">
-                    {r.is_private ? (
-                      <span
-                        className="mr-2 inline-block h-2 w-2 shrink-0 rounded-full bg-amber-400"
-                        title="Private profile"
-                      />
-                    ) : null}
-                    {r.artist_name.trim()}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <label className="sr-only" htmlFor={`plan-${r.id}`}>
-                    Plan for {r.artist_name}
-                  </label>
-                  <select
-                    id={`plan-${r.id}`}
-                    value={r.plan}
-                    disabled={planBusy === r.id}
-                    onChange={(e) => void handlePlanChange(r.id, e.target.value)}
-                    className="rounded-md border border-card-border bg-input px-2 py-1 text-xs font-semibold uppercase text-foreground outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:opacity-60"
-                  >
-                    {PLAN_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  {savedHint === r.id && planBusy !== r.id ? (
-                    <p className="mt-1 text-[10px] font-semibold text-brand">Saved</p>
-                  ) : planBusy === r.id ? (
-                    <p className="mt-1 text-[10px] text-muted">Saving…</p>
-                  ) : null}
-                </td>
-                <td className="px-4 py-3">
-                  <label className="sr-only" htmlFor={`plan-override-${r.id}`}>
-                    Plan override for {r.artist_name}
-                  </label>
-                  <select
-                    id={`plan-override-${r.id}`}
-                    value={r.plan_override ?? ""}
-                    disabled={planOverrideBusy === r.id}
-                    onChange={(e) =>
-                      void handlePlanOverrideChange(r.id, e.target.value)
-                    }
-                    className="w-full min-w-[8rem] rounded-lg border border-card-border bg-input px-2 py-1.5 text-xs text-foreground outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:opacity-60"
-                  >
-                    {PLAN_OVERRIDE_OPTIONS.map((opt) => (
-                      <option key={opt.value || "none"} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1 max-w-[12rem] text-[10px] leading-snug text-muted">
-                    Overrides feature access without affecting billing
+      {auditError || controlsError ? (
+        <p className="text-sm font-semibold text-red-800" role="alert">
+          {auditError ?? controlsError}
+        </p>
+      ) : null}
+
+      <ul className="divide-y divide-card-border rounded-2xl border border-card-border bg-card">
+        {filtered.map((r) => {
+          const st = statusOf(r);
+          const sync = syncState[r.id];
+          const panel = openPanel?.id === r.id ? openPanel.kind : null;
+          return (
+            <li key={r.id} className="px-4 py-3">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${r.artist_name}`}
+                  checked={selected.has(r.id)}
+                  disabled={!r.instagram_connected}
+                  onChange={(e) => toggleSelected(r.id, e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <div className="min-w-0 flex-[1_1_220px]">
+                  <p className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-foreground">{r.artist_name}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_CLASS[st]}`}>{STATUS_LABEL[st]}</span>
+                    {savedHint === r.id ? <span className="text-xs font-semibold text-brand">Saved</span> : null}
                   </p>
-                </td>
-                <td className="px-4 py-3">
+                  <p className="truncate text-sm text-muted">
+                    {ACCOUNT_TYPE_LABEL[r.account_type]}
+                    {r.instagram_handle ? ` · @${r.instagram_handle}` : ""}
+                    {r.instagram_connected ? ` · ${r.post_count} posts, ${synced(r.last_synced)}` : ""}
+                    {st === "live" && r.weekly_target ? ` · ${r.posted_this_week} of ${r.weekly_target} this week` : ""}
+                  </p>
+                  {sync ? (
+                    <p className={`text-xs ${sync.state === "failed" ? "font-semibold text-red-800" : "text-muted"}`}>
+                      {sync.state === "queued" ? "Waiting…" : sync.state === "syncing" ? "Syncing…" : sync.note ?? (sync.state === "done" ? "Synced" : "Failed")}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-1">
                   <button
                     type="button"
-                    disabled={managedBusy === r.id}
-                    onClick={() => void handleToggleManaged(r.id, !r.is_managed)}
-                    className={[
-                      "rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-60",
-                      r.is_managed
-                        ? "bg-brand text-brand-foreground"
-                        : "bg-input text-muted",
-                    ].join(" ")}
+                    aria-expanded={panel === "setup"}
+                    onClick={() => setOpenPanel(panel === "setup" ? null : { id: r.id, kind: "setup" })}
+                    className={
+                      st === "live" || st === "watching"
+                        ? "min-h-9 rounded-lg border border-card-border px-3 text-sm font-semibold text-foreground hover:bg-background"
+                        : "min-h-9 rounded-lg bg-ink px-3 text-sm font-semibold text-ink-foreground"
+                    }
                   >
-                    {managedBusy === r.id
-                      ? "Saving…"
-                      : r.is_managed
-                        ? "Managed"
-                        : "Self-serve"}
+                    {st === "live" || st === "watching" ? "Setup" : st === "ready" ? "Review & publish" : "Set up"}
                   </button>
-                </td>
-                <td className="px-4 py-3">
-                  <label className="sr-only" htmlFor={`type-${r.id}`}>
-                    Account type
-                  </label>
-                  <select
-                    id={`type-${r.id}`}
-                    value={r.account_type}
-                    disabled={accountTypeBusy === r.id}
-                    onChange={(e) => void handleToggleAccountType(r.id, asAccountType(e.target.value))}
-                    className="rounded-full border border-card-border bg-input px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted disabled:opacity-60"
-                  >
-                    {ACCOUNT_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {ACCOUNT_TYPE_LABEL[t]}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-col gap-1">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={r.cron_active}
-                      aria-label={`${r.cron_active ? "Disable" : "Enable"} weekly crons for ${r.artist_name}`}
-                      disabled={cronBusy === r.id}
-                      onClick={() => void handleToggleCron(r.id, !r.cron_active)}
-                      className={[
-                        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:cursor-not-allowed disabled:opacity-60",
-                        r.cron_active ? "bg-brand" : "bg-foreground/20",
-                      ].join(" ")}
-                    >
-                      <span
-                        className={[
-                          "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform",
-                          r.cron_active ? "translate-x-6" : "translate-x-1",
-                        ].join(" ")}
-                      />
+                  <form action={adminSwitchArtist}>
+                    <input type="hidden" name="artistId" value={r.id} />
+                    <button type="submit" className="min-h-9 px-2 text-sm font-semibold text-foreground hover:underline">
+                      Open
                     </button>
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
-                      Weekly crons
-                    </span>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
+                  </form>
                   <button
                     type="button"
-                    disabled={privateBusy === r.id}
-                    onClick={() => void handleTogglePrivate(r.id, !r.is_private)}
-                    className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-60 ${
-                      r.is_private
-                        ? "bg-amber-500/20 text-amber-700"
-                        : "bg-input text-muted"
-                    }`}
+                    aria-expanded={panel === "more"}
+                    onClick={() => setOpenPanel(panel === "more" ? null : { id: r.id, kind: "more" })}
+                    className="min-h-9 px-2 text-sm font-semibold text-muted hover:text-foreground"
                   >
-                    {privateBusy === r.id
-                      ? "Saving…"
-                      : r.is_private
-                        ? "Private"
-                        : "Public"}
+                    More
                   </button>
-                </td>
-                <td className="px-4 py-3 font-mono text-xs text-muted-strong">
-                  {r.instagram_handle ? `@${r.instagram_handle.replace(/^@/, "")}` : "—"}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-muted-strong">
-                  {r.last_plan_at ? formatCreated(r.last_plan_at) : "—"}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex flex-col items-stretch gap-2 sm:items-end">
-                    <form action={adminSwitchArtist} className="inline-block w-full sm:w-auto">
-                      <input type="hidden" name="artistId" value={r.id} />
-                      <button
-                        type="submit"
-                        className="inline-flex h-9 w-full min-w-[8rem] items-center justify-center rounded-lg border border-card-border bg-transparent px-3 text-xs font-bold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
+                </div>
+              </div>
+
+              {panel === "setup" ? (
+                <div className="mt-3">
+                  <SetupPanel
+                    artistId={r.id}
+                    onTypeChange={(t) =>
+                      setLocalRows((prev) => prev.map((row) => (row.id === r.id ? { ...row, account_type: t } : row)))
+                    }
+                  />
+                </div>
+              ) : null}
+
+              {panel === "more" ? (
+                <div className="mt-3 flex flex-col gap-3 rounded-xl bg-background p-4 text-sm">
+                  <p className="text-muted">
+                    Owner {r.owner_email}
+                    {r.genre ? ` · ${r.genre}` : ""} · added {formatCreated(r.created_at)}
+                    {r.last_plan_at ? ` · last plan ${formatCreated(r.last_plan_at)}` : ""}
+                  </p>
+                  <div className="flex flex-wrap items-end gap-4">
+                    <label className="flex flex-col gap-1 font-semibold text-foreground">
+                      Plan
+                      <select
+                        value={r.plan}
+                        disabled={planBusy === r.id}
+                        onChange={(e) => void handlePlanChange(r.id, e.target.value)}
+                        className={select}
                       >
-                        Switch to this artist
-                      </button>
-                    </form>
+                        {PLAN_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex flex-col gap-1 font-semibold text-foreground">
+                      Plan override
+                      <select
+                        value={r.plan_override ?? ""}
+                        disabled={planOverrideBusy === r.id}
+                        onChange={(e) => void handlePlanOverrideChange(r.id, e.target.value)}
+                        className={select}
+                      >
+                        {PLAN_OVERRIDE_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex flex-col gap-1 font-semibold text-foreground">
+                      Account type
+                      <select
+                        value={r.account_type}
+                        disabled={accountTypeBusy === r.id}
+                        onChange={(e) => void handleToggleAccountType(r.id, e.target.value as AccountType)}
+                        className={select}
+                      >
+                        {ACCOUNT_TYPES.map((t) => (
+                          <option key={t} value={t}>
+                            {ACCOUNT_TYPE_LABEL[t]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      disabled={auditBusy === r.id || !r.instagram_handle.trim()}
+                      disabled={managedBusy === r.id}
+                      aria-pressed={r.is_managed}
+                      onClick={() => void handleToggleManaged(r.id, !r.is_managed)}
+                      className={toggle(r.is_managed)}
+                    >
+                      Managed
+                    </button>
+                    <button
+                      type="button"
+                      disabled={privateBusy === r.id}
+                      aria-pressed={r.is_private}
+                      onClick={() => void handleTogglePrivate(r.id, !r.is_private)}
+                      className={toggle(r.is_private)}
+                    >
+                      Private
+                    </button>
+                    <button
+                      type="button"
+                      disabled={cronBusy === r.id}
+                      aria-pressed={r.cron_active}
+                      onClick={() => void handleToggleCron(r.id, !r.cron_active)}
+                      className={toggle(r.cron_active)}
+                    >
+                      Legacy crons (old plans, nudges)
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={auditBusy === r.id}
                       onClick={() => void handleRunAudit(r.id)}
-                      className="inline-flex h-9 w-full min-w-[8rem] items-center justify-center rounded-lg bg-brand px-3 text-xs font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="min-h-9 rounded-lg border border-card-border px-3 font-semibold text-foreground hover:bg-card disabled:opacity-50"
                     >
                       {auditBusy === r.id ? "Running…" : "Run audit"}
                     </button>
                     <button
                       type="button"
-                      disabled={syncing || !r.instagram_connected}
+                      disabled={!r.instagram_connected || syncing}
                       onClick={() => void syncAccounts([r.id])}
-                      title={r.instagram_connected ? undefined : "Instagram not connected"}
-                      className="inline-flex h-9 w-full min-w-[8rem] items-center justify-center rounded-lg border border-card-border bg-transparent px-3 text-xs font-bold uppercase tracking-wide text-foreground transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-50"
+                      className="min-h-9 rounded-lg border border-card-border px-3 font-semibold text-foreground hover:bg-card disabled:opacity-50"
                     >
-                      {syncState[r.id]?.state === "syncing"
-                        ? "Syncing…"
-                        : syncState[r.id]?.state === "queued"
-                          ? "Queued"
-                          : "Sync now"}
+                      Sync now
                     </button>
-                    {syncState[r.id] && (syncState[r.id].state === "done" || syncState[r.id].state === "failed") ? (
-                      <p
-                        className={`max-w-[12rem] text-xs ${syncState[r.id].state === "failed" ? "text-red-700" : "text-brand"}`}
-                      >
-                        {syncState[r.id].state === "done" ? "Synced" : "Failed"}
-                        {syncState[r.id].note ? `: ${syncState[r.id].note}` : ""}
-                      </p>
-                    ) : null}
-                    {confirming === r.id ? (
-                      <div className="flex flex-col gap-1.5">
-                        <p className="text-xs font-semibold text-red-700">
-                          Delete {r.artist_name}?
-                        </p>
-                        <p className="text-xs text-muted">This cannot be undone.</p>
-                        <div className="flex gap-2">
+                    <span className="ml-auto">
+                      {confirming === r.id ? (
+                        <span className="flex items-center gap-2">
+                          <span className="font-semibold text-red-800">Delete {r.artist_name}?</span>
                           <button
                             type="button"
-                            onClick={() => void handleDelete(r.id)}
                             disabled={deleting === r.id}
-                            className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-black text-white hover:bg-red-600 disabled:opacity-50"
+                            onClick={() => void handleDelete(r.id)}
+                            className="min-h-9 rounded-lg bg-red-800 px-3 font-semibold text-white disabled:opacity-50"
                           >
-                            {deleting === r.id ? "Deleting..." : "Confirm"}
+                            {deleting === r.id ? "Deleting…" : "Yes, delete"}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirming(null)}
-                            className="rounded-lg border border-card-border bg-input px-3 py-1.5 text-xs font-semibold text-muted hover:text-foreground"
-                          >
+                          <button type="button" onClick={() => setConfirming(null)} className="min-h-9 px-2 font-semibold text-muted">
                             Cancel
                           </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setConfirming(r.id)}
-                        className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-500/20"
-                      >
-                        Delete
-                      </button>
-                    )}
+                        </span>
+                      ) : (
+                        <button type="button" onClick={() => setConfirming(r.id)} className="min-h-9 px-2 font-semibold text-muted hover:text-red-800">
+                          Delete
+                        </button>
+                      )}
+                    </span>
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filtered.length === 0 ? (
-          <p className="p-6 text-center text-sm text-muted">No matching artists.</p>
-        ) : null}
-      </div>
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
+        {filtered.length === 0 ? <li className="px-4 py-6 text-sm text-muted">No accounts match.</li> : null}
+      </ul>
+      {tiktokWaitlistCount > 0 ? (
+        <p className="text-xs text-muted">
+          {tiktokWaitlistCount} on the TikTok waitlist.
+        </p>
+      ) : null}
     </div>
   );
 }

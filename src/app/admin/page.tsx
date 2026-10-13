@@ -39,7 +39,25 @@ function AdminPageError({ message }: { message: string }) {
   );
 }
 
-export default async function AdminPage() {
+type Tab = "artists" | "users" | "reviews" | "activity";
+const TABS: { id: Tab; label: string }[] = [
+  { id: "artists", label: "Artists" },
+  { id: "users", label: "Users" },
+  { id: "reviews", label: "Reviews" },
+  { id: "activity", label: "Activity" },
+];
+
+/** Monday of this week in London, as YYYY-MM-DD. Outside render for lint. */
+function londonMonday(): string {
+  const today = new Date(new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date()) + "T12:00:00Z");
+  const back = (today.getUTCDay() + 6) % 7;
+  today.setUTCDate(today.getUTCDate() - back);
+  return today.toISOString().slice(0, 10);
+}
+
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const { tab: tabParam } = await searchParams;
+  const tab: Tab = TABS.some((t) => t.id === tabParam) ? (tabParam as Tab) : "artists";
   const supabase = await createClient();
   const {
     data: { user },
@@ -82,7 +100,7 @@ export default async function AdminPage() {
   const { data: profiles, error: profilesError } = await adminSupabase
     .from("profiles")
     .select(
-      "id, artist_name, genre, instagram_handle, plan, plan_override, cron_active, is_private, owner_user_id, created_at, is_managed, is_admin, stripe_customer_id, tiktok_waitlist, account_type, all_emails_paused, instagram_user_id"
+      "id, artist_name, genre, instagram_handle, plan, plan_override, cron_active, is_private, owner_user_id, created_at, is_managed, is_admin, stripe_customer_id, tiktok_waitlist, account_type, all_emails_paused, instagram_user_id, board_enabled, weekly_target"
     )
     .order("created_at", { ascending: false });
 
@@ -211,6 +229,25 @@ export default async function AdminPage() {
     if (createdAt) lastPlanByArtistId.set(artistId, createdAt);
   }
 
+  // Per account: posts synced, last sync, posts this week, and whether a
+  // drafted week is waiting.
+  const monday = londonMonday();
+  const [{ data: perfRows }, { data: draftRows }] = await Promise.all([
+    adminSupabase.from("post_performance").select("artist_id, scraped_at, post_date"),
+    adminSupabase.from("concept_generations").select("artist_id").eq("status", "draft"),
+  ]);
+  const perfByArtist = new Map<string, { count: number; last: string | null; week: number }>();
+  for (const r of perfRows ?? []) {
+    const id = String(r.artist_id);
+    const cur = perfByArtist.get(id) ?? { count: 0, last: null, week: 0 };
+    cur.count++;
+    const scraped = r.scraped_at ? String(r.scraped_at) : null;
+    if (scraped && (!cur.last || scraped > cur.last)) cur.last = scraped;
+    if (r.post_date && String(r.post_date).slice(0, 10) >= monday) cur.week++;
+    perfByArtist.set(id, cur);
+  }
+  const hasDraft = new Set((draftRows ?? []).map((r) => String(r.artist_id)));
+
   const rowsUnsorted: AdminArtistDirectoryRow[] = (profiles ?? [])
     .filter((p) => String(p.artist_name ?? "").trim().length > 0)
     .map((p) => {
@@ -239,6 +276,12 @@ export default async function AdminPage() {
       account_type: asAccountType(p.account_type),
       instagram_connected: Boolean(String(p.instagram_user_id ?? "").trim()),
       last_plan_at: lastPlanByArtistId.get(p.id) ?? null,
+      board_enabled: p.board_enabled === true,
+      has_draft: hasDraft.has(String(p.id)),
+      post_count: perfByArtist.get(String(p.id))?.count ?? 0,
+      last_synced: perfByArtist.get(String(p.id))?.last ?? null,
+      weekly_target: typeof p.weekly_target === "number" ? p.weekly_target : null,
+      posted_this_week: perfByArtist.get(String(p.id))?.week ?? 0,
     };
     });
 
@@ -427,82 +470,95 @@ export default async function AdminPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-6xl flex-1 flex-col px-4 py-10 sm:px-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <h1 className="text-2xl font-black uppercase tracking-tight text-foreground">
-              Admin
-            </h1>
-            <Link
-              href="/prep"
-              className="text-sm font-semibold text-brand transition-colors hover:text-brand/80"
-            >
-              Client prep →
+    <div className="mx-auto flex min-h-full w-full max-w-6xl flex-1 flex-col px-4 py-6 sm:px-8">
+      <AppNavWrapper />
+
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Admin</h1>
+          <p className="flex flex-wrap gap-x-4 text-sm">
+            <Link href="/prep" className="font-semibold text-brand hover:underline">
+              Client prep
             </Link>
-            <Link
-              href="/admin/plans"
-              className="text-sm font-semibold text-brand transition-colors hover:text-brand/80"
-            >
-              Plans to review →
+            <Link href="/admin/access" className="font-semibold text-brand hover:underline">
+              Beta access
             </Link>
-            <Link
-              href="/admin/concepts"
-              className="text-sm font-semibold text-brand transition-colors hover:text-brand/80"
-            >
-              Concept preview →
+            <Link href="/admin/concepts" className="font-semibold text-muted hover:text-foreground">
+              Concept preview
             </Link>
-            <Link
-              href="/admin/access"
-              className="text-sm font-semibold text-brand transition-colors hover:text-brand/80"
-            >
-              Beta access →
+            <Link href="/admin/plans" className="font-semibold text-muted hover:text-foreground">
+              Old plans
             </Link>
-          </div>
-          <p className="mt-2 text-muted">
-            Browse every artist, switch context, create managed clients, or enqueue
-            an intake audit (same pipeline as{" "}
-            <code className="rounded bg-input px-1 py-0.5 text-xs">POST /api/new-lead</code>
-            ).
           </p>
         </div>
         <LogoutButton />
-      </header>
+      </div>
 
-      <AppNavWrapper />
+      <nav aria-label="Admin sections" className="mt-6 flex gap-1 overflow-x-auto border-b border-card-border">
+        {TABS.map((t) => {
+          const count = t.id === "reviews" ? revisionRequests.length : 0;
+          return (
+            <Link
+              key={t.id}
+              href={t.id === "artists" ? "/admin" : `/admin?tab=${t.id}`}
+              aria-current={tab === t.id ? "page" : undefined}
+              className={`-mb-px min-h-11 shrink-0 border-b-2 px-3 pt-2.5 text-sm font-semibold ${
+                tab === t.id ? "border-ink text-foreground" : "border-transparent text-muted hover:text-foreground"
+              }`}
+            >
+              {t.label}
+              {count > 0 ? <span className="ml-1.5 rounded-full bg-ink px-1.5 text-xs text-ink-foreground">{count}</span> : null}
+            </Link>
+          );
+        })}
+      </nav>
 
-      <section className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-card-border bg-card p-5">
-        <div>
-          <h2 className="text-lg font-bold text-foreground">Add accounts from Facebook Business</h2>
-          <p className="text-sm text-muted">
-            Connect once and add any Instagram account your Business Manager reaches, without the artist logging in.
-          </p>
+      {tab === "artists" ? (
+        <div className="mt-6 flex flex-col gap-6">
+          <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-card-border bg-card p-5">
+            <div className="min-w-0 flex-[1_1_280px]">
+              <h2 className="text-lg font-bold text-foreground">Add an account</h2>
+              <p className="text-sm text-muted">
+                Bring them in from Facebook Business, or create one by hand. Then press Set up on their row.
+              </p>
+            </div>
+            <Link
+              href="/accounts/import"
+              className="inline-flex min-h-10 items-center rounded-lg bg-ink px-4 text-sm font-semibold text-ink-foreground hover:opacity-90"
+            >
+              From Facebook Business
+            </Link>
+            <details className="w-full [&_summary::-webkit-details-marker]:hidden">
+              <summary className="inline-flex min-h-10 cursor-pointer list-none items-center rounded-lg border border-card-border px-4 text-sm font-semibold text-foreground hover:bg-background">
+                Create by hand
+              </summary>
+              <div className="mt-2">
+                <AdminCreateClientArtistForm />
+              </div>
+            </details>
+          </section>
+          <AdminArtistsTable rows={rows} tiktokWaitlistCount={tiktokWaitlistCount} />
         </div>
-        <Link
-          href="/accounts/import"
-          className="inline-flex min-h-11 items-center rounded-xl bg-ink px-4 text-sm font-semibold text-ink-foreground hover:opacity-90"
-        >
-          Add accounts
-        </Link>
-      </section>
+      ) : null}
 
-      <RevisionRequestsSection
-        requests={revisionRequests}
-        artistNames={revisionArtistNames}
-      />
+      {tab === "users" ? (
+        <div className="mt-2">
+          <UserAccountsTable rows={userAccountRows} />
+        </div>
+      ) : null}
 
-      <UsageAnalytics totalCounts={totalCounts} recentEvents={recentEvents} />
+      {tab === "reviews" ? (
+        <div className="mt-2">
+          <RevisionRequestsSection requests={revisionRequests} artistNames={revisionArtistNames} />
+          <ContentReviewsTable reviews={contentReviewRows} artistNames={artistNames} />
+        </div>
+      ) : null}
 
-      <ContentReviewsTable reviews={contentReviewRows} artistNames={artistNames} />
-
-      <UserAccountsTable rows={userAccountRows} />
-
-      <AdminCreateClientArtistForm />
-
-      <AdminArtistsTable
-        rows={rows}
-        tiktokWaitlistCount={tiktokWaitlistCount}
-      />
+      {tab === "activity" ? (
+        <div className="mt-2">
+          <UsageAnalytics totalCounts={totalCounts} recentEvents={recentEvents} />
+        </div>
+      ) : null}
     </div>
   );
 }

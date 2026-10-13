@@ -160,6 +160,24 @@ export async function loadConceptContext(
   const windowEnd = addDaysISO(today, KEY_DATE_WINDOW_DAYS);
 
   const historySince = new Date(now.getTime() - 56 * 86400000).toISOString();
+  const notesSince = new Date(now.getTime() - 8 * 86400000).toISOString().slice(0, 10);
+  const { data: notesRow } = await supabase
+    .from("week_notes")
+    .select("coming_up, unposted, want_to_post, skipped")
+    .eq("artist_id", artistId)
+    .gte("week_start", notesSince)
+    .order("week_start", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const weekNotes =
+    notesRow && !notesRow.skipped && (notesRow.coming_up || notesRow.unposted || notesRow.want_to_post)
+      ? {
+          comingUp: notesRow.coming_up ? String(notesRow.coming_up) : null,
+          unposted: notesRow.unposted ? String(notesRow.unposted) : null,
+          wantToPost: notesRow.want_to_post ? String(notesRow.want_to_post) : null,
+        }
+      : null;
+
   const [profileRes, auditRes, perfRes, eventsRes, plansRes, conceptsRes] =
     await Promise.all([
       supabase
@@ -311,6 +329,7 @@ export async function loadConceptContext(
     confidence: profile.posting_confidence ?? null,
     contentDays: Array.isArray(profile.content_days) ? profile.content_days.map(Number) : [],
     comingUpNote: profile.coming_up_note?.trim() || null,
+    weekNotes,
     handle: audit?.instagram_handle
       ? String(audit.instagram_handle).replace(/^@/, "")
       : null,

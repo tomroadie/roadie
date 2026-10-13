@@ -843,6 +843,8 @@ export type PostResultData = {
   /** Posts so far this week and the target, when known. */
   week: { posted: number; target: number } | null;
   nextIdea: { title: string; idea: string } | null;
+  /** Set when the post did well and nextIdea is the chosen follow-up. */
+  followUp?: { source: "pinned" | "board"; sameTheme: boolean } | null;
 };
 
 const BAND_NOTE: Record<PostResultData["band"], string> = {
@@ -881,7 +883,13 @@ export function postResultEmail(d: PostResultData): { subject: string; html: str
     : "";
 
   const nextIdea = d.nextIdea
-    ? `<p style="${P}">If you fancy another, here's an easy one from your board:</p>
+    ? `<p style="${P}">${
+        d.followUp
+          ? `Follow it up while it's working${d.followUp.sameTheme ? ", same concept" : ""}. ${
+              d.followUp.source === "pinned" ? "You pinned this one:" : "This one's on your board:"
+            }`
+          : "If you fancy another, here's an easy one from your board:"
+      }</p>
 <div style="background:#1A1A1A;border:1px solid #333333;border-radius:8px;padding:16px;margin:0 0 16px">
   <p style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#00FF87;margin:0 0 8px">${esc(d.nextIdea.title)}</p>
   <p style="font-size:15px;color:#ffffff;line-height:1.5;margin:0">${esc(d.nextIdea.idea)}</p>

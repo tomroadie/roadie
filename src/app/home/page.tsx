@@ -5,7 +5,11 @@ import Link from "next/link";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { WeeklyPlanSection } from "@/app/dashboard/weekly-plan-section";
-import { ConceptBoard, type PaceInfo, type UnmatchedPost, type WeekProgress } from "./concept-board";
+import { ConceptBoard, type FollowUpInfo, type PaceInfo, type UnmatchedPost, type WeekProgress } from "./concept-board";
+import { pickFollowUp } from "@/lib/follow-up";
+import { WeekCheckin } from "./week-checkin";
+import { ShotListsSection } from "./shot-lists";
+import { loadUpcomingShotLists, type ShotList } from "@/lib/shot-lists";
 import { effectivePrime, shouldOfferStep, suggestLowerPrime, type WeekRow } from "@/lib/pace";
 import { PostResultsSection } from "./post-results";
 import { loadPostResults, type PostResultsData } from "@/lib/post-results";
@@ -30,7 +34,7 @@ import { canDo, getPlanForGating } from "@/lib/plan-limits";
 import { userIsAdmin } from "@/lib/is-admin";
 import type { EventRow } from "@/types/event";
 import { boardWeek } from "@/lib/board-week";
-import { computeLearnings, learningHint, loadThemes } from "@/lib/themes/load";
+import { computeLearnings, formatRatio, learningHint, loadThemes } from "@/lib/themes/load";
 import { ACCOUNT_TYPE_LABEL, asAccountType, getsWeeklyIdeas } from "@/lib/account-types";
 import { LearningsSection } from "./learnings";
 import { RecentPostsGrid } from "./recent-posts-grid";
@@ -53,6 +57,11 @@ type AuditRow = {
   instagram_handle: string;
   created_at: string;
 };
+
+/** Milliseconds since an ISO time. Server component: runs once per request. */
+function msSince(iso: string): number {
+  return Date.now() - Date.parse(iso);
+}
 
 function isoToday(): string {
   const d = new Date();
@@ -653,6 +662,9 @@ export default async function HomePage({
   const week = board ? boardWeek(profile?.week_start_day) : null;
   let weekProgress: WeekProgress | undefined;
   let pace: PaceInfo | undefined;
+  let followUp: FollowUpInfo | null = null;
+  let showCheckin = false;
+  let shotLists: ShotList[] = [];
   let comingUp: EventRow[] = [];
   let postResults: PostResultsData | null = null;
   let unmatchedPosts: UnmatchedPost[] = [];
@@ -696,6 +708,41 @@ export default async function HomePage({
       })),
     };
     comingUp = (eventsRes.data ?? []) as EventRow[];
+
+    shotLists = await loadUpcomingShotLists(supabase, activeArtistId).catch(() => []);
+
+    // The check-in: the first three days of their week, until answered or skipped.
+    const daysIn = Math.floor(msSince(week.startsAt) / 86400000);
+    if (daysIn < 3) {
+      const { data: notes } = await supabase
+        .from("week_notes")
+        .select("artist_id")
+        .eq("artist_id", activeArtistId)
+        .eq("week_start", week.start)
+        .maybeSingle();
+      showCheckin = !notes;
+    }
+
+    // A recent win points at the next post: the newest settled post, if it
+    // beat their usual in the last 5 days.
+    const latestSettled = (postResults?.posts ?? []).find((p) => !p.excluded && p.comparison?.settled);
+    if (
+      latestSettled?.comparison &&
+      (latestSettled.comparison.band === "above" || latestSettled.comparison.band === "well_above") &&
+      latestSettled.postDate &&
+      msSince(latestSettled.postDate) < 5 * 86400000
+    ) {
+      const pick = await pickFollowUp(supabase, activeArtistId, latestSettled.id);
+      if (pick) {
+        followUp = {
+          conceptId: pick.conceptId,
+          title: pick.title,
+          ratio: formatRatio(latestSettled.comparison.ratio),
+          day: new Date(latestSettled.postDate).toLocaleDateString("en-GB", { weekday: "long", timeZone: "Europe/London" }),
+          pinned: pick.source === "pinned",
+        };
+      }
+    }
 
     // Posting pace: the prime and whether to offer "n+1?" this week.
     const prime = effectivePrime(profile ?? {});
@@ -1262,12 +1309,15 @@ export default async function HomePage({
             postedUnlinked={postedUnlinked}
             weekLabel={week.label}
             pace={pace}
+            followUp={followUp}
             nextIdeasDay={
               ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][
                 typeof profile?.week_start_day === "number" ? profile.week_start_day : 1
               ]
             }
           >
+            <ShotListsSection lists={shotLists} />
+            {showCheckin ? <WeekCheckin artistId={activeArtistId} /> : null}
             <LearningsSection learnings={learnings} hint={hint} />
             {postResults ? <RecentPostsGrid posts={postResults.posts} /> : boardInstagramSection}
             {postResults ? (

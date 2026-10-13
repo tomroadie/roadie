@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { jsonrepair } from "jsonrepair";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadConceptContext } from "./context";
 import {
@@ -40,7 +41,14 @@ function extractJson(text: string): unknown {
   const start = t.indexOf("{");
   const end = t.lastIndexOf("}");
   if (start === -1 || end <= start) throw new Error("No JSON object in response");
-  return JSON.parse(t.slice(start, end + 1));
+  const body = t.slice(start, end + 1);
+  try {
+    return JSON.parse(body);
+  } catch {
+    // Long outputs sometimes slip (an unescaped quote, a missing comma).
+    // Repair what's mechanical; the validator still checks the content.
+    return JSON.parse(jsonrepair(body));
+  }
 }
 
 function normaliseFormat(v: unknown): ExecutionFormat | null {

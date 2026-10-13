@@ -216,7 +216,9 @@ export async function syncTourPage(
 
   const note =
     read.widget === "bandsintown" && !read.fromBandsintown
-      ? "Their show dates load from Bandsintown, which Tempo can't read from the page. Add their Bandsintown API key to pick them up."
+      ? profile?.bandsintown_key
+        ? "Bandsintown didn't return any dates with that key. Check it's this artist's key, and that their Bandsintown name matches their name in Tempo."
+        : "Their show dates load from Bandsintown, which Tempo can't read from the page. Add their Bandsintown API key to pick them up."
       : read.widget === "songkick" && read.dates.length === 0
         ? "Their show dates load from Songkick, which Tempo can't read from the page. Add dates by hand for now."
         : null;

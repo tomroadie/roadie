@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { clip } from "@/lib/text";
+import { jsonrepair } from "jsonrepair";
 
 /**
  * The two model jobs behind themes: suggesting an artist's starting themes,
@@ -38,7 +39,12 @@ function extractJson(text: string): unknown {
   const start = t.indexOf("{");
   const end = t.lastIndexOf("}");
   if (start === -1 || end <= start) throw new Error("No JSON object in response");
-  return JSON.parse(t.slice(start, end + 1));
+  const body = t.slice(start, end + 1);
+  try {
+    return JSON.parse(body);
+  } catch {
+    return JSON.parse(jsonrepair(body));
+  }
 }
 
 function str(v: unknown, max: number): string {

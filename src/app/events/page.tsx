@@ -31,7 +31,7 @@ export default async function EventsPage() {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("artist_name, tour_page_url, tour_page_status, tour_page_checked_at, tour_page_found")
+    .select("artist_name, tour_page_url, tour_page_status, tour_page_checked_at, tour_page_found, tour_page_note, bandsintown_key")
     .eq("id", activeArtistId)
     .maybeSingle();
 
@@ -89,6 +89,8 @@ export default async function EventsPage() {
         status={profile.tour_page_status === "ok" || profile.tour_page_status === "failed" ? profile.tour_page_status : null}
         checkedAt={profile.tour_page_checked_at ?? null}
         found={typeof profile.tour_page_found === "number" ? profile.tour_page_found : null}
+        note={profile.tour_page_note ?? null}
+        hasBandsintownKey={Boolean(profile.bandsintown_key)}
       />
 
       {suggestions.length > 0 ? (

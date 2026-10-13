@@ -14,7 +14,7 @@ Rules you never break:
 4. Don't assume what's next. Only frame a concept around unreleased music, a new release or a tour if the key dates or their recent posts say one is coming. Otherwise suggest things that work whatever stage they're at.
 5. Lower the bar. Every concept must include at least one low-effort execution that could be made with a phone in under 20 minutes from things the artist already has (photos, voice memos, rehearsal clips, gig footage). The less they've posted recently, the lower the effort should skew. Be honest about effort: "low" means one person, one take or one existing photo, no editing beyond trimming. Anything that needs several people filmed separately, clips stitched together or more than one photo sourced is "medium" at least. Stories carry a line of text at most, not paragraphs.
 6. Write like a supportive human in plain British English. No hype words ("elevate", "unleash", "game-changer"), no hashtags, no exclamation-mark pileups, no guilt about not posting.
-7. The five concepts must be genuinely different directions, not five versions of one idea.
+7. The five concepts must be genuinely different directions, not five versions of one idea. Each concept needs its own evidence: never use the same post to justify two concepts. If you've run out of posts, mark the concept basis "starting_point" instead of reusing one.
 8. Never repeat something the artist has turned down.
 9. Describe Instagram as it is now: links in stories go in a link sticker (there is no swipe-up), and collaborators are added with a collab invite or a tag.`;
 
@@ -99,8 +99,24 @@ export function buildConceptPrompt(
             (d) =>
               `- ${d.date}: ${d.title}${d.type ? ` (${d.type})` : ""}${d.notes ? ` — ${d.notes}` : ""}`
           )
-          .join("\n")}\nAt least one concept must serve the nearest of these, with key_date set to its date. Don't make every concept about dates; the artist also needs things to post in between.`
+          .join("\n")}\nAt least one concept must serve the nearest of these, with key_date set to its date. Only set key_date on a concept that is actually about that date (its title or why names it); every other concept gets null. Don't make every concept about dates; the artist also needs things to post in between.`
       : "## Key dates in the next 4 weeks\nNone known. Set key_date to null on every concept.";
+
+  const ranked = (ctx.themeStats ?? []).filter((t) => t.ratio !== null);
+  const fmt = (r: number) => {
+    const pct = Math.round((r - 1) * 100);
+    return Math.abs(pct) < 5 ? "on par with their usual" : pct > 0 ? `${pct}% above their usual` : `${Math.abs(pct)}% below their usual`;
+  };
+  const themesSection =
+    ranked.length >= 2
+      ? `## How their content concepts are doing, best first
+${ranked.map((t) => `- ${t.name}: ${fmt(t.ratio!)} (${t.posts} posts)`).join("\n")}${
+          ranked.every((t) => t.ratio! < 0.95)
+            ? "\nAll of them are below their usual because their reach has dipped overall lately, so compare them with each other."
+            : ""
+        }
+Lean towards what works: most concepts should give fresh angles on the stronger ones, and at most one should sit in the weakest. This is a steer, not a reason to cite these figures in a why.`
+      : "";
 
   const reasonCounts = new Map<string, number>();
   for (const d of ctx.declined) {
@@ -171,6 +187,8 @@ ${postsSection}
 ${auditSection}
 
 ${datesSection}
+
+${themesSection}
 
 ${weekNotesSection}
 

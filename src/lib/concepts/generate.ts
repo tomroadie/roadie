@@ -53,6 +53,46 @@ function normaliseFormat(v: unknown): ExecutionFormat | null {
  * hold up. Evidence must point at posts that exist; this is what stops the
  * "why" lines inventing patterns.
  */
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+const GENERIC = new Set(["show", "gig", "the", "and", "with", "live", "release", "single", "session", "studio", "launch", "night", "date", "from", "your", "tour"]);
+
+/** Does the text name this key date: a distinctive word from its title, or its day and month? */
+export function mentionsKeyDate(text: string, kd: { date: string; title: string }): boolean {
+  const t = text.toLowerCase();
+  const words = kd.title
+    .toLowerCase()
+    .split(/[^a-z0-9\u00c0-\u024f]+/)
+    .filter((w) => w.length >= 4 && !GENERIC.has(w));
+  if (words.some((w) => t.includes(w))) return true;
+  const [, m, d] = kd.date.split("-").map(Number);
+  const mon = MONTHS[m - 1];
+  return new RegExp(`\\b${d}(st|nd|rd|th)?\\s+${mon}|\\b${mon}[a-z]*\\s+${d}\\b`).test(t);
+}
+
+/**
+ * Orders a pool for the board, which takes the first three: the concept for
+ * the nearest key date first, then ones whose evidence doesn't overlap with
+ * those already chosen, so the three cards stand on different posts.
+ */
+export function orderForBoard(concepts: Concept[], boardSize = 3): Concept[] {
+  const rest = [...concepts];
+  const chosen: Concept[] = [];
+  const dated = rest
+    .filter((c) => c.key_date)
+    .sort((a, b) => String(a.key_date).localeCompare(String(b.key_date)))[0];
+  if (dated) {
+    chosen.push(dated);
+    rest.splice(rest.indexOf(dated), 1);
+  }
+  while (chosen.length < boardSize && rest.length > 0) {
+    const used = new Set(chosen.flatMap((c) => c.evidence_posts));
+    const next = rest.find((c) => !c.evidence_posts.some((n) => used.has(n))) ?? rest[0];
+    chosen.push(next);
+    rest.splice(rest.indexOf(next), 1);
+  }
+  return [...chosen, ...rest];
+}
+
 export function validatePool(
   raw: unknown,
   ctx: ConceptContext,
@@ -192,6 +232,16 @@ export function validatePool(
       warnings.push(`${label}: key_date ${keyDate} isn't a known date; cleared`);
       keyDate = null;
     }
+    // A date only belongs on a concept that's about it. A news concept is;
+    // anything else has to name the date or the event somewhere.
+    if (keyDate && !aboutNews) {
+      const kd = ctx.keyDates.find((d) => d.date === keyDate);
+      const text = [title, why, ...executions.map((e) => e.idea)].join(" ");
+      if (kd && !mentionsKeyDate(text, kd)) {
+        warnings.push(`${label} ("${title}"): key_date ${keyDate} doesn't fit what it's about; cleared`);
+        keyDate = null;
+      }
+    }
 
     seenTitles.add(titleKey);
     concepts.push({
@@ -303,7 +353,7 @@ export async function generateConceptPool(
         strict: attempt === 1,
       });
       if (pool) {
-        return { pool, context, warnings, attempts: attempt, model };
+        return { pool: { ...pool, concepts: orderForBoard(pool.concepts) }, context, warnings, attempts: attempt, model };
       }
       lastErrors = errors;
     }

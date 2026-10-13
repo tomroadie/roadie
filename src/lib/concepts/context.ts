@@ -1,6 +1,8 @@
 import { compareToUsual, describeComparison, type PerfPost } from "@/lib/performance";
 import { MAX_WEEKLY_TARGET } from "@/lib/starting-point";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { loadPostResults } from "@/lib/post-results";
+import { loadThemes, statsFor } from "@/lib/themes/load";
 import type {
   ConceptContext,
   ContextKeyDate,
@@ -320,7 +322,25 @@ export async function loadConceptContext(
     }
   }
 
+  // How each of their concepts is doing, so ideas lean towards what works.
+  let themeStats: ConceptContext["themeStats"] = [];
+  try {
+    const [results, themes] = await Promise.all([
+      loadPostResults(supabase, artistId, today, now),
+      loadThemes(supabase, artistId),
+    ]);
+    themeStats = themes.active
+      .map((t) => {
+        const st = statsFor(results?.posts ?? [], t.id);
+        return { name: t.name, ratio: st.ratio, posts: st.posts };
+      })
+      .sort((a, b) => (b.ratio ?? -1) - (a.ratio ?? -1));
+  } catch {
+    themeStats = [];
+  }
+
   return {
+    themeStats,
     artistId,
     artistName: profile.artist_name.trim(),
     genre: profile.genre ?? null,

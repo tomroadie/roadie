@@ -29,6 +29,7 @@ export function TourPageForm({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(!url);
 
   async function save(next: string) {
     setSaving(true);
@@ -47,6 +48,7 @@ export function TourPageForm({
         added?: number;
       };
       if (!res.ok) throw new Error(json.error ?? "Something went wrong");
+      if (next.trim() && json.status !== "failed") setOpen(false);
       if (!next.trim()) setMessage("Removed.");
       else if (json.status === "failed") setError("Couldn't read that page. If the dates load in a widget, try your Songkick or Bandsintown page instead.");
       else if ((json.found ?? 0) === 0) setMessage("Read it, but found no upcoming dates.");
@@ -62,6 +64,52 @@ export function TourPageForm({
     } finally {
       setSaving(false);
     }
+  }
+
+  // Once set, it shrinks to one line.
+  if (url && !open) {
+    let host = url;
+    try {
+      host = new URL(url).hostname.replace(/^www\./, "") + new URL(url).pathname.replace(/\/$/, "");
+    } catch {}
+    const summary =
+      message ??
+      (checkedAt
+        ? status === "failed"
+          ? `couldn't read it on ${readOn(checkedAt)}`
+          : `read ${readOn(checkedAt)}, ${found ?? 0} upcoming`
+        : "not read yet");
+    return (
+      <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-card-border bg-card px-4 py-2 text-sm">
+        <span className="font-semibold text-foreground">Tour page</span>
+        <a href={url} target="_blank" rel="noopener noreferrer" className="truncate text-brand hover:underline">
+          {host}
+        </a>
+        <span className={status === "failed" && !message ? "text-red-800" : "text-muted"} aria-live="polite">
+          {saving ? "reading…" : summary}
+        </span>
+        <span className="ml-auto flex gap-1">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void save(url)}
+            className="min-h-9 px-2 font-semibold text-foreground hover:underline disabled:opacity-50"
+          >
+            Read again
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMessage(null);
+              setOpen(true);
+            }}
+            className="min-h-9 px-2 font-semibold text-muted hover:text-foreground"
+          >
+            Change
+          </button>
+        </span>
+      </div>
+    );
   }
 
   return (
@@ -96,6 +144,20 @@ export function TourPageForm({
         >
           {saving ? "Reading…" : url && value.trim() === url ? "Read again" : "Save"}
         </button>
+        {url ? (
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => {
+              setValue(url);
+              setError(null);
+              setOpen(false);
+            }}
+            className="min-h-10 px-2 text-sm font-semibold text-muted hover:text-foreground disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        ) : null}
         {url ? (
           <button
             type="button"

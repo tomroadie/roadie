@@ -2,7 +2,6 @@ import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
-import { LogoutButton } from "@/app/dashboard/logout-button";
 import { EventsSection } from "./events-section";
 import type { EventRow } from "@/types/event";
 import { getActiveArtistIdForUser } from "@/lib/active-artist";
@@ -55,25 +54,15 @@ export default async function EventsPage() {
   const initialEvents = (eventsRows ?? []) as EventRow[];
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-10 sm:px-6">
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-relaxed text-amber-800">
-        The dates page is being replaced by our weekly check-in system. Your
-        existing dates are still used in your content plan.
-      </div>
-
-      <header className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-foreground">
-            Your dates
-          </h1>
-          <p className="mt-2 text-muted">
-            Add shows, releases and studio sessions — the more context you give, the more specific your weekly plan becomes
-          </p>
-        </div>
-        <LogoutButton />
-      </header>
-
+    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-4 py-6 sm:px-6">
       <AppNavWrapper />
+
+      <div className="space-y-1">
+        <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Dates</h1>
+        <p className="max-w-2xl text-muted">
+          Shows, releases and sessions coming up. Tempo plans your weeks around them and sends a shot list the day before.
+        </p>
+      </div>
 
       <EventsSection initialEvents={initialEvents} artistId={activeArtistId} />
     </div>

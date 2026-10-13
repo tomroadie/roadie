@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 export type DateSuggestion = {
   id: string;
   title: string;
-  eventDate: string;
+  /** Null when the post announced it without a day. */
+  eventDate: string | null;
   excerpt: string | null;
 };
 
@@ -24,15 +25,16 @@ export function DateSuggestions({ suggestions }: { suggestions: DateSuggestion[]
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gone, setGone] = useState<Set<string>>(new Set());
+  const [picked, setPicked] = useState<Record<string, string>>({});
 
-  async function resolve(id: string, action: "accept" | "dismiss") {
+  async function resolve(id: string, action: "accept" | "dismiss", date?: string) {
     setBusy(id);
     setError(null);
     try {
       const res = await fetch("/api/date-suggestions", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id, action }),
+        body: JSON.stringify({ id, action, date }),
       });
       if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as { error?: string };
@@ -54,35 +56,50 @@ export function DateSuggestions({ suggestions }: { suggestions: DateSuggestion[]
     <div className="mt-4 flex flex-col gap-2 border-t border-card-border pt-4">
       <p className="text-sm font-semibold text-foreground">Spotted in your posts</p>
       <ul className="flex flex-col gap-2">
-        {shown.map((s) => (
-          <li key={s.id} className="flex flex-wrap items-center gap-3 rounded-xl bg-background p-3">
-            <div className="min-w-0 flex-[1_1_200px]">
-              <p className="text-sm">
-                <span className="text-muted">{dayLabel(s.eventDate)}</span>{" "}
-                <span className="font-semibold text-foreground">{s.title}</span>
-              </p>
-              {s.excerpt ? <p className="truncate text-xs text-muted">&ldquo;{s.excerpt}&rdquo;</p> : null}
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={busy === s.id}
-                onClick={() => resolve(s.id, "accept")}
-                className="min-h-10 rounded-lg bg-ink px-3 text-sm font-semibold text-ink-foreground hover:opacity-90 disabled:opacity-50"
-              >
-                Add date
-              </button>
-              <button
-                type="button"
-                disabled={busy === s.id}
-                onClick={() => resolve(s.id, "dismiss")}
-                className="min-h-10 px-2 text-sm font-semibold text-muted hover:text-foreground disabled:opacity-50"
-              >
-                Not right
-              </button>
-            </div>
-          </li>
-        ))}
+        {shown.map((s) => {
+          const date = s.eventDate ?? picked[s.id] ?? "";
+          return (
+            <li key={s.id} className="flex flex-wrap items-center gap-3 rounded-xl bg-background p-3">
+              <div className="min-w-0 flex-[1_1_200px]">
+                <p className="text-sm">
+                  {s.eventDate ? <span className="text-muted">{dayLabel(s.eventDate)}</span> : null}{" "}
+                  <span className="font-semibold text-foreground">{s.title}</span>
+                  {s.eventDate ? null : <span className="text-muted"> &ndash; when is it?</span>}
+                </p>
+                {s.excerpt ? <p className="truncate text-xs text-muted">&ldquo;{s.excerpt}&rdquo;</p> : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {s.eventDate ? null : (
+                  <label className="flex items-center">
+                    <span className="sr-only">Date for {s.title}</span>
+                    <input
+                      type="date"
+                      value={picked[s.id] ?? ""}
+                      onChange={(e) => setPicked((p) => ({ ...p, [s.id]: e.target.value }))}
+                      className="min-h-10 rounded-lg border border-card-border bg-card px-2 text-sm text-foreground"
+                    />
+                  </label>
+                )}
+                <button
+                  type="button"
+                  disabled={busy === s.id || !date}
+                  onClick={() => resolve(s.id, "accept", s.eventDate ? undefined : date)}
+                  className="min-h-10 rounded-lg bg-ink px-3 text-sm font-semibold text-ink-foreground hover:opacity-90 disabled:opacity-50"
+                >
+                  Add date
+                </button>
+                <button
+                  type="button"
+                  disabled={busy === s.id}
+                  onClick={() => resolve(s.id, "dismiss")}
+                  className="min-h-10 px-2 text-sm font-semibold text-muted hover:text-foreground disabled:opacity-50"
+                >
+                  Not right
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
       {error ? (
         <p role="alert" className="text-sm font-semibold text-red-800">

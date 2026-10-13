@@ -66,19 +66,19 @@ function EventList({
 }) {
   if (rows.length === 0) return null;
   return (
-    <section className="mt-10">
-      <h2 className="text-xs font-bold uppercase tracking-widest text-brand">
+    <section className="mt-8">
+      <h2 className="text-lg font-bold text-foreground">
         {title}
       </h2>
-      <ul className="mt-4 flex flex-col gap-4">
+      <ul className="mt-3 flex flex-col gap-3">
         {rows.map((ev) => (
           <li key={ev.id}>
             {(() => {
               const d = formatEventDate(ev.event_date);
               return (
-                <article className="flex flex-col gap-4 rounded-xl border border-card-border bg-card p-6 sm:flex-row sm:items-start sm:justify-between">
+                <article className="flex flex-col gap-4 rounded-2xl border border-card-border bg-card p-5 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex min-w-0 flex-1 gap-4">
-                    <div className="flex w-14 flex-col items-center justify-center rounded-xl bg-input p-3 text-center">
+                    <div className="flex w-14 flex-col items-center justify-center rounded-xl bg-background p-3 text-center">
                       <span className="text-[11px] font-bold uppercase tracking-widest text-brand">
                         {d.month}
                       </span>
@@ -102,12 +102,8 @@ function EventList({
                       </div>
 
                       {ev.notes?.trim() ? (
-                        <p className="text-sm leading-relaxed text-muted-strong">
-                          {ev.notes}
-                        </p>
-                      ) : (
-                        <p className="text-sm text-muted">No content notes yet.</p>
-                      )}
+                        <p className="text-sm leading-relaxed text-muted">{ev.notes}</p>
+                      ) : null}
                     </div>
                   </div>
 
@@ -115,7 +111,7 @@ function EventList({
                     <button
                       type="button"
                       onClick={() => onEdit(ev)}
-                      className="rounded-lg border border-card-border bg-transparent px-3 py-1.5 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
+                      className="min-h-10 rounded-lg border border-card-border px-3 text-sm font-semibold text-foreground hover:bg-background"
                     >
                       Edit
                     </button>
@@ -123,7 +119,7 @@ function EventList({
                       type="button"
                       onClick={() => onDelete(ev.id)}
                       disabled={deletingId === ev.id}
-                      className="rounded-lg border border-card-border bg-transparent px-3 py-1.5 text-sm font-semibold uppercase tracking-wide text-red-700 transition-colors hover:border-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="min-h-10 px-2 text-sm font-semibold text-muted hover:text-red-800 disabled:opacity-50"
                     >
                       {deletingId === ev.id ? "Removing…" : "Delete"}
                     </button>
@@ -172,7 +168,7 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
     setEventType(ev.event_type as EventType);
     setNotes(ev.notes ?? "");
     setFormOpen(true);
-    // Keep scroll behavior simple; user requested visual polish only elsewhere.
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleAdd(e: React.FormEvent) {
@@ -269,19 +265,112 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
   }, [events, in30, today, weekEnd]);
 
   return (
-    <div className="space-y-10">
-      <section>
-        <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">
-          All dates
-        </h2>
-        {events.length === 0 ? (
-          <div className="mt-6 rounded-xl border border-dashed border-card-border bg-input p-10 text-center">
-            <p className="text-sm leading-relaxed text-muted">
-              No dates yet — add your next show, release or session so your plan knows what's coming.
-            </p>
-          </div>
-        ) : (
-          <>
+    <div className="mt-6">
+      {formOpen ? (
+        <div className="rounded-2xl border border-card-border bg-card p-5">
+          <h2 className="text-lg font-bold text-foreground">{editingId ? "Edit date" : "Add a date"}</h2>
+          <form onSubmit={handleAdd} className="mt-4 flex flex-col gap-4">
+            <div className="flex flex-wrap gap-4">
+              <div className="flex-[2_1_240px]">
+                <label htmlFor="event-title" className="mb-1 block text-sm font-semibold text-foreground">What is it?</label>
+                <input
+                  id="event-title"
+                  type="text"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Show at Scala, Single out, Studio session"
+                  className="w-full min-h-10 rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
+                />
+              </div>
+              <div className="flex-[1_1_160px]">
+                <label htmlFor="event-date" className="mb-1 block text-sm font-semibold text-foreground">Date</label>
+                <input
+                  id="event-date"
+                  type="date"
+                  required
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  className="w-full min-h-10 rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
+                />
+              </div>
+              <div className="flex-[1_1_160px]">
+                <label htmlFor="event-type" className="mb-1 block text-sm font-semibold text-foreground">Type</label>
+                <select
+                  id="event-type"
+                  value={eventType}
+                  onChange={(e) => setEventType(e.target.value as EventType)}
+                  className="w-full min-h-10 rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
+                >
+                  {EVENT_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label htmlFor="event-notes" className="mb-1 block text-sm font-semibold text-foreground">
+                Notes <span className="font-normal text-muted">(optional)</span>
+              </label>
+              <textarea
+                id="event-notes"
+                rows={3}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Anything worth knowing: who you're supporting, what's new, ideas you already have."
+                className="w-full min-h-10 rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20 resize-y"
+              />
+            </div>
+
+            {formError ? (
+              <p className="text-sm font-semibold text-red-800" role="alert">
+                {formError}
+              </p>
+            ) : null}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="min-h-10 rounded-lg bg-ink px-4 text-sm font-semibold text-ink-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                {submitting ? "Saving…" : editingId ? "Save changes" : "Add date"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  resetForm();
+                  setFormError(null);
+                  if (events.length > 0) setFormOpen(false);
+                }}
+                className="min-h-10 px-2 text-sm font-semibold text-muted hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            setFormError(null);
+            setFormOpen(true);
+          }}
+          className="min-h-10 self-start rounded-lg bg-ink px-4 text-sm font-semibold text-ink-foreground hover:opacity-90"
+        >
+          Add a date
+        </button>
+      )}
+
+      {events.length === 0 ? (
+        <p className="mt-8 rounded-2xl border border-dashed border-card-border bg-card p-6 text-muted">
+          No dates yet. Add your next show, release or session so your weeks plan around it.
+        </p>
+      ) : (
+        <>
             <EventList
               title="This week"
               rows={grouped.thisWeek}
@@ -310,136 +399,8 @@ export function EventsSection({ initialEvents, artistId }: EventsSectionProps) {
               onEdit={startEdit}
               onDelete={handleDelete}
             />
-          </>
-        )}
-      </section>
-
-      <div className="space-y-4">
-        <button
-          type="button"
-          onClick={() => {
-            setFormError(null);
-            setFormOpen((v) => !v);
-          }}
-          className="inline-flex h-10 items-center justify-center rounded-full bg-brand px-5 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95"
-        >
-          + Add a date
-        </button>
-
-        {formOpen ? (
-          <div className="rounded-xl border border-card-border bg-card p-6">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">
-              Add a date
-            </h2>
-
-            <form onSubmit={handleAdd} className="mt-4 space-y-6">
-              <div className="flex flex-col gap-6">
-                <div>
-                  <label
-                    htmlFor="event-title"
-                    className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
-                  >
-                    Title
-                  </label>
-                  <input
-                    id="event-title"
-                    type="text"
-                    required
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g. Show at Scala, Single release, Studio session"
-                    className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="event-date"
-                    className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
-                  >
-                    Date
-                  </label>
-                  <input
-                    id="event-date"
-                    type="date"
-                    required
-                    value={eventDate}
-                    onChange={(e) => setEventDate(e.target.value)}
-                    className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-brand focus:ring-2 focus:ring-brand/20"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="event-type"
-                    className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
-                  >
-                    Type
-                  </label>
-                  <select
-                    id="event-type"
-                    value={eventType}
-                    onChange={(e) => setEventType(e.target.value as EventType)}
-                    className="w-full rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-brand focus:ring-2 focus:ring-brand/20"
-                  >
-                    {EVENT_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label
-                    htmlFor="event-notes"
-                    className="mb-2 block text-xs font-bold uppercase tracking-widest text-brand"
-                  >
-                    Content notes{" "}
-                    <span className="font-normal text-muted">(optional)</span>
-                  </label>
-                  <textarea
-                    id="event-notes"
-                    rows={5}
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="What do you want people to know about this? Any ideas already?"
-                    className="w-full resize-y rounded-lg border border-card-border bg-input px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
-                  />
-                </div>
-              </div>
-
-              {formError ? (
-                <p className="text-sm text-red-700" role="alert">
-                  {formError}
-                </p>
-              ) : null}
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-black uppercase tracking-wide text-brand-foreground shadow-sm transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {submitting
-                    ? editingId
-                      ? "Saving…"
-                      : "Adding…"
-                    : editingId
-                      ? "Save changes"
-                      : "Add date"}
-                </button>
-                {editingId ? (
-                  <button
-                    type="button"
-                    onClick={resetForm}
-                    className="inline-flex h-10 items-center justify-center rounded-lg border border-card-border bg-transparent px-4 text-sm font-semibold uppercase tracking-wide text-foreground transition-colors hover:border-brand"
-                  >
-                    Cancel
-                  </button>
-                ) : null}
-              </div>
-            </form>
-          </div>
-        ) : null}
-      </div>
+        </>
+      )}
     </div>
   );
 }

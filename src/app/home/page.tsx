@@ -59,6 +59,11 @@ type AuditRow = {
 };
 
 /** Milliseconds since an ISO time. Server component: runs once per request. */
+/** YYYY-MM-DD n days ago. Outside render so lint's purity rule is happy. */
+function daysAgoIso(n: number): string {
+  return new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+}
+
 function msSince(iso: string): number {
   return Date.now() - Date.parse(iso);
 }
@@ -1191,13 +1196,14 @@ export default async function HomePage({
       .select("id, title, event_date, source_excerpt")
       .eq("artist_id", activeArtistId)
       .eq("status", "pending")
-      .gte("event_date", isoToday())
-      .order("event_date")
+      // Dated ones until the day passes; undated announcements for 60 days.
+      .or(`event_date.gte.${isoToday()},and(event_date.is.null,created_at.gte.${daysAgoIso(60)})`)
+      .order("event_date", { nullsFirst: false })
       .limit(5);
     const dateSuggestions: DateSuggestion[] = (suggestionRows ?? []).map((r) => ({
       id: String(r.id),
       title: String(r.title),
-      eventDate: String(r.event_date),
+      eventDate: r.event_date ? String(r.event_date) : null,
       excerpt: r.source_excerpt ? String(r.source_excerpt) : null,
     }));
 

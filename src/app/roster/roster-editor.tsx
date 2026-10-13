@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 export type PickableArtist = { id: string; name: string; managed: boolean; type: string };
 
-/** Admin: create a roster or change who's on it. Managed accounts come pre-ticked for a new one. */
+/** Admin: create a roster or change who's on it. Nothing is ticked to start with; ticked artists sit at the top. */
 export function RosterEditor({
   mode,
   rosterId,
@@ -24,6 +24,8 @@ export function RosterEditor({
   const [ids, setIds] = useState<Set<string>>(new Set(selected));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Order is fixed when the editor opens, so rows don't jump while ticking.
+  const [order] = useState(() => [...artists].sort((a, b) => Number(selected.includes(b.id)) - Number(selected.includes(a.id))));
 
   async function save() {
     setSaving(true);
@@ -48,7 +50,7 @@ export function RosterEditor({
       <h2 className="text-lg font-bold text-foreground">{mode === "create" ? "Make a roster" : "Edit roster"}</h2>
       {mode === "create" ? (
         <p className="text-sm text-muted">
-          A roster is a manager or agency&rsquo;s artists on one page. Start with Roadie Media: the accounts you manage are ticked.
+          A roster is a manager or agency&rsquo;s artists on one page. Tick the artists that belong on it.
         </p>
       ) : null}
       <label className="text-sm font-semibold text-foreground">
@@ -64,8 +66,20 @@ export function RosterEditor({
         <legend className="mb-1 text-sm font-semibold text-foreground">
           Artists <span className="font-normal text-muted">({ids.size} ticked)</span>
         </legend>
+        <div className="mb-1 flex gap-3 text-xs font-semibold">
+          <button type="button" onClick={() => setIds(new Set())} className="text-muted hover:text-foreground">
+            Untick all
+          </button>
+          <button
+            type="button"
+            onClick={() => setIds(new Set(artists.filter((a) => a.managed).map((a) => a.id)))}
+            className="text-muted hover:text-foreground"
+          >
+            Tick all managed
+          </button>
+        </div>
         <div className="max-h-72 overflow-y-auto rounded-lg border border-card-border bg-background p-2">
-          {artists.map((a) => (
+          {order.map((a) => (
             <label key={a.id} className="flex min-h-9 items-center gap-2 rounded px-1 text-sm hover:bg-card">
               <input
                 type="checkbox"

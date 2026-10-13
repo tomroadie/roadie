@@ -103,7 +103,7 @@ export default async function RosterPage({ searchParams }: { searchParams: Promi
           <RosterEditor
             mode="create"
             artists={pickable}
-            selected={pickable.filter((a) => a.managed).map((a) => a.id)}
+            selected={[]}
             defaultName="Roadie Media"
           />
         </div>

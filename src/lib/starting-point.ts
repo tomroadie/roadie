@@ -39,9 +39,8 @@ const CURRENT_TO_TARGET: Record<CurrentPosting, number> = {
 };
 
 /**
- * The most Tempo will ever ask for in a week. The app decides how far an
- * artist goes, not the artist: the target only climbs one step at a time,
- * and only after a week where they hit it.
+ * The most a starting target can be. After that the target steps towards
+ * the artist's prime (lib/pace.ts), which has no fixed ceiling.
  */
 export const MAX_WEEKLY_TARGET = 4;
 

@@ -10,14 +10,14 @@ const HOUR = 3600000;
 
 /** How stale each job's last run can be before it counts as stopped. */
 const MAX_AGE_HOURS: Partial<Record<CronJob, number>> = {
-  "sync-post-performance": 26,
+  "sync-post-performance": 7,
   "weekly-board": 3,
   "refresh-instagram-tokens": 26,
   "email-sequences": 26,
 };
 
 const JOB_LABEL: Record<string, string> = {
-  "sync-post-performance": "Instagram post sync (daily)",
+  "sync-post-performance": "Instagram post sync (every 3 hours)",
   "weekly-board": "Weekly boards (hourly)",
   "refresh-instagram-tokens": "Instagram token refresh (daily)",
   "email-sequences": "Email sequences (daily)",

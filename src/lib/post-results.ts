@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  compareEarly,
+  describeEarly,
   compareToUsual,
   describeComparison,
   UNUSUAL_RATIO,
@@ -36,6 +38,8 @@ export type PostResult = {
   excluded: boolean;
   /** Far above the usual: worth asking whether it was an ad or collab. */
   unusual: boolean;
+  /** Reach at 24 hours against the usual at that age, while the post is still settling. */
+  early: Comparison | null;
 };
 
 export type WeekCount = { label: string; posts: number; current: boolean };
@@ -76,7 +80,7 @@ export async function loadPostResults(
     supabase
       .from("post_performance")
       .select(
-        "instagram_post_id, post_date, ig_media_type, caption, permalink, thumbnail_url, reach, likes, comments, excluded_from_usual, theme_id, theme_source"
+        "instagram_post_id, post_date, ig_media_type, caption, permalink, thumbnail_url, reach, likes, comments, excluded_from_usual, theme_id, theme_source, reach_24h"
       )
       .eq("artist_id", artistId)
       .not("post_date", "is", null)
@@ -109,9 +113,17 @@ export async function loadPostResults(
     excluded: r.excluded_from_usual === true,
   }));
 
+  const earlyHistory = rows.map((r, i) => ({
+    id: perf[i].id,
+    postDate: perf[i].postDate,
+    reach24h: typeof r.reach_24h === "number" ? r.reach_24h : null,
+    excluded: perf[i].excluded,
+  }));
+
   const posts: PostResult[] = rows.map((r, i) => {
     const excluded = perf[i].excluded === true;
     const comparison = compareToUsual(perf[i], perf, now);
+    const early = !excluded && comparison && !comparison.settled ? compareEarly(earlyHistory[i], earlyHistory) : null;
     return {
       ...perf[i],
       excluded,
@@ -127,9 +139,12 @@ export async function loadPostResults(
       comparison,
       line: excluded
         ? `${perf[i].reach !== null ? `Reached ${perf[i].reach.toLocaleString("en-GB")}. ` : ""}Marked as an ad or collab, so it's left out of your usual.`
-        : comparison
-          ? describeComparison(comparison)
-          : null,
+        : early
+          ? describeEarly(early)
+          : comparison
+            ? describeComparison(comparison)
+            : null,
+      early,
       ideaTitle: ideaByPost.get(perf[i].id) ?? null,
       themeId: r.theme_id ? String(r.theme_id) : null,
       themeName: r.theme_id ? themeNames.get(String(r.theme_id)) ?? null : null,

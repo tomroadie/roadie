@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   if (!secret) return NextResponse.json({ error: "CRON_SECRET missing" }, { status: 500 });
 
   const syncRes = await fetch(
-    `${appBaseUrl()}/api/cron/sync-post-performance?artist_id=${encodeURIComponent(artistId)}`,
+    `${appBaseUrl()}/api/cron/sync-post-performance?artist_id=${encodeURIComponent(artistId)}&full=1`,
     { headers: { authorization: `Bearer ${secret}` }, cache: "no-store" }
   );
   const sync = (await syncRes.json().catch(() => ({}))) as Record<string, unknown>;

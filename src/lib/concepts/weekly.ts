@@ -4,7 +4,8 @@ import { saveDraftGeneration, publishGeneration } from "./store";
 import { appBaseUrl, buildEmailRecipient, sendEmail } from "@/lib/email";
 import { yourWeekEmail } from "@/lib/email-templates";
 import type { ConceptExecution } from "./types";
-import { MAX_WEEKLY_TARGET } from "@/lib/starting-point";
+import { effectivePrime, nextTarget, type WeekRow } from "@/lib/pace";
+import { boardWeek } from "@/lib/board-week";
 import { refreshThemesForArtist } from "@/lib/themes/refresh";
 
 export const BOARD_TIMEZONE = "Europe/London";
@@ -15,16 +16,6 @@ export function weekdayInTimezone(now: Date, timeZone = BOARD_TIMEZONE): number 
   return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(name);
 }
 
-
-/**
- * Couch to 5K: hit it and it rises by one; post nothing and it eases off by
- * one; anything in between holds. Never below 1, never above the ceiling.
- */
-export function adaptTarget(current: number, postedLastWeek: number, ceiling: number): number {
-  if (postedLastWeek >= current) return Math.min(current + 1, Math.max(ceiling, 1));
-  if (postedLastWeek === 0) return Math.max(1, current - 1);
-  return current;
-}
 
 export type WeeklyOutcome = {
   artistId: string;
@@ -74,7 +65,7 @@ export async function runWeeklyForArtist(
 
   const { data: profile, error } = await admin
     .from("profiles")
-    .select("artist_name, weekly_target")
+    .select("artist_name, weekly_target, week_start_day, prime_target, prime_suggested")
     .eq("id", artistId)
     .maybeSingle();
   if (error || !profile) throw new Error(`profile: ${error?.message ?? "not found"}`);
@@ -82,27 +73,59 @@ export async function runWeeklyForArtist(
   const postedLastWeek = await postsInLastWeek(admin, artistId, now);
   const previousTarget =
     typeof profile.weekly_target === "number" ? profile.weekly_target : null;
+  const prime = effectivePrime(profile);
+  const weekStart = boardWeek(profile.week_start_day, now).start;
+  const lastWeekStart = new Date(Date.parse(`${weekStart}T12:00:00Z`) - 7 * 86400000).toISOString().slice(0, 10);
 
-  // First week: let the generator derive a starting target from history.
+  // Close last week: its target, what they posted, hit or miss. A quiet
+  // week keeps its outcome. Then step the target on the two-week rules.
+  let paceReason = "first week";
   if (previousTarget !== null) {
-    const next = adaptTarget(previousTarget, postedLastWeek, MAX_WEEKLY_TARGET);
-    if (next !== previousTarget) {
-      const { error: tErr } = await admin.from("profiles").update({ weekly_target: next }).eq("id", artistId);
+    const { data: lastRow } = await admin
+      .from("weekly_targets")
+      .select("outcome")
+      .eq("artist_id", artistId)
+      .eq("week_start", lastWeekStart)
+      .maybeSingle();
+    const outcome = lastRow?.outcome === "quiet" ? "quiet" : postedLastWeek >= previousTarget ? "hit" : "miss";
+    const { error: closeErr } = await admin.from("weekly_targets").upsert(
+      { artist_id: artistId, week_start: lastWeekStart, target: previousTarget, posted: postedLastWeek, outcome },
+      { onConflict: "artist_id,week_start", ignoreDuplicates: false }
+    );
+    if (closeErr) throw new Error(`close week: ${closeErr.message}`);
+
+    const { data: finished } = await admin
+      .from("weekly_targets")
+      .select("week_start, target, posted, outcome, step_offer")
+      .eq("artist_id", artistId)
+      .lte("week_start", lastWeekStart)
+      .order("week_start", { ascending: false })
+      .limit(6);
+    const next = nextTarget(previousTarget, prime, (finished ?? []) as WeekRow[]);
+    paceReason = next.reason;
+    if (next.target !== previousTarget) {
+      const { error: tErr } = await admin.from("profiles").update({ weekly_target: next.target }).eq("id", artistId);
       if (tErr) throw new Error(`target: ${tErr.message}`);
     }
   }
 
   const result = await generateConceptPool(admin, artistId, { now });
-  const target = result.context.weeklyTarget;
-  if (previousTarget === null) {
+  // First week: the generator derives a starting target from history.
+  const target = Math.min(result.context.weeklyTarget, prime);
+  if (previousTarget === null || target !== result.context.weeklyTarget) {
     await admin.from("profiles").update({ weekly_target: target }).eq("id", artistId);
   }
+  // Open this week's row (a step answer given earlier this week is kept).
+  await admin
+    .from("weekly_targets")
+    .upsert({ artist_id: artistId, week_start: weekStart, target }, { onConflict: "artist_id,week_start" });
 
   const generationId = await saveDraftGeneration(admin, result, null, {
     kind: "weekly",
     posted_last_week: postedLastWeek,
     previous_target: previousTarget,
     target,
+    pace_reason: paceReason,
   });
 
   // Sort the new ideas (and any unsorted posts) into the artist's themes.

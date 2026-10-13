@@ -126,3 +126,40 @@ export function describeComparison(c: Comparison): string {
       return `${what}, quieter than usual. One post doesn't make a pattern.`;
   }
 }
+
+/** A post's numbers at about 24 hours old (the sync's snapshot). */
+export type EarlyPost = { id: string; postDate: string | null; reach24h: number | null; excluded?: boolean };
+
+/**
+ * The early read: a post's reach at 24 hours against the artist's other
+ * posts at the same age. Null until there are enough earlier snapshots to
+ * call a usual (they build up as posts pass 24 hours under the new sync).
+ */
+export function compareEarly(post: EarlyPost, history: EarlyPost[]): Comparison | null {
+  if (post.reach24h === null || post.reach24h <= 0) return null;
+  const t = post.postDate ? Date.parse(post.postDate) : 0;
+  const earlier = history
+    .filter((h) => h.id !== post.id && !h.excluded && (h.postDate ? Date.parse(h.postDate) : 0) < t)
+    .map((h) => h.reach24h)
+    .filter((r): r is number => r !== null && r > 0)
+    .slice(0, HISTORY_WINDOW);
+  if (earlier.length < MIN_HISTORY) return null;
+  const usual = median(earlier);
+  const ratio = post.reach24h / usual;
+  return { metric: "reach", value: post.reach24h, usual, ratio, band: bandFor(ratio), settled: false, basedOn: earlier.length };
+}
+
+/** "At 24 hours: reached 1,240, ahead of your usual at that point." */
+export function describeEarly(c: Comparison): string {
+  const head = `At 24 hours: reached ${fmt(c.value)}`;
+  switch (c.band) {
+    case "well_above":
+      return `${head}, well ahead of your usual at that point.`;
+    case "above":
+      return `${head}, ahead of your usual at that point.`;
+    case "usual":
+      return `${head}, about your usual at that point.`;
+    case "quieter":
+      return `${head}, a slower start than usual. Some posts pick up later.`;
+  }
+}

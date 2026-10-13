@@ -18,7 +18,10 @@ import type {
 } from "./types";
 
 /** Same model the weekly plan uses; override with CONCEPT_MODEL to compare. */
-const DEFAULT_MODEL = "claude-sonnet-4-5";
+/** Weekly ideas are the product, written once a week per artist: use the strongest model. */
+const DEFAULT_MODEL = "claude-opus-5-5";
+/** If the default isn't available on this API key, fall back rather than fail. */
+const FALLBACK_MODEL = "claude-sonnet-4-5";
 /** The board needs three cards plus spares; below this the run has failed. */
 const MIN_VALID_CONCEPTS = 3;
 /** Fewer everyday (non-news) posts than this and everyday concepts may be starting points. */
@@ -91,6 +94,24 @@ export function orderForBoard(concepts: Concept[], boardSize = 3): Concept[] {
     rest.splice(rest.indexOf(next), 1);
   }
   return [...chosen, ...rest];
+}
+
+/** messages.create, falling back to a model that's always available if this key can't use the chosen one. */
+async function createMessage(
+  anthropic: Anthropic,
+  params: Anthropic.MessageCreateParamsNonStreaming
+): Promise<Anthropic.Message> {
+  try {
+    return await anthropic.messages.create(params);
+  } catch (e) {
+    const status = (e as { status?: number }).status;
+    const msg = e instanceof Error ? e.message : "";
+    if (params.model !== FALLBACK_MODEL && (status === 404 || /model/i.test(msg) && status === 400)) {
+      console.warn(`concepts: ${params.model} unavailable, using ${FALLBACK_MODEL}`);
+      return createMessage(anthropic, { ...params, model: FALLBACK_MODEL });
+    }
+    throw e;
+  }
 }
 
 export function validatePool(
@@ -330,7 +351,7 @@ export async function generateConceptPool(
   let lastErrors: string[] = [];
 
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const res = await anthropic.messages.create({
+    const res = await createMessage(anthropic, {
       model,
       max_tokens: 4096,
       system: CONCEPT_SYSTEM_PROMPT,
@@ -392,7 +413,7 @@ export async function generateReplacementConcept(
   let lastErrors: string[] = [];
 
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const res = await anthropic.messages.create({
+    const res = await createMessage(anthropic, {
       model,
       max_tokens: 1500,
       system: CONCEPT_SYSTEM_PROMPT,

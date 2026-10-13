@@ -2,7 +2,7 @@ import { compareToUsual, describeComparison, type PerfPost } from "@/lib/perform
 import { MAX_WEEKLY_TARGET } from "@/lib/starting-point";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadPostResults } from "@/lib/post-results";
-import { loadThemes, statsFor } from "@/lib/themes/load";
+import { formatRatio, loadThemes, statsFor } from "@/lib/themes/load";
 import type {
   ConceptContext,
   ContextKeyDate,
@@ -185,7 +185,7 @@ export async function loadConceptContext(
       supabase
         .from("profiles")
         .select(
-          "artist_name, genre, sound_description, voice_description, weekly_target, posting_confidence, content_days, coming_up_note"
+          "artist_name, genre, sound_description, voice_description, weekly_target, posting_confidence, content_days, coming_up_note, brief_context, brief_notes"
         )
         .eq("id", artistId)
         .maybeSingle(),
@@ -208,7 +208,7 @@ export async function loadConceptContext(
         .limit(MAX_POSTS),
       supabase
         .from("events")
-        .select("title, event_date, event_type, notes")
+        .select("title, event_date, event_type, notes, link_context")
         .eq("artist_id", artistId)
         .gte("event_date", today)
         .lte("event_date", windowEnd)
@@ -238,6 +238,13 @@ export async function loadConceptContext(
 
   const audit = auditRes.error ? null : auditRes.data;
 
+  // Results against their usual, image labels and concepts, by post.
+  const [resultsData, themesData] = await Promise.all([
+    loadPostResults(supabase, artistId, today, now).catch(() => null),
+    loadThemes(supabase, artistId).catch(() => ({ active: [], suggested: [] })),
+  ]);
+  const resultById = new Map((resultsData?.posts ?? []).map((p) => [p.id, p]));
+
   // Prefer synced Instagram data (real reach/saves); fall back to the audit scrape.
   // Posts marked as an ad or collab don't teach anything about what works.
   const perfRows = perfRes.error ? [] : (perfRes.data ?? []);
@@ -253,6 +260,19 @@ export async function loadConceptContext(
         reach: nonNegative(r.reach),
         saves: nonNegative(r.saves),
         shares: nonNegative(r.shares),
+        ...(() => {
+          const res = resultById.get(String(r.instagram_post_id));
+          const c = res?.comparison;
+          return {
+            vsUsual: c?.settled ? `${formatRatio(c.ratio)} vs their usual ${c.metric === "reach" ? "reach" : "likes and comments"}` : null,
+            looks: res
+              ? res.visualCorrection
+                ? `${res.visualLabel ?? ""} (they say: ${res.visualCorrection})`.trim()
+                : res.visualNote ?? res.visualLabel ?? null
+              : null,
+            concept: res?.themeName ?? null,
+          };
+        })(),
       }));
   const scraped = parseAuditPosts(audit?.recent_posts_raw);
 
@@ -276,6 +296,7 @@ export async function loadConceptContext(
         title: String(e.title ?? "").trim(),
         type: e.event_type ? String(e.event_type) : null,
         notes: e.notes ? String(e.notes).trim() : null,
+        linkContext: e.link_context ? String(e.link_context).trim() : null,
       }));
 
   const history = conceptsRes.error ? [] : (conceptsRes.data ?? []);
@@ -323,24 +344,19 @@ export async function loadConceptContext(
   }
 
   // How each of their concepts is doing, so ideas lean towards what works.
-  let themeStats: ConceptContext["themeStats"] = [];
-  try {
-    const [results, themes] = await Promise.all([
-      loadPostResults(supabase, artistId, today, now),
-      loadThemes(supabase, artistId),
-    ]);
-    themeStats = themes.active
-      .map((t) => {
-        const st = statsFor(results?.posts ?? [], t.id);
-        return { name: t.name, ratio: st.ratio, posts: st.posts };
-      })
-      .sort((a, b) => (b.ratio ?? -1) - (a.ratio ?? -1));
-  } catch {
-    themeStats = [];
-  }
+  const themeStats: ConceptContext["themeStats"] = themesData.active
+    .map((t) => {
+      const st = statsFor(resultsData?.posts ?? [], t.id);
+      return { name: t.name, ratio: st.ratio, posts: st.posts };
+    })
+    .sort((a, b) => (b.ratio ?? -1) - (a.ratio ?? -1));
+
+  const briefContext = profile.brief_context ? String(profile.brief_context).trim() : null;
+  const briefNotes = profile.brief_notes ? String(profile.brief_notes).trim() : null;
 
   return {
     themeStats,
+    brief: briefContext || briefNotes ? { context: briefContext, notes: briefNotes } : null,
     artistId,
     artistName: profile.artist_name.trim(),
     genre: profile.genre ?? null,

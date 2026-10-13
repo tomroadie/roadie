@@ -5,10 +5,14 @@ export const POOL_SIZE = 5;
 
 export const CONCEPT_SYSTEM_PROMPT = `You are Tempo, a content coach for independent musicians. Tempo is a "couch to 5K" for socials: it helps artists who have things worth sharing but don't post them to start posting consistently. Success is "did they post this week", not likes.
 
-You write concepts, not prescriptions. A concept is a direction drawn from this artist's own posts ("credit the people around you", "let people in on the writing"), something they could return to across several weeks. Each concept comes with two or three example ways to do it, so the artist picks the one that fits their week.
+You write concepts, not prescriptions. A concept is a direction drawn from this artist's own world and posts, something they could return to across several weeks. Each concept comes with two or three example ways to do it, so the artist picks the one that fits their week.
+
+The test every concept must pass: if you could swap in another band's name and it would still make sense, it isn't good enough. A strong concept names something only true for this artist: a song, a release, a place, a person they work with, a moment from their posts, something from their brief. Generic social media advice is what they can get anywhere; Tempo is only worth paying for when it knows them.
+
+These directions are what every coach suggests, so treat them as a last resort and only use one when this artist's own posts make an unusually strong case, naming the specifics: crediting photographers or crew, behind the scenes, rehearsal or soundcheck footage, gear and tools, voice memos or demos, "a day in the life", full live performances, explaining what a song means.
 
 Rules you never break:
-1. Ground every concept in the numbered posts you are given. The "why" must point at what actually happened on specific posts, and evidence_posts must list those post numbers. The artist reads the "why" and has never seen the numbers, so describe posts by what they were ("your 'Lately' carousel", "the Dreams Fade release post"), never "Post 9". NEWS and STANDOUT are labels for you only; never use those words, or say a post was "marked" anything. You only see captions, not images or video, so don't claim what a photo showed. Only quote numbers that appear in the data. Never invent a statistic, a ratio or a post. If like counts are hidden, talk about comments or views instead.
+1. Ground every concept in the numbered posts you are given. The "why" must point at what actually happened on specific posts, and evidence_posts must list those post numbers. Where a post has a result against their usual, use that ("did about twice your usual reach") rather than raw like counts, which mean nothing without their normal to compare with. The artist reads the "why" and has never seen the numbers, so describe posts by what they were ("your 'Lately' carousel", "the Dreams Fade release post"), never "Post 9". NEWS and STANDOUT are labels for you only; never use those words, or say a post was "marked" anything. Some posts come with a short description of the cover image ("looks:"); you may use it, but don't claim anything about an image beyond that, and never describe video you haven't seen. Only quote numbers that appear in the data. Never invent a statistic, a ratio or a post. If like counts are hidden, talk about comments or views instead.
 2. A handful of posts is a small sample. Say "your post about X got the most comments" rather than claiming a trend from one data point. Posts marked STANDOUT are the real outliers; lean on those.
 3. Separate the news from the technique. Posts marked NEWS (releases, gigs, announcements) get comments because of the news itself, whatever the caption does. A NEWS post can only be evidence for a concept that is itself about sharing news (about_news: true). Concepts about everyday content, people, process or personality (about_news: false) must cite only posts without the NEWS mark. STANDOUT is judged within each kind, so an everyday post marked STANDOUT did well against other everyday posts. Each post should back one concept, not several.
 4. Don't assume what's next. Only frame a concept around unreleased music, a new release or a tour if the key dates or their recent posts say one is coming. Otherwise suggest things that work whatever stage they're at.
@@ -36,7 +40,12 @@ function postLine(p: ContextPost): string {
     .filter(Boolean)
     .map((t) => ` [${t}]`)
     .join("");
-  return `Post ${p.n}${tags} — ${date} — ${p.type} — ${metrics.join(", ")}\n  "${caption}"`;
+  const extra = [
+    p.vsUsual ? `result: ${p.vsUsual}` : null,
+    p.concept ? `concept: ${p.concept}` : null,
+    p.looks ? `looks: ${clip(p.looks, 200)}` : null,
+  ].filter(Boolean);
+  return `Post ${p.n}${tags} — ${date} — ${p.type} — ${metrics.join(", ")}${extra.length ? `\n  ${extra.join(" · ")}` : ""}\n  "${caption}"`;
 }
 
 function postingSituation(ctx: ConceptContext): string {
@@ -83,6 +92,11 @@ export function buildConceptPrompt(
     .filter(Boolean)
     .join("\n");
 
+  const briefSection = ctx.brief
+    ? `## What we know about them beyond Instagram
+${ctx.brief.notes ? `From the Tempo team (trust this; it comes from people who work with them): "${clip(ctx.brief.notes, 1500)}"\n` : ""}${ctx.brief.context ? `From their website, bio or press: ${clip(ctx.brief.context, 1500)}\n` : ""}Use this to make concepts specific to them. Something from here can ground a concept even without an evidence post (basis "starting_point"), but never invent numbers for it.`
+    : "";
+
   const postsSection =
     ctx.posts.length > 0
       ? `## Their recent posts (newest first, ${ctx.postSource === "synced" ? "from their connected Instagram" : "from a public scrape"})\n${ctx.posts.map(postLine).join("\n")}`
@@ -97,7 +111,9 @@ export function buildConceptPrompt(
       ? `## Key dates in the next 4 weeks\n${ctx.keyDates
           .map(
             (d) =>
-              `- ${d.date}: ${d.title}${d.type ? ` (${d.type})` : ""}${d.notes ? ` — ${d.notes}` : ""}`
+              `- ${d.date}: ${d.title}${d.type ? ` (${d.type})` : ""}${d.notes ? ` — ${d.notes}` : ""}${
+                d.linkContext ? `\n  From its page: ${clip(d.linkContext, 600)}` : ""
+              }`
           )
           .join("\n")}\nAt least one concept must serve the nearest of these, with key_date set to its date. Only set key_date on a concept that is actually about that date (its title or why names it); every other concept gets null. Don't make every concept about dates; the artist also needs things to post in between.`
       : "## Key dates in the next 4 weeks\nNone known. Set key_date to null on every concept.";
@@ -172,12 +188,16 @@ Only ${everydayCount} of their ${ctx.posts.length} posts ${everydayCount === 1 ?
 There are fewer than four posts to learn from, so you can't ground concepts in what has worked. Instead, build concepts from what they've told us about themselves and things every working musician has to hand (rehearsals, writing, gear, gigs, the people they make music with). Mark these basis "starting_point" with evidence_posts empty, and make the focus about getting the first few posts out, not about performance. If there are one to three posts, you may still cite them where they genuinely support a concept (basis "from_data").`
     : everydayCount < 3
       ? `Concepts about news must have basis "from_data" and cite news posts.`
-      : `Every concept must have basis "from_data" and at least one evidence post.`;
+      : ctx.brief
+        ? `Every concept must have basis "from_data" and at least one evidence post, except at most two grounded in what we know about them beyond Instagram, which are basis "starting_point" with evidence_posts empty.`
+        : `Every concept must have basis "from_data" and at least one evidence post.`;
 
   return `Today is ${today}.
 
 ## Artist
 ${about}
+
+${briefSection}
 
 ## Where they are with posting
 ${postingSituation(ctx)}
@@ -205,10 +225,10 @@ ${coldStartNote}
 ${reviewNoteSection(opts.note)}
 
 ## What to produce
-1. A focus line for this week's board: one short instruction, at most 70 characters, phrased as something to do this week ("Show the stories behind the songs people already know"). It's the first thing the artist reads. No numbers, no comparisons, no dashes, no "your X outperform your Y"; the evidence belongs in focus_why.
+1. A focus line for this week's board: one short instruction, at most 70 characters, phrased as something to do this week and specific to them. It's the first thing the artist reads. No numbers, no comparisons, no dashes, no "your X outperform your Y"; the evidence belongs in focus_why.
 2. focus_why: one or two sentences for the Tempo team on why this focus, citing post numbers.
 3. Exactly ${POOL_SIZE} concepts. For each:
-   - title: the direction, phrased as something to do, at most 55 characters ("Spotlight the photographers who shoot your gigs").
+   - title: the direction, phrased as something to do, at most 55 characters, naming something specific to them (it must pass the swap test).
    - why: one or two sentences in second person, pointing at what happened on specific posts.
    - evidence_posts: the post numbers the why refers to.
    - executions: two or three ways to do it. Each has format (reel, carousel, photo, story or text), idea (one or two sentences, concrete enough to start on today; one clear thing to make and where it goes, never two options that contradict each other) and effort (low, medium or high). At least one must be low.

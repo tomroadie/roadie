@@ -1,3 +1,4 @@
+import { REVIEW_WINDOW_HOURS } from "@/lib/concepts/weekly";
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { appBaseUrl } from "@/lib/email";
@@ -111,10 +112,15 @@ export async function GET(request: Request) {
     const newerLive = (gens ?? []).some(
       (o) => o.artist_id === g.artist_id && o.published_at && Date.parse(String(o.published_at)) > Date.parse(String(g.created_at))
     );
-    if (age > 12 * HOUR && !newerLive) {
-      reminders.push(
-        `<strong>${escapeHtml(names.get(String(g.artist_id)) ?? "An artist")}</strong>'s ${g.kind === "first" ? "first ideas have" : "weekly board has"} been waiting for review for ${duration(age)}.`
-      );
+    if (newerLive) continue;
+    const name = `<strong>${escapeHtml(names.get(String(g.artist_id)) ?? "An artist")}</strong>`;
+    const what = g.kind === "first" ? "first ideas" : "weekly board";
+    const left = REVIEW_WINDOW_HOURS * HOUR - age;
+    if (left > 0) {
+      reminders.push(`${name}'s ${what} goes live automatically in ${duration(left)}. Review it before then if you want to change anything.`);
+    } else if (age > (REVIEW_WINDOW_HOURS + 3) * HOUR) {
+      // Should have gone live by now: the hourly board job isn't publishing.
+      problems.push(`${name}'s ${what} is ${duration(age)} old and still hasn't gone live. Check the weekly-board job.`);
     }
   }
   for (const a of boardArtists ?? []) {
@@ -131,9 +137,9 @@ export async function GET(request: Request) {
   const ok = problems.length === 0;
   if (problems.length || reminders.length) {
     await notifyAdminEmail(
-      problems.length ? `Tempo health: ${problems.length} thing${problems.length === 1 ? "" : "s"} to fix` : "Tempo: boards waiting for review",
+      problems.length ? `Tempo health: ${problems.length} thing${problems.length === 1 ? "" : "s"} to fix` : "Tempo: boards going live today",
       `${problems.length ? `<p>Needs attention:</p><ul>${problems.map((p) => `<li>${p}</li>`).join("")}</ul>` : ""}
-${reminders.length ? `<p>Waiting for you:</p><ul>${reminders.map((r) => `<li>${r}</li>`).join("")}</ul><p><a href="${appBaseUrl()}/admin/concepts">Open concept review</a></p>` : ""}`
+${reminders.length ? `<p>Going live soon:</p><ul>${reminders.map((r) => `<li>${r}</li>`).join("")}</ul><p><a href="${appBaseUrl()}/admin/concepts">Open concept review</a></p>` : ""}`
     );
   }
   await recordCronRun("health", ok, { problems: problems.length, reminders: reminders.length });

@@ -2,7 +2,7 @@ import { after, NextResponse } from "next/server";
 import { recordCronRun } from "@/lib/cron-log";
 import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { appBaseUrl } from "@/lib/email";
-import { runWeeklyForArtist, weekdayInTimezone, type WeeklyOutcome } from "@/lib/concepts/weekly";
+import { runWeeklyForArtist, autoPublishDueDrafts, weekdayInTimezone, type WeeklyOutcome } from "@/lib/concepts/weekly";
 import { boardWeek } from "@/lib/board-week";
 
 export const maxDuration = 300;
@@ -138,6 +138,14 @@ export async function GET(request: Request) {
   // per artist, so reply now and do the work after the response. after()
   // keeps running for this route's maxDuration.
   after(async () => {
+    // Drafts that have waited past the review window go live first.
+    try {
+      const auto = await autoPublishDueDrafts(admin, now);
+      if (auto.published.length || auto.failed.length) console.log("weekly-board auto-publish", auto);
+    } catch (e) {
+      console.error("weekly-board auto-publish failed", e);
+    }
+
     const done: WeeklyOutcome[] = [];
     const failed: { artistId: string; artistName: string; error: string }[] = [];
     let remaining = 0;

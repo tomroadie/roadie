@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { parseKeyDates } from "@/lib/key-dates";
+import { parseCaptionDates } from "@/lib/key-dates";
 
 /** Only recent posts can announce something still to come. */
 const LOOKBACK_DAYS = 30;
@@ -15,6 +15,10 @@ const DATE_CUES = [
   /\b\d{1,2}(st|nd|rd|th)\b/i,
   /\b\d{1,2}[./]\d{1,2}([./]\d{2,4})?\b/,
   /\b(tomorrow|tonight|next week|this week(end)?|out now|on sale|pre-?save|pre-?order|tickets?|tour|release|premiere|live at|headlin|support(ing)?)\b/i,
+  // Announcements that often come without a day.
+  /\b(announce\w*|playing|line-?up|join us|see you at|coming soon|new single|new album|ep|lp|show|gig)\b/i,
+  /fest\b|festival/i,
+  /\b20\d\d\b/,
 ];
 
 export function captionMayHaveDate(caption: string): boolean {
@@ -62,13 +66,16 @@ export async function suggestDatesFromPosts(
 
   const today = todayInLondon(now);
 
-  const found: { title: string; event_date: string; event_type: string; postId: string; caption: string }[] = [];
+  const found: { title: string; event_date: string | null; event_type: string; postId: string; caption: string }[] = [];
   for (const p of posts) {
     const caption = String(p.caption ?? "");
     if (!caption.trim() || !captionMayHaveDate(caption)) continue;
     const postedOn = p.post_date ? todayInLondon(new Date(String(p.post_date))) : today;
-    const dates = await parseKeyDates(caption, postedOn);
-    for (const d of dates) {
+    const { dated, undated } = await parseCaptionDates(caption, postedOn);
+    for (const u of undated) {
+      found.push({ title: u.title, event_date: null, event_type: u.event_type, postId: String(p.instagram_post_id), caption });
+    }
+    for (const d of dated) {
       // Only what's still ahead; a gig last week isn't a key date any more.
       if (d.date < today) continue;
       found.push({
@@ -83,20 +90,29 @@ export async function suggestDatesFromPosts(
 
   let saved = 0;
   if (found.length > 0) {
-    // Skip anything they already have on that day as the same kind of date,
-    // whether it's an event or a suggestion they've seen before.
-    const days = [...new Set(found.map((f) => f.event_date))];
-    const [{ data: events }, { data: existing }] = await Promise.all([
-      admin.from("events").select("event_date, event_type").eq("artist_id", artistId).in("event_date", days),
-      admin.from("date_suggestions").select("event_date, event_type").eq("artist_id", artistId).in("event_date", days),
+    // Skip anything they already have: dated ones by day and kind, undated
+    // ones by name (an event or suggestion with the same title, any status).
+    const days = [...new Set(found.map((f) => f.event_date).filter((d): d is string => d !== null))];
+    const [{ data: events }, { data: existing }, { data: named }, { data: namedEvents }] = await Promise.all([
+      days.length
+        ? admin.from("events").select("event_date, event_type").eq("artist_id", artistId).in("event_date", days)
+        : Promise.resolve({ data: [] as { event_date: string; event_type: string }[] }),
+      days.length
+        ? admin.from("date_suggestions").select("event_date, event_type").eq("artist_id", artistId).in("event_date", days)
+        : Promise.resolve({ data: [] as { event_date: string; event_type: string }[] }),
+      admin.from("date_suggestions").select("title").eq("artist_id", artistId),
+      admin.from("events").select("title").eq("artist_id", artistId).gte("event_date", today),
     ]);
     const taken = new Set(
       [...(events ?? []), ...(existing ?? [])].map((e) => `${e.event_date}|${e.event_type}`)
     );
+    for (const n of [...(named ?? []), ...(namedEvents ?? [])]) {
+      taken.add(`title|${String(n.title).trim().toLowerCase()}`);
+    }
 
     const rows = [];
     for (const f of found) {
-      const key = `${f.event_date}|${f.event_type}`;
+      const key = f.event_date ? `${f.event_date}|${f.event_type}` : `title|${f.title.trim().toLowerCase()}`;
       if (taken.has(key)) continue;
       taken.add(key);
       rows.push({

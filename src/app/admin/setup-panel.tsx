@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABEL, type AccountType } from "@/lib/account-types";
 import type { SetupState } from "@/lib/admin-setup";
+import { DraftReview } from "./draft-review";
 
-type StepId = "type" | "instagram" | "posts" | "concepts" | "images" | "dates" | "ideas" | "live";
+type StepId = "type" | "instagram" | "posts" | "concepts" | "images" | "dates" | "brief" | "ideas" | "live";
 type StepStatus = "done" | "todo" | "running" | "blocked" | "failed";
 
 async function call(artistId: string, action: string, extra: Record<string, unknown> = {}) {
@@ -46,6 +47,8 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
   const [notes, setNotes] = useState<Partial<Record<StepId, string>>>({});
   const [failed, setFailed] = useState<Partial<Record<StepId, string>>>({});
   const [tourUrl, setTourUrl] = useState("");
+  const [briefLinks, setBriefLinks] = useState("");
+  const [briefNotes, setBriefNotes] = useState("");
   const [autoRun, setAutoRun] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState<string | null>(null);
@@ -58,6 +61,8 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
       if (r.state) {
         setState(r.state);
         setTourUrl(r.state.dates.tourPageUrl ?? "");
+        setBriefLinks(r.state.brief.links);
+        setBriefNotes(r.state.brief.notes);
       } else setFailed({ type: r.error ?? "Couldn't load" });
     });
     return () => {
@@ -94,7 +99,7 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
       for (let i = 0; s && i < 2 && s.images.described < Math.min(s.images.total, 16); i++) {
         s = await run("images", "images");
       }
-      if (s && s.dates.done && s.getsIdeas && !s.draft && !s.live) s = await run("ideas", "ideas");
+      if (s && s.dates.done && s.brief.done && s.getsIdeas && !s.draft && !s.live) s = await run("ideas", "ideas");
       if (alive.current) setAutoRun(false);
     },
     [run]
@@ -286,16 +291,74 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
 
   if (s.getsIdeas) {
     steps.push({
+      id: "brief",
+      title: "Brief",
+      st: status("brief", s.brief.done, s.posts.count > 0),
+      body: (
+        <form
+          className="flex flex-col gap-2"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const next = await run("brief", "brief", { brief_links: briefLinks, brief_notes: briefNotes });
+            if (next && next.dates.done && !next.draft && !next.live) void runSetup(next);
+          }}
+        >
+          <span className="text-muted">
+            What their Instagram doesn&rsquo;t say. Optional, but it&rsquo;s what makes the ideas specific to them.
+            {s.brief.context ? " Links read." : ""}
+            {notes.brief ? ` · ${notes.brief}` : ""}
+          </span>
+          <textarea
+            value={briefLinks}
+            onChange={(e) => setBriefLinks(e.target.value)}
+            rows={2}
+            aria-label="Links"
+            placeholder="Links, one per line: website, bio, press, Bandcamp or release page"
+            className="w-full rounded-lg border border-card-border bg-card px-2 py-1.5 text-sm"
+          />
+          <textarea
+            value={briefNotes}
+            onChange={(e) => setBriefNotes(e.target.value)}
+            rows={3}
+            aria-label="Your notes"
+            placeholder="Your notes: what's current, what matters, what to avoid. e.g. Album out Feb, the Tulsa King sync is a big deal, they hate talking to camera."
+            className="w-full rounded-lg border border-card-border bg-card px-2 py-1.5 text-sm"
+          />
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" disabled={running !== null} className="min-h-9 rounded-lg bg-ink px-3 text-sm font-semibold text-ink-foreground disabled:opacity-50">
+              {running === "brief" ? "Reading…" : s.brief.done ? "Save" : "Save and continue"}
+            </button>
+            {!s.brief.done ? (
+              <button
+                type="button"
+                disabled={running !== null}
+                onClick={async () => {
+                  const next = await run("brief", "brief");
+                  if (next && next.dates.done && !next.draft && !next.live) void runSetup(next);
+                }}
+                className="min-h-9 px-2 text-sm font-semibold text-muted hover:text-foreground disabled:opacity-50"
+              >
+                Skip
+              </button>
+            ) : null}
+          </div>
+          {s.draft && !s.live && s.brief.done ? (
+            <span className="text-xs text-muted">Changed the brief? Use Write again below so the draft uses it.</span>
+          ) : null}
+        </form>
+      ),
+    });
+    steps.push({
       id: "ideas",
       title: "First week of ideas",
-      st: status("ideas", Boolean(s.draft) || s.live, s.concepts.names.length > 0 && s.dates.done),
+      st: status("ideas", Boolean(s.draft) || s.live, s.concepts.names.length > 0 && s.dates.done && s.brief.done),
       body: (
         <span className="text-muted">
           {s.live
             ? "Their board is running."
             : s.draft
               ? `Draft written ${ago(s.draft.createdAt)}.`
-              : "Writes their first week from their posts, concepts and dates."}
+              : "Writes their first week from their posts, concepts, dates and brief."}
           {s.draft && !s.live && running !== "ideas" ? (
             <button type="button" onClick={() => void run("ideas", "ideas")} className="ml-2 font-semibold text-brand hover:underline">
               Write again
@@ -312,16 +375,13 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
         <span className="text-muted">{published ?? "Live. New weeks arrive every Monday."}</span>
       ) : s.draft ? (
         <div className="flex flex-col gap-3">
-          {s.draft.focus ? <p className="text-foreground">Focus: {s.draft.focus}</p> : null}
-          <ol className="flex list-decimal flex-col gap-1.5 pl-5">
-            {s.draft.ideas.map((i, n) => (
-              <li key={n}>
-                <span className="font-semibold text-foreground">{i.title}</span>
-                {i.why ? <span className="block text-muted">{i.why}</span> : null}
-              </li>
-            ))}
-          </ol>
-          <p className="text-xs text-muted">The first three go on their board; the rest wait in the pool.</p>
+          <DraftReview
+            draft={s.draft}
+            onChanged={async () => {
+              const r = await call(artistId, "status");
+              if (r.state) setState(r.state);
+            }}
+          />
           <div className="flex flex-wrap gap-2">
             {[
               { notify: false, label: "Publish" },
@@ -371,14 +431,14 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
     (s.posts.count === 0 ||
       s.concepts.names.length === 0 ||
       s.images.described === 0 ||
-      (s.getsIdeas && s.dates.done && !s.draft && !s.live));
+      (s.getsIdeas && s.dates.done && s.brief.done && !s.draft && !s.live));
 
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-background p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
           {s.getsIdeas
-            ? "Runs every step it can, stops at Dates, then writes the first week for you to read."
+            ? "Runs every step it can, stops at Dates and Brief, then writes the first week for you to read."
             : `${ACCOUNT_TYPE_LABEL[s.accountType]} accounts are watched: posts, concepts and learnings, no weekly ideas.`}
         </p>
         {pending ? (

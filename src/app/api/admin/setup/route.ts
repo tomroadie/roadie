@@ -12,13 +12,14 @@ import { generateConceptPool } from "@/lib/concepts/generate";
 import { saveDraftGeneration } from "@/lib/concepts/store";
 import { getsWeeklyIdeas } from "@/lib/account-types";
 import { loadSetupState } from "@/lib/admin-setup";
+import { readArtistBrief } from "@/lib/artist-brief";
 
 export const maxDuration = 300;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type Action = "status" | "posts" | "concepts" | "images" | "dates" | "add_dates" | "ideas";
-const ACTIONS: Action[] = ["status", "posts", "concepts", "images", "dates", "add_dates", "ideas"];
+type Action = "status" | "posts" | "concepts" | "images" | "dates" | "add_dates" | "brief" | "ideas";
+const ACTIONS: Action[] = ["status", "posts", "concepts", "images", "dates", "add_dates", "brief", "ideas"];
 
 /**
  * Admin-only setup for one account, a step at a time:
@@ -29,6 +30,7 @@ const ACTIONS: Action[] = ["status", "posts", "concepts", "images", "dates", "ad
  *   dates     { tour_page_url? } read recent captions for dates, and save
  *             and read their tour page if given (or skip)
  *   add_dates add every waiting suggested date to their dates
+ *   brief     { brief_links?, brief_notes? } save, read the links (or skip)
  *   ideas     write the first week as a draft (artists only)
  * Every action returns the fresh status, so the panel just redraws.
  * Publishing goes through /api/admin/publish-concepts as before.
@@ -37,11 +39,15 @@ export async function POST(request: Request) {
   let artistId = "";
   let action: Action = "status";
   let tourPageUrl: string | null | undefined;
+  let briefLinks: string | undefined;
+  let briefNotes: string | undefined;
   try {
     const body = (await request.json()) as Record<string, unknown>;
     artistId = typeof body.artist_id === "string" ? body.artist_id.trim() : "";
     action = ACTIONS.includes(body.action as Action) ? (body.action as Action) : "status";
     if (typeof body.tour_page_url === "string") tourPageUrl = body.tour_page_url.trim();
+    if (typeof body.brief_links === "string") briefLinks = body.brief_links.trim().slice(0, 2000);
+    if (typeof body.brief_notes === "string") briefNotes = body.brief_notes.trim().slice(0, 3000);
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -105,6 +111,21 @@ export async function POST(request: Request) {
       await admin.from("profiles").update({ setup_dates_done: true }).eq("id", artistId);
     } else if (action === "add_dates") {
       note = `${await addWaitingDates(admin, artistId)} added`;
+    } else if (action === "brief") {
+      if (briefLinks !== undefined || briefNotes !== undefined) {
+        await admin
+          .from("profiles")
+          .update({
+            ...(briefLinks !== undefined ? { brief_links: briefLinks || null } : {}),
+            ...(briefNotes !== undefined ? { brief_notes: briefNotes || null } : {}),
+          })
+          .eq("id", artistId);
+        if (briefLinks !== undefined) {
+          const r = await readArtistBrief(admin, artistId);
+          if (r.tried > 0) note = r.read > 0 ? `Read ${r.read} of ${r.tried} links` : "Couldn't read those links";
+        }
+      }
+      await admin.from("profiles").update({ setup_brief_done: true }).eq("id", artistId);
     } else if (action === "ideas") {
       const { data: p } = await admin.from("profiles").select("account_type").eq("id", artistId).maybeSingle();
       if (!getsWeeklyIdeas(p?.account_type)) throw new Error("Weekly ideas are for artist accounts");

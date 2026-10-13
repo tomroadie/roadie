@@ -24,7 +24,13 @@ export type SetupState = {
     /** A few of the waiting suggestions, soonest first. */
     waitingList: { title: string; date: string }[];
   };
-  draft: { generationId: string; createdAt: string; focus: string | null; ideas: { title: string; why: string | null }[] } | null;
+  brief: { done: boolean; links: string; notes: string; context: string | null };
+  draft: {
+    generationId: string;
+    createdAt: string;
+    focus: string | null;
+    ideas: { id: string; title: string; why: string | null; executions: unknown }[];
+  } | null;
   live: boolean;
 };
 
@@ -33,7 +39,7 @@ export async function loadSetupState(admin: SupabaseClient, artistId: string): P
   const [profileRes, postsRes, lastRes, describedRes, themesRes, eventsRes, waitingRes, draftRes] = await Promise.all([
     admin
       .from("profiles")
-      .select("artist_name, instagram_handle, account_type, instagram_user_id, instagram_access_token, tour_page_url, board_enabled, setup_dates_done")
+      .select("artist_name, instagram_handle, account_type, instagram_user_id, instagram_access_token, tour_page_url, board_enabled, setup_dates_done, brief_links, brief_notes, brief_context, setup_brief_done")
       .eq("id", artistId)
       .maybeSingle(),
     admin.from("post_performance").select("id", { count: "exact", head: true }).eq("artist_id", artistId),
@@ -75,7 +81,7 @@ export async function loadSetupState(admin: SupabaseClient, artistId: string): P
   if (draftRes.data) {
     const { data: ideas } = await admin
       .from("concepts")
-      .select("title, why")
+      .select("id, title, why, executions")
       .eq("generation_id", draftRes.data.id)
       .order("position")
       .limit(12);
@@ -83,7 +89,12 @@ export async function loadSetupState(admin: SupabaseClient, artistId: string): P
       generationId: String(draftRes.data.id),
       createdAt: String(draftRes.data.created_at),
       focus: draftRes.data.focus ? String(draftRes.data.focus) : null,
-      ideas: (ideas ?? []).map((i) => ({ title: String(i.title), why: i.why ? String(i.why) : null })),
+      ideas: (ideas ?? []).map((i) => ({
+        id: String(i.id),
+        title: String(i.title),
+        why: i.why ? String(i.why) : null,
+        executions: i.executions,
+      })),
     };
   }
 
@@ -105,6 +116,12 @@ export async function loadSetupState(admin: SupabaseClient, artistId: string): P
       upcoming,
       waiting: waitingRes.count ?? 0,
       waitingList: (waitingRes.data ?? []).map((w) => ({ title: String(w.title), date: String(w.event_date) })),
+    },
+    brief: {
+      done: p.setup_brief_done === true || Boolean(p.brief_links) || Boolean(p.brief_notes),
+      links: p.brief_links ? String(p.brief_links) : "",
+      notes: p.brief_notes ? String(p.brief_notes) : "",
+      context: p.brief_context ? String(p.brief_context) : null,
     },
     draft,
     live: p.board_enabled === true,

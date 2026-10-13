@@ -57,6 +57,12 @@ export type ContextPost = {
   news: boolean;
   /** Set in code: comments well above this artist's typical post of the same kind. */
   standout: boolean;
+  /** Synced posts only: how it did against their own usual ("2.1×", "−30%"). */
+  vsUsual?: string | null;
+  /** Synced posts only: what the image shows, the artist's correction first. */
+  looks?: string | null;
+  /** Synced posts only: the content concept it sits in. */
+  concept?: string | null;
 };
 
 export type ContextKeyDate = {
@@ -64,6 +70,8 @@ export type ContextKeyDate = {
   title: string;
   type: string | null;
   notes: string | null;
+  /** Summary of the date's linked page (other acts, release details). */
+  linkContext?: string | null;
 };
 
 export type ConceptContext = {
@@ -103,6 +111,11 @@ export type ConceptContext = {
    * Optional: older saved contexts don't have it.
    */
   themeStats?: { name: string; ratio: number | null; posts: number }[];
+  /**
+   * What we know about them beyond Instagram: a summary of their website,
+   * bio or press, and notes from the Tempo team. Optional.
+   */
+  brief?: { context: string | null; notes: string | null } | null;
 };
 
 export type GenerateResult = {

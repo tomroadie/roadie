@@ -5,7 +5,7 @@ import { createServiceRoleClient } from "@/utils/supabase/admin";
 import { userIsAdmin } from "@/lib/is-admin";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { loadRoster } from "@/lib/roster";
-import { openRosterArtist } from "./actions";
+import { openRosterArtist, removeFromRoster } from "./actions";
 import { RosterEditor, type PickableArtist } from "./roster-editor";
 
 const AVATAR = ["#2F4A3A", "#5A3A2A", "#3A3F5C", "#4A2E3C", "#2A4650", "#454A2C", "#5C4630", "#3E3550"];
@@ -79,6 +79,11 @@ export default async function RosterPage({ searchParams }: { searchParams: Promi
             {isAdmin ? " · admin preview" : ""}
           </p>
           <h1 className="text-3xl font-bold text-foreground sm:text-4xl">{view?.name ?? "Rosters"}</h1>
+          {isAdmin && view && !edit ? (
+            <Link href={`/roster?id=${view.id}&edit=1`} className="text-sm font-semibold text-brand hover:underline">
+              Edit roster
+            </Link>
+          ) : null}
         </div>
         {(rosters ?? []).length > 1 ? (
           <nav aria-label="Rosters" className="flex flex-wrap gap-2">
@@ -109,6 +114,11 @@ export default async function RosterPage({ searchParams }: { searchParams: Promi
         </div>
       ) : view ? (
         <>
+          {isAdmin && edit ? (
+            <div className="mt-6 max-w-2xl">
+              <RosterEditor mode="update" rosterId={view.id} artists={pickable} selected={selected} defaultName={view.name} />
+            </div>
+          ) : null}
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             <div className="rounded-2xl bg-ink p-5 text-ink-foreground">
               <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-70">Posts this week</p>
@@ -195,13 +205,28 @@ export default async function RosterPage({ searchParams }: { searchParams: Promi
                             {r.nextDate ? `${day(r.nextDate.date)}` : "None yet"}
                           </p>
                         </div>
-                        <form action={openRosterArtist} className="ml-auto">
+                        <div className="ml-auto flex items-center gap-1">
+                        {isAdmin ? (
+                          <form action={removeFromRoster}>
+                            <input type="hidden" name="artistId" value={r.artistId} />
+                            <input type="hidden" name="rosterId" value={view.id} />
+                            <button
+                              type="submit"
+                              aria-label={`Take ${r.name} off this roster`}
+                              className="min-h-10 px-2 text-sm font-semibold text-muted hover:text-red-800"
+                            >
+                              Remove
+                            </button>
+                          </form>
+                        ) : null}
+                        <form action={openRosterArtist}>
                           <input type="hidden" name="artistId" value={r.artistId} />
                           <input type="hidden" name="rosterId" value={view.id} />
                           <button type="submit" className="min-h-10 px-2 text-sm font-semibold text-brand hover:underline">
                             View
                           </button>
                         </form>
+                        </div>
                       </li>
                     );
                   })}
@@ -241,15 +266,7 @@ export default async function RosterPage({ searchParams }: { searchParams: Promi
                 </div>
               ) : null}
 
-              {isAdmin ? (
-                edit ? (
-                  <RosterEditor mode="update" rosterId={view.id} artists={pickable} selected={selected} defaultName={view.name} />
-                ) : (
-                  <Link href={`/roster?id=${view.id}&edit=1`} className="text-sm font-semibold text-brand hover:underline">
-                    Edit roster
-                  </Link>
-                )
-              ) : null}
+
             </aside>
           </div>
         </>

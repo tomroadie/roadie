@@ -33,3 +33,17 @@ export async function openRosterArtist(formData: FormData) {
   });
   redirect("/home");
 }
+
+/** Admin: take one artist off a roster, straight from its row. */
+export async function removeFromRoster(formData: FormData) {
+  const artistId = String(formData.get("artistId") ?? "").trim();
+  const rosterId = String(formData.get("rosterId") ?? "").trim();
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  if (!(await userIsAdmin(supabase, user.id))) redirect("/roster");
+  await createServiceRoleClient().from("roster_artists").delete().eq("roster_id", rosterId).eq("artist_id", artistId);
+  redirect(`/roster?id=${rosterId}`);
+}

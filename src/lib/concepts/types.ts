@@ -98,6 +98,11 @@ export type ConceptContext = {
   pinnedIdeas: string[];
   /** True when there's too little post data to ground concepts in. */
   coldStart: boolean;
+  /**
+   * Their content concepts (themes), best first, each against their own usual.
+   * Optional: older saved contexts don't have it.
+   */
+  themeStats?: { name: string; ratio: number | null; posts: number }[];
 };
 
 export type GenerateResult = {

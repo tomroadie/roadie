@@ -55,7 +55,7 @@ async function safeUrl(raw: string): Promise<URL | null> {
   return u;
 }
 
-async function fetchPage(raw: string): Promise<string | null> {
+export async function fetchPage(raw: string): Promise<string | null> {
   let url = await safeUrl(raw);
   for (let hop = 0; url && hop <= MAX_REDIRECTS; hop++) {
     const res = await fetch(url, {

@@ -1232,6 +1232,20 @@ export default async function HomePage({
       .or(`event_date.gte.${isoToday()},and(event_date.is.null,created_at.gte.${daysAgoIso(60)})`)
       .order("event_date", { nullsFirst: false })
       .limit(5);
+    const [{ count: suggestionTotal }, { count: suggestionDated }] = await Promise.all([
+      supabase
+        .from("date_suggestions")
+        .select("id", { count: "exact", head: true })
+        .eq("artist_id", activeArtistId)
+        .eq("status", "pending")
+        .or(`event_date.gte.${isoToday()},and(event_date.is.null,created_at.gte.${daysAgoIso(60)})`),
+      supabase
+        .from("date_suggestions")
+        .select("id", { count: "exact", head: true })
+        .eq("artist_id", activeArtistId)
+        .eq("status", "pending")
+        .gte("event_date", isoToday()),
+    ]);
     const dateSuggestions: DateSuggestion[] = (suggestionRows ?? []).map((r) => ({
       id: String(r.id),
       title: String(r.title),
@@ -1260,7 +1274,13 @@ export default async function HomePage({
         ) : (
           <p className="mt-3 text-sm text-muted">Nothing in the next four weeks.</p>
         )}
-        <DateSuggestions suggestions={dateSuggestions} />
+        <DateSuggestions
+          suggestions={dateSuggestions}
+          artistId={activeArtistId}
+          total={suggestionTotal ?? undefined}
+          datedTotal={suggestionDated ?? undefined}
+          heading="Waiting to add"
+        />
         <p className="mt-4 text-sm">
           <Link href="/events" className="font-semibold text-brand hover:underline">
             Add a date →

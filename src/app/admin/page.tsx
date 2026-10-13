@@ -82,7 +82,7 @@ export default async function AdminPage() {
   const { data: profiles, error: profilesError } = await adminSupabase
     .from("profiles")
     .select(
-      "id, artist_name, genre, instagram_handle, plan, plan_override, cron_active, is_private, owner_user_id, created_at, is_managed, is_admin, stripe_customer_id, tiktok_waitlist, account_type, all_emails_paused"
+      "id, artist_name, genre, instagram_handle, plan, plan_override, cron_active, is_private, owner_user_id, created_at, is_managed, is_admin, stripe_customer_id, tiktok_waitlist, account_type, all_emails_paused, instagram_user_id"
     )
     .order("created_at", { ascending: false });
 
@@ -237,6 +237,7 @@ export default async function AdminPage() {
       is_managed: p.is_managed === true,
       is_private: p.is_private === true,
       account_type: asAccountType(p.account_type),
+      instagram_connected: Boolean(String(p.instagram_user_id ?? "").trim()),
       last_plan_at: lastPlanByArtistId.get(p.id) ?? null,
     };
     });

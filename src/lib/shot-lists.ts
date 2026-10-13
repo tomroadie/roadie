@@ -32,7 +32,7 @@ Everything must come from THIS act's world. Every shot is anchored to exactly on
 If you can't anchor a shot, leave it out. Fewer, better shots: at most ${MAX_SHOTS}.
 Rules:
 - Each shot is one plain sentence under 110 characters: exactly what to capture and when ("10 seconds of the first chorus from the side of the stage").
-- why is one short sentence under 90 characters saying why it's worth getting, in their terms ("Your crowd Reels do best").
+- why is one short sentence under 90 characters saying why it's worth getting, in their terms ("Your crowd Reels do best"). State facts plainly: no hype words ("massively", "huge", "smashes"), and don't claim a pattern from one post.
 - Vertical by default. Nothing posed or staged for the camera, no props, no photos of screens, nothing needing a second person or setup.
 - Match the date: release day shots for a release, show shots for a show. Don't mix them.
 - British English, no emoji, no hashtags, no captions, no editing instructions.
@@ -72,11 +72,19 @@ async function topPostsFor(admin: SupabaseClient, artistId: string, now: Date): 
       const kind = p.visualKind ? VISUAL_KIND_LABEL[p.visualKind].toLowerCase() : null;
       const ratio = formatRatio(p.comparison!.ratio);
       return {
-        label: `Like your ${shortDay(p.postDate)} ${kind && kind !== "other" ? `${kind} ` : ""}${fmt}, ${ratio}`,
+        label: p.visualLabel
+          ? `Like your ${shortDay(p.postDate)} ${fmt.toLowerCase()} – ${p.visualLabel.charAt(0).toLowerCase()}${p.visualLabel.slice(1)}, ${ratio}`
+          : `Like your ${shortDay(p.postDate)} ${kind && kind !== "other" ? `${kind} ` : ""}${fmt.toLowerCase()}, ${ratio}`,
         href: p.permalink,
         line: [
           `${fmt}, ${ratio} vs their usual`,
-          p.visualNote ? `looks like: ${p.visualNote}` : null,
+          p.visualCorrection
+            ? `looks like: ${p.visualLabel ?? ""} (the act says: ${p.visualCorrection})`
+            : p.visualNote
+              ? `looks like: ${p.visualNote}`
+              : p.visualLabel
+                ? `looks like: ${p.visualLabel}`
+                : null,
           p.caption ? `caption: "${clip(p.caption.replace(/\s+/g, " "), 140)}"` : null,
         ]
           .filter(Boolean)

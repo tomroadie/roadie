@@ -72,7 +72,8 @@ export function RecentPostsGrid({ posts, artistId }: { posts: PostResult[]; arti
                 artistId={artistId}
                 postId={p.id}
                 kind={p.visualKind}
-                note={p.visualNote}
+                label={p.visualLabel}
+                correction={p.visualCorrection}
                 source={p.visualSource}
               />
             </li>

@@ -21,8 +21,9 @@ const MAX_ATTEMPTS = 3;
 const SYSTEM = `You describe the cover image of a music act's Instagram post, so a content tool knows what their posts look like.
 For each image give:
 - kind: one of ${VISUAL_KINDS.join(", ")}. live = on stage or in a crowd; posed = a set-up photo of the act; candid = unposed moments, behind the scenes, everyday life; studio = recording or rehearsing; artwork = a release cover or art piece; poster = a gig or event poster or flyer; graphic = other text-led graphics or screenshots.
-- note: one plain line under 120 characters saying what's actually in it: who or what is in frame, the setting, the light or colour, how it's shot (phone, handheld, flash, wide), and any text on it in a few words.
-Plain British English. No judgements ("great shot"), no guessing names. Reply with JSON only: {"images":[{"n":1,"kind":"","note":""}]}`;
+- label: 2 to 5 plain words naming it, as the act would ("Festival poster, band photo", "Bassist under blue lights", "Single artwork").
+- note: one plain line under 160 characters saying what's actually in it: who or what is in frame, the setting, the light or colour, how it's shot (phone, handheld, flash, wide), and any text on it in a few words.
+Plain British English. No judgements ("great shot"), no guessing names. Reply with JSON only: {"images":[{"n":1,"kind":"","label":"","note":""}]}`;
 
 type Pending = { instagram_post_id: string; thumbnail_url: string | null; ig_media_type: string | null; visual_attempts: number };
 
@@ -63,7 +64,7 @@ async function loadImage(url: string): Promise<string | null> {
   return out.toString("base64");
 }
 
-async function describe(images: string[]): Promise<{ kind: VisualKind | null; note: string }[]> {
+async function describe(images: string[]): Promise<{ kind: VisualKind | null; label: string; note: string }[]> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
   const content: Anthropic.ContentBlockParam[] = [];
@@ -83,13 +84,14 @@ async function describe(images: string[]): Promise<{ kind: VisualKind | null; no
   const end = text.lastIndexOf("}");
   if (start === -1 || end <= start) throw new Error("No JSON in vision reply");
   const parsed = JSON.parse(text.slice(start, end + 1)) as { images?: unknown };
-  const out: { kind: VisualKind | null; note: string }[] = images.map(() => ({ kind: null, note: "" }));
+  const out: { kind: VisualKind | null; label: string; note: string }[] = images.map(() => ({ kind: null, label: "", note: "" }));
   for (const row of Array.isArray(parsed.images) ? parsed.images : []) {
     const r = row as Record<string, unknown>;
     const n = Number(r.n);
     if (!Number.isInteger(n) || n < 1 || n > images.length) continue;
     out[n - 1] = {
       kind: asVisualKind(r.kind),
+      label: typeof r.label === "string" ? r.label.trim().replace(/[.]$/, "").slice(0, 40) : "",
       note: typeof r.note === "string" ? r.note.trim().slice(0, 200) : "",
     };
   }
@@ -111,7 +113,8 @@ export async function describeNewPosts(
     .from("post_performance")
     .select("instagram_post_id, thumbnail_url, ig_media_type, visual_attempts")
     .eq("artist_id", artistId)
-    .is("visual_source", null)
+    // Not described yet, or described before short labels existed.
+    .or("visual_source.is.null,and(visual_source.eq.ai,visual_label.is.null)")
     .lt("visual_attempts", MAX_ATTEMPTS)
     .order("post_date", { ascending: false })
     .limit(PER_RUN);
@@ -135,7 +138,7 @@ export async function describeNewPosts(
     }
     if (loaded.length === 0) continue;
 
-    let notes: { kind: VisualKind | null; note: string }[];
+    let notes: { kind: VisualKind | null; label: string; note: string }[];
     try {
       notes = await describe(loaded.map((l) => l.image));
     } catch (e) {
@@ -144,18 +147,18 @@ export async function describeNewPosts(
       continue;
     }
     for (let j = 0; j < loaded.length; j++) {
-      const { kind, note } = notes[j];
-      if (!kind || !note) {
+      const { kind, label, note } = notes[j];
+      if (!kind || !note || !label) {
         await bumpAttempts(admin, artistId, loaded[j].post);
         continue;
       }
       // Never overwrite an artist's correction made while this ran.
       const { error: upErr } = await admin
         .from("post_performance")
-        .update({ visual_kind: kind, visual_note: note, visual_source: "ai" })
+        .update({ visual_kind: kind, visual_label: label, visual_note: note, visual_source: "ai" })
         .eq("artist_id", artistId)
         .eq("instagram_post_id", loaded[j].post.instagram_post_id)
-        .is("visual_source", null);
+        .or("visual_source.is.null,visual_source.eq.ai");
       if (!upErr) done++;
     }
   }

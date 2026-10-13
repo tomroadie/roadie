@@ -5,30 +5,34 @@ import { useRouter } from "next/navigation";
 import { VISUAL_KINDS, VISUAL_KIND_LABEL, type VisualKind } from "@/lib/visual-kinds";
 
 /**
- * What Tempo thinks a post looks like, with a way to correct it. Once
- * corrected, Tempo keeps the artist's version.
+ * What Tempo thinks a post looks like, as a few words, with a way to correct
+ * it. The longer description stays behind the scenes; what the artist says
+ * Tempo got wrong overrides it. Once corrected, Tempo keeps their version.
  */
 export function VisualNote({
   artistId,
   postId,
   kind,
-  note,
+  label,
+  correction,
   source,
 }: {
   artistId: string;
   postId: string;
   kind: VisualKind | null;
-  note: string | null;
+  label: string | null;
+  correction: string | null;
   source: "ai" | "artist" | null;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [k, setK] = useState<VisualKind>(kind ?? "other");
-  const [n, setN] = useState(note ?? "");
+  const [l, setL] = useState(label ?? "");
+  const [c, setC] = useState(correction ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!source && !editing) return null;
+  if ((!source || !label) && !editing) return null;
 
   async function save() {
     setSaving(true);
@@ -37,7 +41,7 @@ export function VisualNote({
       const res = await fetch("/api/posts/visual", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ artistId, postId, kind: k, note: n }),
+        body: JSON.stringify({ artistId, postId, kind: k, label: l, correction: c }),
       });
       if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as { error?: string };
@@ -54,13 +58,12 @@ export function VisualNote({
 
   if (!editing) {
     return (
-      <p className="text-xs leading-snug text-muted">
-        <span className="font-semibold text-foreground">{kind ? VISUAL_KIND_LABEL[kind] : "Looks like"}</span>
-        {note ? <span className="line-clamp-2 block">{note}</span> : null}
+      <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-muted">
+        <span className="truncate">{label}</span>
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="mt-0.5 min-h-6 font-semibold text-brand hover:underline"
+          className="min-h-6 font-semibold text-brand hover:underline"
           aria-label={source === "artist" ? "Edit your description of this post" : "Fix Tempo's description of this post"}
         >
           {source === "artist" ? "Edit" : "Not right?"}
@@ -86,12 +89,22 @@ export function VisualNote({
         </select>
       </label>
       <label className="text-xs font-semibold text-foreground">
-        What&rsquo;s in it
+        In a few words
+        <input
+          value={l}
+          onChange={(e) => setL(e.target.value)}
+          maxLength={40}
+          className="mt-0.5 block min-h-9 w-full rounded-md border border-card-border bg-card px-2 text-xs font-normal"
+        />
+      </label>
+      <label className="text-xs font-semibold text-foreground">
+        Anything Tempo got wrong? <span className="font-normal text-muted">(optional)</span>
         <textarea
-          value={n}
-          onChange={(e) => setN(e.target.value)}
+          value={c}
+          onChange={(e) => setC(e.target.value)}
           rows={2}
-          maxLength={200}
+          maxLength={300}
+          placeholder="e.g. That's our drummer, not a fan. It's a live shot from Thekla."
           className="mt-0.5 block w-full resize-y rounded-md border border-card-border bg-card px-2 py-1 text-xs font-normal"
         />
       </label>
@@ -114,7 +127,8 @@ export function VisualNote({
           onClick={() => {
             setEditing(false);
             setK(kind ?? "other");
-            setN(note ?? "");
+            setL(label ?? "");
+            setC(correction ?? "");
           }}
           className="min-h-8 px-1.5 text-xs font-semibold text-muted hover:text-foreground"
         >

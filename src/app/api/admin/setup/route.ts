@@ -6,6 +6,7 @@ import { appBaseUrl } from "@/lib/email";
 import { refreshThemesForArtist } from "@/lib/themes/refresh";
 import { describeNewPosts } from "@/lib/visual-notes";
 import { syncTourPage } from "@/lib/tour-page";
+import { suggestDatesFromPosts } from "@/lib/key-dates-from-posts";
 import { graphBaseFor } from "@/lib/instagram-graph";
 import { generateConceptPool } from "@/lib/concepts/generate";
 import { saveDraftGeneration } from "@/lib/concepts/store";
@@ -16,8 +17,8 @@ export const maxDuration = 300;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type Action = "status" | "posts" | "concepts" | "images" | "dates" | "ideas";
-const ACTIONS: Action[] = ["status", "posts", "concepts", "images", "dates", "ideas"];
+type Action = "status" | "posts" | "concepts" | "images" | "dates" | "add_dates" | "ideas";
+const ACTIONS: Action[] = ["status", "posts", "concepts", "images", "dates", "add_dates", "ideas"];
 
 /**
  * Admin-only setup for one account, a step at a time:
@@ -25,7 +26,9 @@ const ACTIONS: Action[] = ["status", "posts", "concepts", "images", "dates", "id
  *   posts     pull their posts and results from Instagram
  *   concepts  suggest and sort their concepts
  *   images    describe a batch of post images
- *   dates     { tour_page_url? } save and read their tour page (or skip)
+ *   dates     { tour_page_url? } read recent captions for dates, and save
+ *             and read their tour page if given (or skip)
+ *   add_dates add every waiting suggested date to their dates
  *   ideas     write the first week as a draft (artists only)
  * Every action returns the fresh status, so the panel just redraws.
  * Publishing goes through /api/admin/publish-concepts as before.
@@ -79,6 +82,10 @@ export async function POST(request: Request) {
       const done = await describeNewPosts(admin, artistId, graphBaseFor(p.instagram_auth), String(p.instagram_access_token));
       note = `${done} described`;
     } else if (action === "dates") {
+      // Dates they've announced in captions ("6 Nov at the Cavendish"),
+      // so the first week knows about them. Accounts that aren't live
+      // aren't read by the regular sync yet.
+      const fromCaptions = await suggestDatesFromPosts(admin, artistId).catch(() => 0);
       if (tourPageUrl !== undefined) {
         const url = tourPageUrl ? normalise(tourPageUrl) : null;
         if (tourPageUrl && !url) throw new Error("That doesn't look like a web address");
@@ -94,7 +101,10 @@ export async function POST(request: Request) {
               : `${r?.found ?? 0} upcoming dates found, ${r?.added ?? 0} waiting to add`;
         }
       }
+      if (fromCaptions > 0) note = `${note ? `${note} · ` : ""}${fromCaptions} spotted in captions`;
       await admin.from("profiles").update({ setup_dates_done: true }).eq("id", artistId);
+    } else if (action === "add_dates") {
+      note = `${await addWaitingDates(admin, artistId)} added`;
     } else if (action === "ideas") {
       const { data: p } = await admin.from("profiles").select("account_type").eq("id", artistId).maybeSingle();
       if (!getsWeeklyIdeas(p?.account_type)) throw new Error("Weekly ideas are for artist accounts");
@@ -111,6 +121,42 @@ export async function POST(request: Request) {
     const state = await loadSetupState(admin, artistId).catch(() => null);
     return NextResponse.json({ error: message, state }, { status: 502 });
   }
+}
+
+/** Adds every waiting upcoming suggestion as a date (admin, so no RPC access check). */
+async function addWaitingDates(admin: ReturnType<typeof createServiceRoleClient>, artistId: string): Promise<number> {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
+  const [{ data: rows }, { data: artist }] = await Promise.all([
+    admin
+      .from("date_suggestions")
+      .select("id, title, event_date, event_type, notes, source")
+      .eq("artist_id", artistId)
+      .eq("status", "pending")
+      .gte("event_date", today),
+    admin.from("artists").select("owner_user_id").eq("id", artistId).maybeSingle(),
+  ]);
+  let added = 0;
+  for (const r of rows ?? []) {
+    const { data: ev, error } = await admin
+      .from("events")
+      .insert({
+        artist_id: artistId,
+        user_id: artist?.owner_user_id ?? null,
+        title: r.title,
+        event_date: r.event_date,
+        event_type: r.event_type,
+        notes: r.notes ?? (r.source === "tour_page" ? "From your tour page" : "Spotted in your Instagram post"),
+      })
+      .select("id")
+      .single();
+    if (error || !ev) continue;
+    await admin
+      .from("date_suggestions")
+      .update({ status: "accepted", event_id: ev.id, status_changed_at: new Date().toISOString() })
+      .eq("id", r.id);
+    added++;
+  }
+  return added;
 }
 
 function summarise(r: Record<string, unknown>): string {

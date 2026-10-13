@@ -16,7 +16,14 @@ export type SetupState = {
   posts: { count: number; lastSynced: string | null };
   concepts: { names: string[] };
   images: { described: number; total: number };
-  dates: { done: boolean; tourPageUrl: string | null; upcoming: number; waiting: number };
+  dates: {
+    done: boolean;
+    tourPageUrl: string | null;
+    upcoming: number;
+    waiting: number;
+    /** A few of the waiting suggestions, soonest first. */
+    waitingList: { title: string; date: string }[];
+  };
   draft: { generationId: string; createdAt: string; focus: string | null; ideas: { title: string; why: string | null }[] } | null;
   live: boolean;
 };
@@ -46,10 +53,12 @@ export async function loadSetupState(admin: SupabaseClient, artistId: string): P
     admin.from("events").select("id", { count: "exact", head: true }).eq("artist_id", artistId).gte("event_date", today),
     admin
       .from("date_suggestions")
-      .select("id", { count: "exact", head: true })
+      .select("title, event_date", { count: "exact" })
       .eq("artist_id", artistId)
       .eq("status", "pending")
-      .gte("event_date", today),
+      .gte("event_date", today)
+      .order("event_date")
+      .limit(6),
     admin
       .from("concept_generations")
       .select("id, created_at, focus")
@@ -95,6 +104,7 @@ export async function loadSetupState(admin: SupabaseClient, artistId: string): P
       tourPageUrl: p.tour_page_url ? String(p.tour_page_url) : null,
       upcoming,
       waiting: waitingRes.count ?? 0,
+      waitingList: (waitingRes.data ?? []).map((w) => ({ title: String(w.title), date: String(w.event_date) })),
     },
     draft,
     live: p.board_enabled === true,

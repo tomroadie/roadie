@@ -206,12 +206,45 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
         <div className="flex flex-col gap-2">
           <span className="text-muted">
             {s.dates.done
-              ? `${s.dates.upcoming} upcoming${s.dates.waiting ? `, ${s.dates.waiting} waiting to add on their Dates page` : ""}${
+              ? `${s.dates.upcoming} upcoming${s.dates.waiting ? `, ${s.dates.waiting} waiting to add` : ""}${
                   s.dates.tourPageUrl ? " · tour page set" : ""
                 }`
-              : "Their tour or events page, if they have one. Optional."}
+              : "Reads their recent captions for dates, plus their tour or events page if they have one."}
             {notes.dates ? ` · ${notes.dates}` : ""}
+            {s.dates.done && running !== "dates" ? (
+              <button type="button" onClick={() => void run("dates", "dates")} className="ml-2 font-semibold text-brand hover:underline">
+                Look again
+              </button>
+            ) : null}
           </span>
+          {s.dates.waiting > 0 ? (
+            <div className="flex flex-col gap-1.5 rounded-lg border border-card-border bg-card p-3">
+              <ul className="flex flex-col gap-0.5">
+                {s.dates.waitingList.map((w, n) => (
+                  <li key={n}>
+                    <span className="text-muted">
+                      {new Date(w.date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                    </span>{" "}
+                    <span className="font-semibold text-foreground">{w.title}</span>
+                  </li>
+                ))}
+                {s.dates.waiting > s.dates.waitingList.length ? (
+                  <li className="text-muted">and {s.dates.waiting - s.dates.waitingList.length} more</li>
+                ) : null}
+              </ul>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={running !== null}
+                  onClick={() => void run("dates", "add_dates")}
+                  className="min-h-9 rounded-lg bg-ink px-3 text-sm font-semibold text-ink-foreground disabled:opacity-50"
+                >
+                  Add all {s.dates.waiting}
+                </button>
+                <span className="self-center text-xs text-muted">Or pick them one by one on their Dates page.</span>
+              </div>
+            </div>
+          ) : null}
           {!s.dates.done || s.dates.tourPageUrl ? (
             <form
               className="flex flex-wrap gap-2"

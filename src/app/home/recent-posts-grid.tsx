@@ -1,6 +1,11 @@
 import type { PostResult } from "@/lib/post-results";
 import { formatName, formatRatio } from "@/lib/themes/load";
 import { VisualNote } from "@/components/visual-note";
+import { describeSignal } from "@/lib/performance";
+
+function cap(t: string): string {
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
 
 const SHOWN = 6;
 
@@ -24,7 +29,11 @@ function chip(post: PostResult): { text: string; cls: string } {
 export function RecentPostsGrid({ posts, artistId }: { posts: PostResult[]; artistId: string }) {
   const shown = posts.slice(0, SHOWN);
   if (shown.length === 0) return null;
-  const metric = shown.some((p) => p.comparison?.metric === "interactions") ? "likes and comments" : "reach";
+  const metric = shown.some((p) => p.comparison?.metric === "interactions")
+    ? "likes and comments"
+    : shown.some((p) => p.comparison?.signals?.some((sg) => sg.name !== "reach"))
+      ? "overall"
+      : "reach";
 
   return (
     <section aria-labelledby="recent-posts-heading" className="flex flex-col gap-3">
@@ -32,7 +41,7 @@ export function RecentPostsGrid({ posts, artistId }: { posts: PostResult[]; arti
         <h2 id="recent-posts-heading" className="text-xl font-bold text-foreground">
           Recent posts
         </h2>
-        <span className="text-sm text-muted">vs your usual {metric}</span>
+        <span className="text-sm text-muted">{metric === "overall" ? "vs your usual" : `vs your usual ${metric}`}</span>
       </div>
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {shown.map((p) => {
@@ -68,6 +77,9 @@ export function RecentPostsGrid({ posts, artistId }: { posts: PostResult[]; arti
                 <span className="truncate text-muted">{p.themeName ?? "Not sorted yet"}</span>
                 {c.text ? <span className={`shrink-0 font-semibold ${c.cls}`}>{c.text}</span> : null}
               </div>
+              {p.comparison?.settled && p.comparison.standout && p.comparison.standout.name !== "reach" ? (
+                <p className="text-xs font-semibold text-brand">{cap(describeSignal(p.comparison.standout))}</p>
+              ) : null}
               <VisualNote
                 artistId={artistId}
                 postId={p.id}

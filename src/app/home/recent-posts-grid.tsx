@@ -7,7 +7,12 @@ function chip(post: PostResult): { text: string; cls: string } {
   if (post.excluded) return { text: "Ad or collab", cls: "text-muted" };
   const c = post.comparison;
   if (!c) return { text: "", cls: "text-muted" };
-  if (!c.settled) return { text: "Settling", cls: "text-muted" };
+  if (!c.settled) {
+    if (!post.early) return { text: "Settling", cls: "text-muted" };
+    const e = post.early;
+    const cls = e.band === "well_above" || e.band === "above" ? "text-brand" : "text-muted";
+    return { text: `${formatRatio(e.ratio)} at 24h`, cls };
+  }
   const text = formatRatio(c.ratio);
   if (c.band === "well_above" || c.band === "above") return { text, cls: "text-brand" };
   if (c.band === "quieter") return { text, cls: "text-quiet" };

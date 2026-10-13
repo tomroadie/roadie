@@ -8,6 +8,7 @@ import { linkPostsToConcepts } from "@/lib/concepts/link-posts";
 import { sendPostResultEmail } from "@/lib/post-result-email";
 import { refreshThemesForArtist } from "@/lib/themes/refresh";
 import { suggestDatesFromPosts } from "@/lib/key-dates-from-posts";
+import { bestSustainedRate, fetchPostDatesForYear } from "@/lib/pace";
 
 
 type ProfileRow = {
@@ -17,6 +18,7 @@ type ProfileRow = {
   board_enabled?: boolean | null;
   instagram_auth?: string | null;
   account_type?: string | null;
+  prime_computed_at?: string | null;
 };
 
 type MediaItem = {
@@ -71,7 +73,24 @@ function mapPostType(
 
 // Only fetch Insights for posts still within this window — matches the
 // weekly recap's "final metrics" horizon (see SPEC-performance-recap.md §4).
-const INSIGHTS_MAX_AGE_DAYS = 8;
+/**
+ * Runs every 3 hours. Posts younger than this get fresh numbers on every
+ * run; older ones only on the day's full run; past FULL_MAX_AGE_DAYS their
+ * numbers have stopped moving and are left alone.
+ */
+const FRESH_MAX_AGE_DAYS = 3;
+const FULL_MAX_AGE_DAYS = 30;
+/** The 24-hour snapshot is taken on the first run after a post turns 24h, if within this many hours. */
+const SNAPSHOT_FROM_HOURS = 24;
+const SNAPSHOT_UNTIL_HOURS = 36;
+
+/** The day's full run: the one that falls between 6am and 9am UK time. */
+function isFullRun(now: Date): boolean {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Europe/London" }).format(now)
+  );
+  return hour >= 6 && hour < 9;
+}
 
 function daysSinceIso(iso: string | undefined): number | null {
   if (!iso) return null;
@@ -286,7 +305,7 @@ export async function GET(request: Request) {
     const onlyArtist = new URL(request.url).searchParams.get("artist_id")?.trim() || null;
     let profilesQuery = supabase
       .from("profiles")
-      .select("id, instagram_user_id, instagram_access_token, board_enabled, instagram_auth, account_type")
+      .select("id, instagram_user_id, instagram_access_token, board_enabled, instagram_auth, account_type, prime_computed_at")
       .not("instagram_access_token", "is", null)
       .not("instagram_user_id", "is", null);
     if (onlyArtist) profilesQuery = profilesQuery.eq("id", onlyArtist);
@@ -318,6 +337,8 @@ export async function GET(request: Request) {
     let emailsSent = 0;
     const errors: string[] = [];
     const loggedMediaTypes = new Set<string>();
+    // ?full=1 forces a full refresh (older posts too), e.g. from admin Sync now.
+    const fullRun = isFullRun(new Date()) || new URL(request.url).searchParams.get("full") === "1";
 
     for (const profile of connectedProfiles) {
       const artistId = String(profile.id ?? "").trim();
@@ -357,6 +378,22 @@ export async function GET(request: Request) {
 
         const posts = mediaJson.data ?? [];
         if (posts.length === 0) continue;
+
+        // The prime (their best sustained weekly rate) from a year of post
+        // dates: worked out the first time and then monthly.
+        const primeAt = (profile as ProfileRow).prime_computed_at;
+        if (!primeAt || Date.now() - Date.parse(primeAt) > 30 * 86400000) {
+          try {
+            const dates = await fetchPostDatesForYear(graphBase, instagramUserId, accessToken);
+            const prime = bestSustainedRate(dates);
+            await supabase
+              .from("profiles")
+              .update({ prime_suggested: prime, prime_computed_at: new Date().toISOString() })
+              .eq("id", artistId);
+          } catch (e) {
+            errors.push(`${artistId}: working out prime failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+          }
+        }
 
         // Today's follower count, kept daily so growth can be shown later.
         let followers = 0;
@@ -401,7 +438,7 @@ export async function GET(request: Request) {
 
         const { data: existingRows, error: existingError } = await supabase
           .from("post_performance")
-          .select("instagram_post_id, reach")
+          .select("instagram_post_id, reach, reach_24h")
           .eq("artist_id", artistId)
           .in("instagram_post_id", postIds);
 
@@ -417,6 +454,9 @@ export async function GET(request: Request) {
         const missingReach = new Set(
           (existingRows ?? []).filter((row) => row.reach == null).map((row) => row.instagram_post_id)
         );
+        const needsSnapshot = new Set(
+          (existingRows ?? []).filter((row) => row.reach_24h == null).map((row) => row.instagram_post_id)
+        );
         const scrapedAt = new Date().toISOString();
 
         await inBatches(posts, 5, async (post) => {
@@ -429,9 +469,16 @@ export async function GET(request: Request) {
 
           const ageDays = daysSinceIso(post.timestamp);
           const withinInsightsWindow =
-            (ageDays !== null && ageDays <= INSIGHTS_MAX_AGE_DAYS) ||
+            (ageDays !== null && ageDays <= FRESH_MAX_AGE_DAYS) ||
+            (fullRun && ageDays !== null && ageDays <= FULL_MAX_AGE_DAYS) ||
             !existingIds.has(instagramPostId) ||
             missingReach.has(instagramPostId);
+          const ageHours = ageDays === null ? null : ageDays * 24;
+          const takeSnapshot =
+            ageHours !== null &&
+            ageHours >= SNAPSHOT_FROM_HOURS &&
+            ageHours < SNAPSHOT_UNTIL_HOURS &&
+            (needsSnapshot.has(instagramPostId) || !existingIds.has(instagramPostId));
 
           let insights: PostInsights = {
             reach: null,
@@ -477,6 +524,13 @@ export async function GET(request: Request) {
                       raw: insights.raw,
                     }
                   : {}),
+                ...(takeSnapshot
+                  ? {
+                      reach_24h: insights.reach,
+                      interactions_24h: likes + comments,
+                      snapshot_24h_at: scrapedAt,
+                    }
+                  : {}),
               })
               .eq("artist_id", artistId)
               .eq("instagram_post_id", instagramPostId);
@@ -514,6 +568,9 @@ export async function GET(request: Request) {
                 saves: insights.saves,
                 shares: insights.shares,
                 raw: insights.raw,
+                ...(takeSnapshot
+                  ? { reach_24h: insights.reach, interactions_24h: likes + comments, snapshot_24h_at: scrapedAt }
+                  : {}),
               });
 
             if (insertError) {

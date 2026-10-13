@@ -286,6 +286,153 @@ function IdeaMatchPrompt({
   );
 }
 
+export type PaceInfo = {
+  /** The most they should post in a week at their best (confirmed, else suggested). */
+  prime: number;
+  primeSuggested: number | null;
+  primeConfirmed: boolean;
+  /** "Up for n+1 next week?" when the week's target is hit, else null. */
+  offerNext: number | null;
+  stepAnswer: "accepted" | "declined" | null;
+};
+
+async function postPace(body: Record<string, unknown>): Promise<void> {
+  const res = await fetch("/api/pace", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const json = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(json.error ?? "Something went wrong");
+  }
+}
+
+/** The step-up question and the prime, at the foot of the week strip. */
+function PaceControls({ pace, artistId, target }: { pace: PaceInfo; artistId: string; target: number }) {
+  const [answer, setAnswer] = useState(pace.stepAnswer);
+  const [confirmed, setConfirmed] = useState(pace.primeConfirmed);
+  const [prime, setPrime] = useState(pace.prime);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(pace.prime));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function run(body: Record<string, unknown>, after: () => void) {
+    setBusy(true);
+    setError(null);
+    try {
+      await postPace({ artist_id: artistId, ...body });
+      after();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const btn = "min-h-10 rounded-lg px-3 text-sm font-semibold disabled:opacity-50";
+  const offer = pace.offerNext !== null && !answer;
+
+  return (
+    <div className="mt-4 flex flex-col gap-3 border-t border-ink-foreground/15 pt-4">
+      {offer ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm font-semibold">Up for {pace.offerNext} next week?</p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => run({ action: "step", accept: true }, () => setAnswer("accepted"))}
+            className={`${btn} bg-accent text-ink`}
+          >
+            Yes, {pace.offerNext}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => run({ action: "step", accept: false }, () => setAnswer("declined"))}
+            className={`${btn} border border-ink-foreground/30 text-ink-foreground`}
+          >
+            Keep at {target}
+          </button>
+        </div>
+      ) : answer === "accepted" ? (
+        <p className="text-sm text-accent">Next week goes up to {target + 1}.</p>
+      ) : answer === "declined" ? (
+        <p className="text-sm text-ink-muted">Staying at {target} next week.</p>
+      ) : null}
+
+      {editing ? (
+        <form
+          className="flex flex-wrap items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const n = Number(draft);
+            if (!Number.isInteger(n) || n < 1 || n > 21) {
+              setError("Pick between 1 and 21 posts a week.");
+              return;
+            }
+            void run({ action: "prime", prime: n }, () => {
+              setPrime(n);
+              setConfirmed(true);
+              setEditing(false);
+            });
+          }}
+        >
+          <label htmlFor="prime-input" className="text-sm">
+            At my best I&rsquo;d post
+          </label>
+          <input
+            id="prime-input"
+            type="number"
+            min={1}
+            max={21}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            className="min-h-10 w-20 rounded-lg border border-ink-foreground/30 bg-transparent px-2 text-ink-foreground"
+          />
+          <span className="text-sm">a week</span>
+          <button type="submit" disabled={busy} className={`${btn} bg-accent text-ink`}>
+            Save
+          </button>
+          <button type="button" onClick={() => setEditing(false)} className={`${btn} text-ink-muted`}>
+            Cancel
+          </button>
+        </form>
+      ) : !confirmed && pace.primeSuggested !== null ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-ink-foreground/85">
+            At your best you&rsquo;ve posted about {pace.primeSuggested} a week. Tempo will build you up towards that.
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => run({ action: "prime", prime: pace.primeSuggested }, () => setConfirmed(true))}
+            className={`${btn} border border-ink-foreground/30 text-ink-foreground`}
+          >
+            Sounds right
+          </button>
+          <button type="button" onClick={() => setEditing(true)} className={`${btn} text-ink-muted underline underline-offset-4`}>
+            Change
+          </button>
+        </div>
+      ) : (
+        <p className="text-xs text-ink-muted">
+          Building towards {prime} a week.{" "}
+          <button type="button" onClick={() => setEditing(true)} className="underline underline-offset-4">
+            Change
+          </button>
+        </p>
+      )}
+      {error ? (
+        <p role="alert" className="text-sm font-semibold text-accent">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export type WeekProgress = {
   target: number;
   /** Ideas they marked "I posted this" since their week started. */
@@ -386,8 +533,11 @@ export function ConceptBoard({
   unmatchedPosts = [],
   postedUnlinked = [],
   weekLabel,
+  pace,
   children,
 }: {
+  /** Prime and the "n+1?" question; absent until the pace data loads. */
+  pace?: PaceInfo;
   initialBoard: BoardState;
   /** e.g. "13–19 Oct", shown on the week strip. */
   weekLabel?: string;
@@ -497,6 +647,7 @@ export function ConceptBoard({
           <p className="mt-4 text-sm text-ink-muted">Your week&rsquo;s just started. One post is a good week.</p>
         ) : null
       ) : null}
+      {pace && artistId && progress ? <PaceControls pace={pace} artistId={artistId} target={progress.target} /> : null}
     </section>
   );
 

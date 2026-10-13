@@ -5,7 +5,8 @@ import Link from "next/link";
 import { AppNavWrapper } from "@/components/app-nav-wrapper";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { WeeklyPlanSection } from "@/app/dashboard/weekly-plan-section";
-import { ConceptBoard, type UnmatchedPost, type WeekProgress } from "./concept-board";
+import { ConceptBoard, type PaceInfo, type UnmatchedPost, type WeekProgress } from "./concept-board";
+import { effectivePrime, shouldOfferStep, type WeekRow } from "@/lib/pace";
 import { PostResultsSection } from "./post-results";
 import { loadPostResults, type PostResultsData } from "@/lib/post-results";
 import { loadBoard } from "@/lib/concepts/store";
@@ -290,7 +291,7 @@ export default async function HomePage({
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "artist_name, genre, instagram_handle, plan, plan_override, voice_description, posting_frequency, is_managed, instagram_user_id, instagram_access_token, trial_started_at, board_enabled, week_start_day, weekly_target, account_type"
+      "artist_name, genre, instagram_handle, plan, plan_override, voice_description, posting_frequency, is_managed, instagram_user_id, instagram_access_token, trial_started_at, board_enabled, week_start_day, weekly_target, account_type, prime_target, prime_suggested"
     )
     .eq("id", activeArtistId)
     .maybeSingle();
@@ -651,6 +652,7 @@ export default async function HomePage({
   // Board artists: their own week, progress so far, and the next 4 weeks of dates.
   const week = board ? boardWeek(profile?.week_start_day) : null;
   let weekProgress: WeekProgress | undefined;
+  let pace: PaceInfo | undefined;
   let comingUp: EventRow[] = [];
   let postResults: PostResultsData | null = null;
   let unmatchedPosts: UnmatchedPost[] = [];
@@ -694,6 +696,29 @@ export default async function HomePage({
       })),
     };
     comingUp = (eventsRes.data ?? []) as EventRow[];
+
+    // Posting pace: the prime and whether to offer "n+1?" this week.
+    const prime = effectivePrime(profile ?? {});
+    const { data: weekRows } = await supabase
+      .from("weekly_targets")
+      .select("week_start, target, posted, outcome, step_offer")
+      .eq("artist_id", activeArtistId)
+      .lte("week_start", week.start)
+      .order("week_start", { ascending: false })
+      .limit(3);
+    const rowsDesc = (weekRows ?? []) as WeekRow[];
+    const thisWeek = rowsDesc[0]?.week_start === week.start ? rowsDesc[0] : null;
+    const finished = thisWeek ? rowsDesc.slice(1) : rowsDesc;
+    const postedThisWeek = Math.max(weekProgress.marked, weekProgress.verified.length);
+    pace = {
+      prime,
+      primeSuggested: typeof profile?.prime_suggested === "number" ? profile.prime_suggested : null,
+      primeConfirmed: typeof profile?.prime_target === "number",
+      offerNext: shouldOfferStep({ target: weekProgress.target, prime, postedThisWeek, thisWeek, finished })
+        ? weekProgress.target + 1
+        : null,
+      stepAnswer: thisWeek?.step_offer ?? null,
+    };
 
     // Posts Instagram spotted this week that aren't linked to an idea yet:
     // the board asks "Was this one of your ideas?".
@@ -1234,6 +1259,7 @@ export default async function HomePage({
             unmatchedPosts={unmatchedPosts}
             postedUnlinked={postedUnlinked}
             weekLabel={week.label}
+            pace={pace}
             nextIdeasDay={
               ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][
                 typeof profile?.week_start_day === "number" ? profile.week_start_day : 1

@@ -27,6 +27,9 @@ export type WeeklyOutcome = {
   published: boolean;
   emailed: boolean;
   warnings: string[];
+  /** The model that wrote the ideas, and how long it took. */
+  model: string;
+  seconds: number;
 };
 
 /**
@@ -109,7 +112,9 @@ export async function runWeeklyForArtist(
     }
   }
 
+  const genStarted = Date.now();
   const result = await generateConceptPool(admin, artistId, { now });
+  const genSeconds = Math.round((Date.now() - genStarted) / 1000);
   // First week: the generator derives a starting target from history.
   const target = Math.min(result.context.weeklyTarget, prime);
   if (previousTarget === null || target !== result.context.weeklyTarget) {
@@ -126,6 +131,9 @@ export async function runWeeklyForArtist(
     previous_target: previousTarget,
     target,
     pace_reason: paceReason,
+    model: result.model,
+    attempts: result.attempts,
+    seconds: genSeconds,
   });
 
   // Sort the new ideas (and any unsorted posts) into the artist's themes.
@@ -155,6 +163,8 @@ export async function runWeeklyForArtist(
     published,
     emailed,
     warnings,
+    model: result.model,
+    seconds: genSeconds,
   };
 }
 

@@ -7,6 +7,7 @@ import type { ConceptExecution } from "./types";
 import { effectivePrime, nextTarget, type WeekRow } from "@/lib/pace";
 import { boardWeek } from "@/lib/board-week";
 import { refreshThemesForArtist } from "@/lib/themes/refresh";
+import { syncBriefDates } from "@/lib/brief-dates";
 
 export const BOARD_TIMEZONE = "Europe/London";
 
@@ -123,6 +124,13 @@ export async function runWeeklyForArtist(
       const { error: tErr } = await admin.from("profiles").update({ weekly_target: next.target }).eq("id", artistId);
       if (tErr) throw new Error(`target: ${tErr.message}`);
     }
+  }
+
+  // New dates in their plan go to Dates as suggestions (only when the notes changed).
+  try {
+    await syncBriefDates(admin, artistId, { now });
+  } catch (e) {
+    console.error("weekly: plan dates", e);
   }
 
   const genStarted = Date.now();

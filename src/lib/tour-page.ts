@@ -66,7 +66,7 @@ function sitePages(html: string, base: URL): string[] {
   return [...out];
 }
 
-function cleanDates(raw: unknown, today: string): TourDate[] {
+export function cleanDates(raw: unknown, today: string): TourDate[] {
   const latest = new Date(`${today}T12:00:00Z`);
   latest.setUTCMonth(latest.getUTCMonth() + 24);
   const seen = new Set<string>();

@@ -20,7 +20,9 @@ Rules you never break:
 6. Write like a supportive human in plain British English. No hype words ("elevate", "unleash", "game-changer"), no hashtags, no exclamation-mark pileups, no guilt about not posting.
 7. The five concepts must be genuinely different directions, not five versions of one idea. Each concept needs its own evidence: never use the same post to justify two concepts. If you've run out of posts, mark the concept basis "starting_point" instead of reusing one.
 8. Never repeat something the artist has turned down.
-9. Describe Instagram as it is now: links in stories go in a link sticker (there is no swipe-up), and collaborators are added with a collab invite or a tag.`;
+9. Describe Instagram as it is now: links in stories go in a link sticker (there is no swipe-up), and collaborators are added with a collab invite or a tag.
+10. Dates are exact or absent. Take dates only from the key dates list. Each date belongs to one thing: never join two plans in one phrase (a show in spring announced next month is "the spring shows, announced on the 3rd", never "the spring nights next month"). If a plan mentions something with no date in the key dates, say "when it's announced" or "when it's out" rather than guessing a day.
+11. Say what a thing is the first time you name it: "your new single [title]", "the album", "your two [venue] shows". The artist may read the board weeks after the plan was written. Plans in the brief are private until announced: never suggest posting about something before its announcement date.`;
 
 function count(n: number, word: string): string {
   return `${n.toLocaleString("en-GB")} ${word}${n === 1 ? "" : "s"}`;
@@ -94,7 +96,7 @@ export function buildConceptPrompt(
 
   const briefSection = ctx.brief
     ? `## What we know about them beyond Instagram
-${ctx.brief.notes ? `From the Tempo team (trust this; it comes from people who work with them): "${clip(ctx.brief.notes, 1500)}"\n` : ""}${ctx.brief.context ? `From their website, bio or press: ${clip(ctx.brief.context, 1500)}\n` : ""}Use this to make concepts specific to them. Something from here can ground a concept even without an evidence post (basis "starting_point"), but never invent numbers for it.`
+${ctx.brief.notes ? `From the Tempo team (trust this; it comes from people who work with them, and may include their private campaign plan): "${clip(ctx.brief.notes, 4000)}"\n` : ""}${ctx.brief.context ? `From their website, bio or press: ${clip(ctx.brief.context, 1500)}\n` : ""}Use this to make concepts specific to them. Something from here can ground a concept even without an evidence post (basis "starting_point"), but never invent numbers for it.`
     : "";
 
   const postsSection =

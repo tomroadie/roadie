@@ -12,6 +12,7 @@ import { generateConceptPool } from "@/lib/concepts/generate";
 import { saveDraftGeneration } from "@/lib/concepts/store";
 import { getsWeeklyIdeas } from "@/lib/account-types";
 import { loadSetupState } from "@/lib/admin-setup";
+import { syncBriefDates } from "@/lib/brief-dates";
 import { readArtistBrief } from "@/lib/artist-brief";
 
 export const maxDuration = 300;
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
     action = ACTIONS.includes(body.action as Action) ? (body.action as Action) : "status";
     if (typeof body.tour_page_url === "string") tourPageUrl = body.tour_page_url.trim();
     if (typeof body.brief_links === "string") briefLinks = body.brief_links.trim().slice(0, 2000);
-    if (typeof body.brief_notes === "string") briefNotes = body.brief_notes.trim().slice(0, 3000);
+    if (typeof body.brief_notes === "string") briefNotes = body.brief_notes.trim().slice(0, 8000);
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -130,6 +131,15 @@ export async function POST(request: Request) {
         if (briefLinks !== undefined) {
           const r = await readArtistBrief(admin, artistId);
           if (r.tried > 0) note = r.read > 0 ? `Read ${r.read} of ${r.tried} links` : "Couldn't read those links";
+        }
+        if (briefNotes) {
+          // Dates in their plan become suggestions on Dates (only when the notes changed).
+          try {
+            const d = await syncBriefDates(admin, artistId);
+            if (d && d.added > 0) note = `${note ? `${note} · ` : ""}${d.added} ${d.added === 1 ? "date" : "dates"} from the plan to add`;
+          } catch (e) {
+            console.error("setup: plan dates", e);
+          }
         }
       }
       await admin.from("profiles").update({ setup_brief_done: true }).eq("id", artistId);

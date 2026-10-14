@@ -18,16 +18,14 @@ export function TourPageForm({
   checkedAt,
   found,
   note,
-  hasBandsintownKey,
 }: {
   artistId: string;
   url: string | null;
   status: "ok" | "failed" | null;
   checkedAt: string | null;
   found: number | null;
-  /** What Tempo couldn't read, e.g. a Bandsintown widget. */
+  /** What Tempo couldn't read, e.g. dates that load in a widget. */
   note: string | null;
-  hasBandsintownKey: boolean;
 }) {
   const router = useRouter();
   const [value, setValue] = useState(url ?? "");
@@ -35,7 +33,6 @@ export function TourPageForm({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(!url);
-  const [bitKey, setBitKey] = useState("");
 
   async function save(next: string) {
     setSaving(true);
@@ -45,7 +42,7 @@ export function TourPageForm({
       const res = await fetch("/api/tour-page", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ artistId, url: next, ...(bitKey.trim() ? { bandsintown_key: bitKey } : {}) }),
+        body: JSON.stringify({ artistId, url: next }),
       });
       const json = (await res.json().catch(() => ({}))) as {
         error?: string;
@@ -148,16 +145,6 @@ export function TourPageForm({
           placeholder="e.g. yourband.com"
           className="min-h-10 min-w-0 flex-[1_1_260px] rounded-lg border border-card-border bg-background px-3 text-sm text-foreground outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
         />
-        {note?.includes("Bandsintown") || hasBandsintownKey ? (
-          <input
-            type="text"
-            value={bitKey}
-            onChange={(e) => setBitKey(e.target.value)}
-            aria-label="Bandsintown API key"
-            placeholder={hasBandsintownKey ? "Bandsintown key saved (paste a new one to change)" : "Bandsintown API key: Bandsintown for Artists › Settings › General › Get API Key"}
-            className="min-h-10 w-full rounded-lg border border-card-border bg-background px-3 text-sm outline-none placeholder:text-muted focus:border-brand"
-          />
-        ) : null}
         <button
           type="submit"
           disabled={saving}

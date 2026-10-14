@@ -47,7 +47,6 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
   const [notes, setNotes] = useState<Partial<Record<StepId, string>>>({});
   const [failed, setFailed] = useState<Partial<Record<StepId, string>>>({});
   const [tourUrl, setTourUrl] = useState("");
-  const [bitKey, setBitKey] = useState("");
   const [briefLinks, setBriefLinks] = useState("");
   const [briefNotes, setBriefNotes] = useState("");
   const [autoRun, setAutoRun] = useState(false);
@@ -259,7 +258,6 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
                 e.preventDefault();
                 const next = await run("dates", "dates", {
                   tour_page_url: tourUrl,
-                  ...(bitKey.trim() ? { bandsintown_key: bitKey } : {}),
                 });
                 if (next && autoRun === false && next.getsIdeas && !next.draft && !next.live) void runSetup(next);
               }}
@@ -274,15 +272,6 @@ export function SetupPanel({ artistId, onTypeChange }: { artistId: string; onTyp
               <button type="submit" disabled={running !== null} className="min-h-9 rounded-lg bg-ink px-3 text-sm font-semibold text-ink-foreground disabled:opacity-50">
                 {s.dates.tourPageUrl ? "Read again" : "Read it"}
               </button>
-              {s.dates.siteNote?.includes("Bandsintown") || s.dates.hasBandsintownKey ? (
-                <input
-                  value={bitKey}
-                  onChange={(e) => setBitKey(e.target.value)}
-                  aria-label="Bandsintown API key"
-                  placeholder={s.dates.hasBandsintownKey ? "Bandsintown key saved (paste a new one to change)" : "Bandsintown API key (Bandsintown for Artists › Settings › General)"}
-                  className="min-h-9 w-full rounded-lg border border-card-border bg-card px-2 text-sm"
-                />
-              ) : null}
               {!s.dates.done ? (
                 <button
                   type="button"

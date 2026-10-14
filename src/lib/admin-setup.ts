@@ -21,7 +21,6 @@ export type SetupState = {
     tourPageUrl: string | null;
     /** What Tempo couldn't read on the site, and why. */
     siteNote: string | null;
-    hasBandsintownKey: boolean;
     upcoming: number;
     waiting: number;
     /** A few of the waiting suggestions, soonest first. */
@@ -49,7 +48,7 @@ export async function loadSetupState(admin: SupabaseClient, artistId: string): P
   const [profileRes, postsRes, lastRes, describedRes, themesRes, eventsRes, waitingRes, draftRes] = await Promise.all([
     admin
       .from("profiles")
-      .select("artist_name, instagram_handle, account_type, instagram_user_id, instagram_access_token, tour_page_url, board_enabled, setup_dates_done, brief_links, brief_notes, brief_context, setup_brief_done, tour_page_note, bandsintown_key, brief_checked_at")
+      .select("artist_name, instagram_handle, account_type, instagram_user_id, instagram_access_token, tour_page_url, board_enabled, setup_dates_done, brief_links, brief_notes, brief_context, setup_brief_done, tour_page_note, brief_checked_at")
       .eq("id", artistId)
       .maybeSingle(),
     admin.from("post_performance").select("id", { count: "exact", head: true }).eq("artist_id", artistId),
@@ -137,7 +136,6 @@ export async function loadSetupState(admin: SupabaseClient, artistId: string): P
       done: p.setup_dates_done === true || Boolean(p.tour_page_url) || upcoming > 0,
       tourPageUrl: p.tour_page_url ? String(p.tour_page_url) : null,
       siteNote: p.tour_page_note ? String(p.tour_page_note) : null,
-      hasBandsintownKey: Boolean(p.bandsintown_key),
       upcoming,
       waiting: waitingRes.count ?? 0,
       waitingList: (waitingRes.data ?? []).map((w) => ({ title: String(w.title), date: String(w.event_date) })),

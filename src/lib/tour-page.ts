@@ -9,10 +9,9 @@ import { EVENT_TYPES, type EventType } from "@/types/event";
  * An act's website (or a venue's what's-on page): read weekly for upcoming
  * dates of any kind (shows, releases, pre-orders), which become suggestions
  * to add. It reads the page given plus up to three of the site's own tour,
- * music or news pages. Dates that load from a Bandsintown widget can't be
- * read from the page, so they come from Bandsintown directly when the act's
- * API key is saved. With no brief links set, the same pages also fill the
- * artist brief.
+ * music or news pages. Dates that load in a widget (Bandsintown, Songkick)
+ * can't be read from the page; the note says so and they're added by hand.
+ * With no brief links set, the same pages also fill the artist brief.
  */
 
 const REREAD_DAYS = 7;
@@ -91,43 +90,13 @@ function cleanDates(raw: unknown, today: string): TourDate[] {
   return out;
 }
 
-/** Upcoming shows from Bandsintown, with the act's own API key. Null on failure. */
-async function bandsintownDates(artistName: string, key: string, today: string): Promise<TourDate[] | null> {
-  try {
-    const url = `https://rest.bandsintown.com/artists/${encodeURIComponent(artistName)}/events?app_id=${encodeURIComponent(key)}&date=upcoming`;
-    const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return null;
-    const json = (await res.json()) as unknown;
-    if (!Array.isArray(json)) return null;
-    return cleanDates(
-      json.map((e: Record<string, unknown>) => {
-        const v = (e.venue ?? {}) as Record<string, unknown>;
-        const place = [v.city, v.name].filter((x) => typeof x === "string" && x).join(", ");
-        const lineup = Array.isArray(e.lineup) ? (e.lineup as unknown[]).filter((x) => typeof x === "string" && x !== artistName) : [];
-        return {
-          date: typeof e.datetime === "string" ? e.datetime.slice(0, 10) : "",
-          title: (typeof e.title === "string" && e.title.trim()) || place || "Show",
-          event_type: "Show",
-          notes: [lineup.length ? `With ${lineup.slice(0, 4).join(", ")}` : null, typeof e.description === "string" ? clip(e.description, 80) : null]
-            .filter(Boolean)
-            .join(". ") || null,
-        };
-      }),
-      today
-    );
-  } catch {
-    return null;
-  }
-}
-
-export type WebsiteRead = { dates: TourDate[]; pages: string[]; widget: Widget; fromBandsintown: boolean };
+export type WebsiteRead = { dates: TourDate[]; pages: string[]; widget: Widget };
 
 /** Reads the site. Null when the first page couldn't be read at all. */
 export async function readWebsite(
   url: string,
   artistName: string,
-  today: string,
-  bandsintownKey?: string | null
+  today: string
 ): Promise<WebsiteRead | null> {
   let html: string | null = null;
   try {
@@ -163,16 +132,7 @@ export async function readWebsite(
     }
   }
 
-  let fromBandsintown = false;
-  if (bandsintownKey) {
-    const bit = await bandsintownDates(artistName, bandsintownKey, today);
-    if (bit) {
-      fromBandsintown = true;
-      const have = new Set(dates.map((d) => d.date));
-      dates = [...dates, ...bit.filter((d) => !have.has(d.date))];
-    }
-  }
-  return { dates, pages, widget, fromBandsintown };
+  return { dates, pages, widget };
 }
 
 /**
@@ -189,7 +149,7 @@ export async function syncTourPage(
   const now = opts.now ?? new Date();
   const { data: profile } = await admin
     .from("profiles")
-    .select("artist_name, tour_page_url, tour_page_checked_at, bandsintown_key, brief_links")
+    .select("artist_name, tour_page_url, tour_page_checked_at, brief_links")
     .eq("id", artistId)
     .maybeSingle();
   const url = profile?.tour_page_url ? String(profile.tour_page_url) : "";
@@ -199,7 +159,7 @@ export async function syncTourPage(
 
   const today = londonToday(now);
   const name = String(profile?.artist_name ?? "the act");
-  const read = await readWebsite(url, name, today, profile?.bandsintown_key ? String(profile.bandsintown_key) : null);
+  const read = await readWebsite(url, name, today);
   if (read === null) {
     await admin
       .from("profiles")
@@ -214,14 +174,11 @@ export async function syncTourPage(
     return { status: "failed", found: 0, added: 0, note: "Couldn't open that site." };
   }
 
+  const widgetName = read.widget === "bandsintown" ? "Bandsintown" : read.widget === "songkick" ? "Songkick" : null;
   const note =
-    read.widget === "bandsintown" && !read.fromBandsintown
-      ? profile?.bandsintown_key
-        ? "Bandsintown didn't return any dates with that key. Check it's this artist's key, and that their Bandsintown name matches their name in Tempo."
-        : "Their show dates load from Bandsintown, which Tempo can't read from the page. Add their Bandsintown API key to pick them up."
-      : read.widget === "songkick" && read.dates.length === 0
-        ? "Their show dates load from Songkick, which Tempo can't read from the page. Add dates by hand for now."
-        : null;
+    widgetName && read.dates.length === 0
+      ? `Their show dates load from ${widgetName}, which Tempo can't read from the page. Add dates by hand for now.`
+      : null;
 
   let added = 0;
   const dates = read.dates;

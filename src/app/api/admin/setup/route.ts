@@ -39,7 +39,6 @@ export async function POST(request: Request) {
   let artistId = "";
   let action: Action = "status";
   let tourPageUrl: string | null | undefined;
-  let bandsintownKey: string | undefined;
   let briefLinks: string | undefined;
   let briefNotes: string | undefined;
   try {
@@ -47,7 +46,6 @@ export async function POST(request: Request) {
     artistId = typeof body.artist_id === "string" ? body.artist_id.trim() : "";
     action = ACTIONS.includes(body.action as Action) ? (body.action as Action) : "status";
     if (typeof body.tour_page_url === "string") tourPageUrl = body.tour_page_url.trim();
-    if (typeof body.bandsintown_key === "string") bandsintownKey = body.bandsintown_key.trim().slice(0, 200);
     if (typeof body.brief_links === "string") briefLinks = body.brief_links.trim().slice(0, 2000);
     if (typeof body.brief_notes === "string") briefNotes = body.brief_notes.trim().slice(0, 3000);
   } catch {
@@ -105,7 +103,7 @@ export async function POST(request: Request) {
             tour_page_status: null,
             tour_page_found: null,
             tour_page_note: null,
-            ...(bandsintownKey !== undefined ? { bandsintown_key: bandsintownKey || null } : {}),
+            bandsintown_key: null,
           })
           .eq("id", artistId);
         if (url) {

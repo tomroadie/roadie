@@ -316,6 +316,14 @@ export function validatePool(
   // Strict (first attempt): anything short of a full, date-aware pool is
   // worth one retry. Lenient (retry): accept what holds up.
   const needed = opts.single ? 1 : opts.strict ? POOL_SIZE : MIN_VALID_CONCEPTS;
+  if (concepts.length < needed) {
+    const given = Array.isArray(o.concepts) ? o.concepts.length : 0;
+    errors.push(
+      Array.isArray(o.concepts)
+        ? `Only ${concepts.length} usable concepts of ${given} sent; need ${needed}`
+        : "No concepts list in the reply"
+    );
+  }
   if (
     !focus ||
     concepts.length < needed ||
@@ -361,7 +369,7 @@ export async function generateConceptPool(
   for (let attempt = 1; attempt <= 2; attempt++) {
     const res = await createMessage(anthropic, {
       model,
-      max_tokens: 4096,
+      max_tokens: 8000,
       system: CONCEPT_SYSTEM_PROMPT,
       messages,
     });
@@ -369,6 +377,9 @@ export async function generateConceptPool(
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("");
+    if (res.stop_reason !== "end_turn") {
+      console.warn("concepts: reply ended early", { artistId, attempt, stop: res.stop_reason, model: res.model, chars: text.length });
+    }
 
     let parsed: unknown;
     try {
@@ -385,8 +396,9 @@ export async function generateConceptPool(
         // res.model is what actually answered (the fallback, if the chosen model wasn't available).
         return { pool: { ...pool, concepts: orderForBoard(pool.concepts) }, context, warnings, attempts: attempt, model: res.model || model };
       }
-      lastErrors = errors;
+      lastErrors = errors.length ? errors : ["Reply didn't pass checks"];
     }
+    if (res.stop_reason === "max_tokens") lastErrors = [...lastErrors, "Reply was cut off at the length limit"];
 
     messages.push(
       { role: "assistant", content: text },
@@ -397,7 +409,7 @@ export async function generateConceptPool(
     );
   }
 
-  throw new Error(`Concept generation failed: ${lastErrors.join("; ")}`);
+  throw new Error(`Concept generation failed: ${lastErrors.join("; ") || "no reason given"}`);
 }
 
 /**

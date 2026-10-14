@@ -82,8 +82,21 @@ export async function runWeeklyForArtist(
 
   // Close last week: its target, what they posted, hit or miss. A quiet
   // week keeps its outcome. Then step the target on the two-week rules.
+  // Only a week they were on Tempo for counts: their board must have gone
+  // live before last week ended, or it would be a "miss" they never had.
+  const { data: firstLive } = await admin
+    .from("concept_generations")
+    .select("published_at")
+    .eq("artist_id", artistId)
+    .not("published_at", "is", null)
+    .order("published_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  const wasLiveLastWeek =
+    Boolean(firstLive?.published_at) && Date.parse(String(firstLive?.published_at)) < Date.parse(`${weekStart}T00:00:00Z`);
+
   let paceReason = "first week";
-  if (previousTarget !== null) {
+  if (previousTarget !== null && wasLiveLastWeek) {
     const { data: lastRow } = await admin
       .from("weekly_targets")
       .select("outcome")

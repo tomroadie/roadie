@@ -382,7 +382,8 @@ export async function generateConceptPool(
         strict: attempt === 1,
       });
       if (pool) {
-        return { pool: { ...pool, concepts: orderForBoard(pool.concepts) }, context, warnings, attempts: attempt, model };
+        // res.model is what actually answered (the fallback, if the chosen model wasn't available).
+        return { pool: { ...pool, concepts: orderForBoard(pool.concepts) }, context, warnings, attempts: attempt, model: res.model || model };
       }
       lastErrors = errors;
     }

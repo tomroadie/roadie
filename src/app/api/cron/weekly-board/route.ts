@@ -26,10 +26,10 @@ async function notifyAdmin(
   const key = process.env.RESEND_API_KEY;
   if (!key || (done.length === 0 && failed.length === 0)) return;
 
-  const reviewUrl = `${appBaseUrl()}/admin/concepts`;
+  const reviewUrl = `${appBaseUrl()}/admin?tab=week`;
   const lines = done.map(
     (o) =>
-      `<li><strong>${escapeHtml(o.artistName)}</strong>: posted ${o.postedLastWeek} last week, target ${o.previousTarget ?? "new"} → ${o.target}${o.warnings.length ? `, ${o.warnings.length} warning(s)` : ""}${autoPublish ? (o.emailed ? ", published and emailed" : ", published (no email sent)") : ""}</li>`
+      `<li><strong>${escapeHtml(o.artistName)}</strong>: posted ${o.postedLastWeek} last week, target ${o.previousTarget ?? "new"} → ${o.target}${o.model ? `, ${escapeHtml(o.model)} in ${o.seconds}s` : ""}${o.warnings.length ? `, ${o.warnings.length} warning(s)` : ""}${autoPublish ? (o.emailed ? ", published and emailed" : ", published (no email sent)") : ""}</li>`
   );
   const failures = failed.map(
     (f) => `<li><strong>${escapeHtml(f.artistName)}</strong>: ${escapeHtml(f.error)}</li>`
@@ -45,7 +45,7 @@ async function notifyAdmin(
     ${done.length ? `<p>${autoPublish ? "Published" : "Drafts waiting for your review"}:</p><ul>${lines.join("")}</ul>` : ""}
     ${failed.length ? `<p style="color:#b91c1c">Failed:</p><ul>${failures.join("")}</ul>` : ""}
     ${remaining ? `<p>${remaining} more will run on the next call.</p>` : ""}
-    <p><a href="${reviewUrl}">Open concept review</a></p>`;
+    <p><a href="${reviewUrl}">Open This week</a></p>`;
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",

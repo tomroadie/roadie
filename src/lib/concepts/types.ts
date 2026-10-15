@@ -63,6 +63,8 @@ export type ContextPost = {
   looks?: string | null;
   /** Synced posts only: the content concept it sits in. */
   concept?: string | null;
+  /** Set in code: where it ranks among these posts, top three only ("2nd for reach of 15"). */
+  ranks?: string | null;
 };
 
 export type ContextKeyDate = {
@@ -104,6 +106,8 @@ export type ConceptContext = {
   postedIdeas: string[];
   /** Board ideas sitting on their shelf. */
   pinnedIdeas: string[];
+  /** The last two published boards, newest first: each idea's title and how it said to do it. */
+  recentBoards?: { published: string; ideas: { title: string; ways: string[] }[] }[];
   /** True when there's too little post data to ground concepts in. */
   coldStart: boolean;
   /**

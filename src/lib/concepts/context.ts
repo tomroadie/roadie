@@ -122,9 +122,26 @@ export function numberPosts(posts: RawPost[]): ContextPost[] {
     );
   const thresholds = { news: thresholdFor(true), everyday: thresholdFor(false) };
 
+  // Ranks are worked out here so every run describes a post the same way.
+  const ORD = ["1st", "2nd", "3rd"];
+  const metrics = ["reach", "comments", "saves", "shares", "views"] as const;
+  const rankText = (p: (typeof sorted)[number]): string | null => {
+    const parts: string[] = [];
+    for (const m of metrics) {
+      const v = p[m];
+      if (v === null || v === undefined) continue;
+      const vals = sorted.map((x) => x[m]).filter((x): x is number => typeof x === "number");
+      if (vals.length < 5) continue;
+      const rank = vals.filter((x) => x > v).length;
+      if (rank < 3) parts.push(`${ORD[rank]} for ${m} of ${vals.length}`);
+    }
+    return parts.length ? parts.join(", ") : null;
+  };
+
   return sorted.map((p, i) => ({
     ...p,
     n: i + 1,
+    ranks: rankText(p),
     standout:
       p.comments !== null &&
       p.comments >= (p.news ? thresholds.news : thresholds.everyday),
@@ -333,6 +350,34 @@ export async function loadConceptContext(
         : String(c.title);
     });
 
+  // The last two published boards, so a new week doesn't repeat their angles.
+  const { data: lastGens } = await supabase
+    .from("concept_generations")
+    .select("id, published_at")
+    .eq("artist_id", artistId)
+    .not("published_at", "is", null)
+    .order("published_at", { ascending: false })
+    .limit(2);
+  let recentBoards: ConceptContext["recentBoards"] = [];
+  if (lastGens && lastGens.length > 0) {
+    const { data: lastIdeas } = await supabase
+      .from("concepts")
+      .select("generation_id, title, executions, position")
+      .in("generation_id", lastGens.map((g) => g.id))
+      .order("position");
+    recentBoards = lastGens.map((g) => ({
+      published: String(g.published_at).slice(0, 10),
+      ideas: (lastIdeas ?? [])
+        .filter((c) => c.generation_id === g.id)
+        .map((c) => ({
+          title: String(c.title),
+          ways: (Array.isArray(c.executions) ? (c.executions as { format?: unknown; idea?: unknown }[]) : [])
+            .map((e) => `${String(e.format ?? "")}: ${String(e.idea ?? "").slice(0, 110)}`)
+            .slice(0, 3),
+        })),
+    }));
+  }
+
   // Board bins first, then legacy thumbs-down ratings from weekly plans.
   const declined = new Map<string, string | null>();
   for (const c of history.filter((h) => h.status === "binned")) {
@@ -398,6 +443,7 @@ export async function loadConceptContext(
     })),
     postedIdeas: postedIdeas.slice(0, 10),
     pinnedIdeas: titlesWith("pinned").slice(0, 10),
+    recentBoards,
     coldStart: posts.length < COLD_START_MIN_POSTS,
   };
 }

@@ -15,7 +15,7 @@ These directions are what every coach suggests, so treat them as a last resort a
 
 Rules you never break:
 1. Ground every concept in what is true for them: the numbered posts you are given and, where we have it, what we know beyond Instagram. When a why points at posts, it must say what actually happened on them, and evidence_posts must list those post numbers. Where a post has a result against their usual, use that rather than raw like counts, which mean nothing without their normal to compare with. "Overall" results weigh new followers most, then shares, saves and profile visits, then comments and reach: a post that won followers or got shared matters more than one that was merely seen. Name the signal that stood out where one is given ("got shared about three times as much as usual"). The artist reads the "why" and has never seen the numbers, so describe posts by what they were ("your 'Lately' carousel", "the Dreams Fade release post"), never "Post 9". NEWS and STANDOUT are labels for you only; never use those words, or say a post was "marked" anything. Some posts come with a short description of the cover image ("looks:"); you may use it, but don't claim anything about an image beyond that, and never describe video you haven't seen. Only quote numbers that appear in the data. Never invent a statistic, a ratio or a post. If like counts are hidden, talk about comments or views instead.
-2. A handful of posts is a small sample. Say "your post about X got the most comments" rather than claiming a trend from one data point. Posts marked STANDOUT are the real outliers; lean on those.
+2. A handful of posts is a small sample. Say "your post about X got the most comments" rather than claiming a trend from one data point. Posts marked STANDOUT are the real outliers; lean on those. When you say a post did more than others, use its "ranks" exactly as given and say "of your last N posts"; never "this year", "ever" or "more than anything", because you only see these posts.
 3. Separate the news from the technique. Posts marked NEWS (releases, gigs, announcements) get comments because of the news itself, whatever the caption does. A NEWS post can only be evidence for a concept that is itself about sharing news (about_news: true). Concepts about everyday content, people, process or personality (about_news: false) must cite only posts without the NEWS mark. STANDOUT is judged within each kind, so an everyday post marked STANDOUT did well against other everyday posts. Each post should back one concept, not several.
 4. Don't assume what's next. Only frame a concept around unreleased music, a new release or a tour if the key dates or their recent posts say one is coming. Otherwise suggest things that work whatever stage they're at.
 5. Lower the bar. Every concept must include at least one low-effort execution that could be made with a phone in under 20 minutes from things the artist already has (photos, voice memos, rehearsal clips, gig footage). The less they've posted recently, the lower the effort should skew. Be honest about effort: "low" means one person, one take or one existing photo, no editing beyond trimming. Anything that needs several people filmed separately, clips stitched together or more than one photo sourced is "medium" at least. Stories carry a line of text at most, not paragraphs.
@@ -25,7 +25,8 @@ Rules you never break:
 9. Describe Instagram as it is now: links in stories go in a link sticker (there is no swipe-up), and collaborators are added with a collab invite or a tag.
 10. Dates are exact or absent. Take dates only from the key dates list. Each date belongs to one thing: never join two plans in one phrase (a show in spring announced next month is "the spring shows, announced on the 3rd", never "the spring nights next month"). If a plan mentions something with no date in the key dates, say "when it's announced" or "when it's out" rather than guessing a day.
 11. Say what a thing is the first time you name it: "your new single [title]", "the album", "your two [venue] shows". The artist may read the board weeks after the plan was written. Plans in the brief are private until announced: never suggest posting about something before its announcement date.
-12. The board is for this week. Every execution must be something they can make and post in the next seven days. A date more than ten days away can't have "on the day" instructions yet; it can only shape lead-up content, and before an announcement that means building anticipation without giving anything away (the making of the record, its world and look, the people on it, a hint), never announcing it early.`;
+12. The board is for this week. Every execution must be something they can make and post in the next seven days. A date more than ten days away can't have "on the day" instructions yet; it can only shape lead-up content, and before an announcement that means building anticipation without giving anything away (the making of the record, its world and look, the people on it, a hint), never announcing it early.
+13. Each week should feel new. Don't repeat an idea from the last two boards, and don't reuse a device they leaned on (a signed note, a question sticker, a photo diary, the same post reworked) unless this week gives it a genuinely new reason. A strong direction can continue with a different angle and a different format.`;
 
 function count(n: number, word: string): string {
   return `${n.toLocaleString("en-GB")} ${word}${n === 1 ? "" : "s"}`;
@@ -48,6 +49,7 @@ function postLine(p: ContextPost): string {
   const extra = [
     p.vsUsual ? `result: ${p.vsUsual}` : null,
     p.concept ? `concept: ${p.concept}` : null,
+    p.ranks ? `ranks: ${p.ranks}` : null,
     p.looks ? `looks: ${clip(p.looks, 200)}` : null,
   ].filter(Boolean);
   return `Post ${p.n}${tags} — ${date} — ${p.type} — ${metrics.join(", ")}${extra.length ? `\n  ${extra.join(" · ")}` : ""}\n  "${caption}"`;
@@ -165,6 +167,14 @@ Take these seriously: "No time" means lower the effort; "No gear for this" means
     .filter(Boolean)
     .join("\n\n");
 
+  const recentBoardsSection =
+    ctx.recentBoards && ctx.recentBoards.length > 0
+      ? `## Their last boards (newest first; rule 13)
+${ctx.recentBoards
+  .map((b) => `Published ${b.published}:\n${b.ideas.map((i) => `- ${i.title}\n${i.ways.map((w) => `    ${w}`).join("\n")}`).join("\n")}`)
+  .join("\n\n")}`
+      : "";
+
   const comingUpSection = ctx.comingUpNote
     ? `## What they told us is coming up (their words)\n"${ctx.comingUpNote}"\nUse this where it fits, even if no exact date was given.`
     : "";
@@ -222,6 +232,8 @@ ${comingUpSection}
 ${declinedSection}
 
 ${boardHistorySection}
+
+${recentBoardsSection}
 
 ${newsOnlyNote}
 

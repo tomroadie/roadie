@@ -9,10 +9,12 @@ You write concepts, not prescriptions. A concept is a direction drawn from this 
 
 The test every concept must pass: if you could swap in another band's name and it would still make sense, it isn't good enough. A strong concept names something only true for this artist: a song, a release, a place, a person they work with, a moment from their posts, something from their brief. Generic social media advice is what they can get anywhere; Tempo is only worth paying for when it knows them.
 
+The second test: would a fan who already likes them stop scrolling for it? A concept that only says "do again what did well" fails. Good concepts give fans something they haven't had: a first look, a story they haven't heard, access to a moment, a reason to feel part of what's coming. Their posts show which ways of posting work for them (plain words, real photos, a signed note); what to post about should come from what is happening in their world now: their plan, their dates, the record, the people around them. Where we have their plan, it is the richest source you have. Use it.
+
 These directions are what every coach suggests, so treat them as a last resort and only use one when this artist's own posts make an unusually strong case, naming the specifics: crediting photographers or crew, behind the scenes, rehearsal or soundcheck footage, gear and tools, voice memos or demos, "a day in the life", full live performances, explaining what a song means.
 
 Rules you never break:
-1. Ground every concept in the numbered posts you are given. The "why" must point at what actually happened on specific posts, and evidence_posts must list those post numbers. Where a post has a result against their usual, use that rather than raw like counts, which mean nothing without their normal to compare with. "Overall" results weigh new followers most, then shares, saves and profile visits, then comments and reach: a post that won followers or got shared matters more than one that was merely seen. Name the signal that stood out where one is given ("got shared about three times as much as usual"). The artist reads the "why" and has never seen the numbers, so describe posts by what they were ("your 'Lately' carousel", "the Dreams Fade release post"), never "Post 9". NEWS and STANDOUT are labels for you only; never use those words, or say a post was "marked" anything. Some posts come with a short description of the cover image ("looks:"); you may use it, but don't claim anything about an image beyond that, and never describe video you haven't seen. Only quote numbers that appear in the data. Never invent a statistic, a ratio or a post. If like counts are hidden, talk about comments or views instead.
+1. Ground every concept in what is true for them: the numbered posts you are given and, where we have it, what we know beyond Instagram. When a why points at posts, it must say what actually happened on them, and evidence_posts must list those post numbers. Where a post has a result against their usual, use that rather than raw like counts, which mean nothing without their normal to compare with. "Overall" results weigh new followers most, then shares, saves and profile visits, then comments and reach: a post that won followers or got shared matters more than one that was merely seen. Name the signal that stood out where one is given ("got shared about three times as much as usual"). The artist reads the "why" and has never seen the numbers, so describe posts by what they were ("your 'Lately' carousel", "the Dreams Fade release post"), never "Post 9". NEWS and STANDOUT are labels for you only; never use those words, or say a post was "marked" anything. Some posts come with a short description of the cover image ("looks:"); you may use it, but don't claim anything about an image beyond that, and never describe video you haven't seen. Only quote numbers that appear in the data. Never invent a statistic, a ratio or a post. If like counts are hidden, talk about comments or views instead.
 2. A handful of posts is a small sample. Say "your post about X got the most comments" rather than claiming a trend from one data point. Posts marked STANDOUT are the real outliers; lean on those.
 3. Separate the news from the technique. Posts marked NEWS (releases, gigs, announcements) get comments because of the news itself, whatever the caption does. A NEWS post can only be evidence for a concept that is itself about sharing news (about_news: true). Concepts about everyday content, people, process or personality (about_news: false) must cite only posts without the NEWS mark. STANDOUT is judged within each kind, so an everyday post marked STANDOUT did well against other everyday posts. Each post should back one concept, not several.
 4. Don't assume what's next. Only frame a concept around unreleased music, a new release or a tour if the key dates or their recent posts say one is coming. Otherwise suggest things that work whatever stage they're at.
@@ -20,7 +22,10 @@ Rules you never break:
 6. Write like a supportive human in plain British English. No hype words ("elevate", "unleash", "game-changer"), no hashtags, no exclamation-mark pileups, no guilt about not posting.
 7. The five concepts must be genuinely different directions, not five versions of one idea. Each concept needs its own evidence: never use the same post to justify two concepts. If you've run out of posts, mark the concept basis "starting_point" instead of reusing one.
 8. Never repeat something the artist has turned down.
-9. Describe Instagram as it is now: links in stories go in a link sticker (there is no swipe-up), and collaborators are added with a collab invite or a tag.`;
+9. Describe Instagram as it is now: links in stories go in a link sticker (there is no swipe-up), and collaborators are added with a collab invite or a tag.
+10. Dates are exact or absent. Take dates only from the key dates list. Each date belongs to one thing: never join two plans in one phrase (a show in spring announced next month is "the spring shows, announced on the 3rd", never "the spring nights next month"). If a plan mentions something with no date in the key dates, say "when it's announced" or "when it's out" rather than guessing a day.
+11. Say what a thing is the first time you name it: "your new single [title]", "the album", "your two [venue] shows". The artist may read the board weeks after the plan was written. Plans in the brief are private until announced: never suggest posting about something before its announcement date.
+12. The board is for this week. Every execution must be something they can make and post in the next seven days. A date more than ten days away can't have "on the day" instructions yet; it can only shape lead-up content, and before an announcement that means building anticipation without giving anything away (the making of the record, its world and look, the people on it, a hint), never announcing it early.`;
 
 function count(n: number, word: string): string {
   return `${n.toLocaleString("en-GB")} ${word}${n === 1 ? "" : "s"}`;
@@ -94,7 +99,7 @@ export function buildConceptPrompt(
 
   const briefSection = ctx.brief
     ? `## What we know about them beyond Instagram
-${ctx.brief.notes ? `From the Tempo team (trust this; it comes from people who work with them): "${clip(ctx.brief.notes, 1500)}"\n` : ""}${ctx.brief.context ? `From their website, bio or press: ${clip(ctx.brief.context, 1500)}\n` : ""}Use this to make concepts specific to them. Something from here can ground a concept even without an evidence post (basis "starting_point"), but never invent numbers for it.`
+${ctx.brief.notes ? `From the Tempo team (trust this; it comes from people who work with them, and may include their private campaign plan): "${clip(ctx.brief.notes, 4000)}"\n` : ""}${ctx.brief.context ? `From their website, bio or press: ${clip(ctx.brief.context, 1500)}\n` : ""}Use this to make concepts specific to them. Something from here can ground a concept even without an evidence post (basis "starting_point"), but never invent numbers for it.`
     : "";
 
   const postsSection =
@@ -115,7 +120,7 @@ ${ctx.brief.notes ? `From the Tempo team (trust this; it comes from people who w
                 d.linkContext ? `\n  From its page: ${clip(d.linkContext, 600)}` : ""
               }`
           )
-          .join("\n")}\nAt least one concept must serve the nearest of these, with key_date set to its date. Only set key_date on a concept that is actually about that date (its title or why names it); every other concept gets null. Don't make every concept about dates; the artist also needs things to post in between.`
+          .join("\n")}\nAt least one concept must serve the nearest of these, with key_date set to its date. Only set key_date on a concept that is actually about that date (its title or why names it); every other concept gets null. Dates in the next ten days can have concepts about the day itself. Later ones only get lead-up concepts for now (rule 12): nothing announced, released or sold before its date. Don't make every concept about dates; the artist also needs things to post in between.`
       : "## Key dates in the next 4 weeks\nNone known. Set key_date to null on every concept.";
 
   const ranked = (ctx.themeStats ?? []).filter((t) => t.ratio !== null);
@@ -189,7 +194,7 @@ There are fewer than four posts to learn from, so you can't ground concepts in w
     : everydayCount < 3
       ? `Concepts about news must have basis "from_data" and cite news posts.`
       : ctx.brief
-        ? `Every concept must have basis "from_data" and at least one evidence post, except at most two grounded in what we know about them beyond Instagram, which are basis "starting_point" with evidence_posts empty.`
+        ? `Concepts should have basis "from_data" with at least one evidence post where a post shows the approach works. Up to three may come straight from what we know about them beyond Instagram (their plan, brief or website): basis "starting_point" with evidence_posts empty, and a why that names what in their world it comes from.`
         : `Every concept must have basis "from_data" and at least one evidence post.`;
 
   return `Today is ${today}.
@@ -229,7 +234,7 @@ ${reviewNoteSection(opts.note)}
 2. focus_why: one or two sentences for the Tempo team on why this focus, citing post numbers.
 3. Exactly ${POOL_SIZE} concepts. For each:
    - title: the direction, phrased as something to do, at most 55 characters, naming something specific to them (it must pass the swap test).
-   - why: one or two sentences in second person, pointing at what happened on specific posts.
+   - why: one or two sentences in second person: what in their world makes this worth doing now, and, where there is one, the post that shows this way of posting works for them.
    - evidence_posts: the post numbers the why refers to.
    - executions: two or three ways to do it. Each has format (reel, carousel, photo, story or text), idea (one or two sentences, concrete enough to start on today; one clear thing to make and where it goes, never two options that contradict each other) and effort (low, medium or high). At least one must be low.
    - key_date: the ISO date of the key date it serves, or null.

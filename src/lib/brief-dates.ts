@@ -25,11 +25,16 @@ function hash(text: string): string {
 }
 
 /** Reads the notes if they changed since the last read and saves new dates as suggestions. */
+export const PLAN_DATE_SUGGESTIONS = false;
+
 export async function syncBriefDates(
   admin: SupabaseClient,
   artistId: string,
   opts: { force?: boolean; now?: Date } = {}
 ): Promise<{ found: number; added: number } | null> {
+  // Paused with caption suggestions until the dates redesign; the plan still
+  // reaches ideas through the brief.
+  if (!PLAN_DATE_SUGGESTIONS) return null;
   const now = opts.now ?? new Date();
   const { data: p } = await admin
     .from("profiles")

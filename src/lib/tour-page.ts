@@ -149,11 +149,14 @@ export async function syncTourPage(
   const now = opts.now ?? new Date();
   const { data: profile } = await admin
     .from("profiles")
-    .select("artist_name, tour_page_url, tour_page_checked_at, brief_links")
+    .select("artist_name, tour_page_url, tour_page_checked_at, brief_links, account_type")
     .eq("id", artistId)
     .maybeSingle();
   const url = profile?.tour_page_url ? String(profile.tour_page_url) : "";
   if (!url) return null;
+  // Venues: every night is an event, so their listings aren't dates to
+  // curate. Paused until the dates redesign reads listings properly.
+  if (profile?.account_type && profile.account_type !== "artist") return null;
   const last = profile?.tour_page_checked_at ? Date.parse(String(profile.tour_page_checked_at)) : 0;
   if (!opts.force && last && now.getTime() - last < REREAD_DAYS * 86400000) return null;
 

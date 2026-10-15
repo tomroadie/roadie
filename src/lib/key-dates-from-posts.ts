@@ -47,11 +47,17 @@ function excerpt(caption: string): string {
  * dates ("Friday") are read from the day the post went up. Each post is
  * checked once. Needs a service-role client. Returns how many were saved.
  */
+export const CAPTION_DATE_SUGGESTIONS = false;
+
 export async function suggestDatesFromPosts(
   admin: SupabaseClient,
   artistId: string,
   now: Date = new Date()
 ): Promise<number> {
+  // Paused: caption guesses were too often wrong (month-only dates as the
+  // 1st, promos and seasons as events). Dates are added by hand or from an
+  // artist's website until the dates redesign.
+  if (!CAPTION_DATE_SUGGESTIONS) return 0;
   const since = new Date(now.getTime() - LOOKBACK_DAYS * 86400000).toISOString();
   const { data: posts, error } = await admin
     .from("post_performance")
